@@ -10,7 +10,8 @@ wifi:
   password: not-a-real-network-password
 api:
   encryption:
-    key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+    # Public synthetic bytes 1..32, not a production key.
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
 ota:
 - platform: esphome
   password: not-a-production-password
