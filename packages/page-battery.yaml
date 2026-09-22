@@ -203,22 +203,54 @@ display:
       }
       draw_centered(120, 189, id(time_font), Color::WHITE, time_text);
 
+      // Page indicator: show at most nine dots at once. For longer rotations,
+      // slide the window around the active page and draw chevrons when pages
+      // exist before or after the visible range.
       const int count = static_cast<int>(id(rotation_pages).size());
       const int active = id(active_rotation_index);
-      if (count > 0) {
-        int step = count <= 1 ? 0 : 126 / (count - 1);
-        if (step > 14) step = 14;
-        if (step < 4) step = 4;
-        const int width = step * (count - 1);
+      if (count > 0 && active >= 0) {
+        constexpr int MAX_VISIBLE_DOTS = 9;
+        constexpr int DOT_STEP = 12;
+        constexpr int DOT_Y = 221;
+
+        const int visible = count < MAX_VISIBLE_DOTS ? count : MAX_VISIBLE_DOTS;
+        int first = 0;
+
+        if (count > visible) {
+          first = active - visible / 2;
+          if (first < 0) first = 0;
+          const int max_first = count - visible;
+          if (first > max_first) first = max_first;
+        }
+
+        const int last = first + visible - 1;
+        const bool more_before = first > 0;
+        const bool more_after = last < count - 1;
+        const int width = DOT_STEP * (visible - 1);
         const int start_x = 120 - width / 2;
-        for (int i = 0; i < count; i++) {
-          const int x = start_x + i * step;
-          if (i == active) {
-            it.filled_circle(x, 221, 7, Color::BLACK);
-            it.filled_ring(x, 221, 6, 5, accent);
-            it.filled_circle(x, 221, 3, Color::WHITE);
+
+        for (int slot = 0; slot < visible; slot++) {
+          const int page_index = first + slot;
+          const int x = start_x + slot * DOT_STEP;
+
+          if (page_index == active) {
+            it.filled_circle(x, DOT_Y, 7, Color::BLACK);
+            it.filled_ring(x, DOT_Y, 6, 5, accent);
+            it.filled_circle(x, DOT_Y, 3, Color::WHITE);
           } else {
-            it.filled_circle(x, 221, 2, Color(64, 64, 85));
+            it.filled_circle(x, DOT_Y, 2, Color(64, 64, 85));
           }
+        }
+
+        const Color arrow_color(150, 150, 165);
+        if (more_before) {
+          it.line(start_x - 14, DOT_Y, start_x - 8, DOT_Y - 5, arrow_color);
+          it.line(start_x - 14, DOT_Y, start_x - 8, DOT_Y + 5, arrow_color);
+        }
+        if (more_after) {
+          it.line(start_x + width + 14, DOT_Y,
+                  start_x + width + 8, DOT_Y - 5, arrow_color);
+          it.line(start_x + width + 14, DOT_Y,
+                  start_x + width + 8, DOT_Y + 5, arrow_color);
         }
       }
