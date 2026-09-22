@@ -36,6 +36,39 @@ arbitrarily auto-fit. The current geometry is for temperatures and battery
 percentages, not long text. Font families/sizes remain 44px Roboto title, 84px
 Roboto value, 36px Roboto footer, 92px Oswald hour/minute.
 
+## Template-driven rotation profiles
+
+The legacy profiles continue to use `metric_1..metric_6` so deployed
+configurations remain compatible. New configurations can instead select one of:
+
+- `profiles/esp32-c3-templated.yaml`
+- `profiles/esp32-c3-templated-camera.yaml`
+- `profiles/esp32-s3-quad-psram-templated.yaml`
+- `profiles/esp32-s3-quad-psram-templated-camera.yaml`
+
+Rotation items register themselves at boot and are sorted by `page_order`.
+There is no shared-code limit of six items.
+
+A numeric/temperature page is one `packages/rotation-numeric-page.yaml`
+instance with a unique `page_id`. It supplies its own HA sensor, graph, label,
+unit/suffix, precision, accent color, duration, and rotation order.
+
+A battery page is one `packages/rotation-battery-page.yaml` instance. Multiple
+battery pages are allowed; each expects a 0–100 percentage sensor and uses the
+same red/yellow/cyan/green thresholds as the legacy battery renderer.
+
+A normal-rotation camera page is one `packages/rotation-camera-page.yaml`
+instance associated with an existing `camera-source.yaml` instance. It is
+available only with a `*-templated-camera.yaml` profile. Camera pages share
+the same JPEG decoder/image buffer used by alerts rather than allocating one
+decoded image buffer per camera. A real person/vehicle alert supersedes a
+normal-rotation camera page.
+
+The page-dot row uses the registered rotation item count and reduces spacing
+when many items are configured. Physical display width, RAM, flash, and Home
+Assistant subscription count remain practical limits even though the firmware
+has no numbered-page ceiling.
+
 ## Hardware overrides
 
 | Setting | Default |
@@ -54,7 +87,7 @@ Roboto value, 36px Roboto footer, 92px Oswald hour/minute.
 hardware profile. Do not copy the S3/full-buffer choice onto a C3 to silence
 warnings. Actual free contiguous memory matters for camera allocations.
 Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior in
-v0.4.0. Quiet-hours automation is not added automatically. Existing per-device
+v0.5.0. Quiet-hours automation is not added automatically. Existing per-device
 quiet-hours logic can be kept in a local package when migrating other minions.
 
 ## Optional camera feature
@@ -89,6 +122,16 @@ Shared engine substitutions:
 | `camera_queue_max_runs` | `'20'` | Maximum active+queued alert operations; this limits backlog, **not camera count**. |
 | `camera_min_free_heap` | `'100000'` | Preflight free-heap threshold. |
 | `camera_min_largest_block` | `'60000'` | Preflight largest-contiguous-block threshold. |
+
+Each `packages/camera-source.yaml` instance also creates a configuration
+switch named **<source label> Alerts**. Automatic detections require both that
+per-camera switch and the global **Camera Alerts** master switch to be on.
+Manual snapshot buttons bypass both alert switches and the cooldown.
+
+The camera engine exposes a diagnostic text sensor named **Last Camera Alert**.
+Only automatic person/vehicle events update it, in short form such as
+`FRONT: Person`. Manual snapshots and camera pages in the normal rotation do
+not overwrite the diagnostic.
 
 Each `packages/camera-source.yaml` instance requires these variables:
 
