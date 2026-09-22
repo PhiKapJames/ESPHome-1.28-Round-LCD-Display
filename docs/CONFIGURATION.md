@@ -15,7 +15,7 @@ packages deliberately contain no `!secret` lookups.
 | `graph_interval` | `12h` | Graph history. |
 | `clock_page_duration_ms` | `'8000'` | Milliseconds, positive integer string. |
 | `metric_panel_style` | `'1'` | 0 none / 1 rounded panel / 2 horizontal band. Battery always uses its own body. |
-| `metric_N_enabled` | `'true'` | N=1–6. Use `'true'` or `'false'`. Must leave at least one enabled. |
+| `metric_N_enabled` | `'true'` | N=1–6 legacy compatibility slots. Use `'true'` or `'false'`. All six may be disabled when template pages are supplied. |
 | `metric_N_label` | `Metric N`, slot 6 `Battery` | Keep short enough for 44px type. No embedded quotes, backslashes, or newlines. |
 | `metric_N_entity` | `sensor.example_metric_N` | Real HA entity of a numeric sensor; ignored for a disabled slot. |
 | `metric_N_duration_ms` | `'8000'` | Positive integer milliseconds for each content page. |
@@ -36,6 +36,90 @@ arbitrarily auto-fit. The current geometry is for temperatures and battery
 percentages, not long text. Font families/sizes remain 44px Roboto title, 84px
 Roboto value, 36px Roboto footer, 92px Oswald hour/minute.
 
+## Rotation page templates
+
+Version 0.5.0 removes the six-page limit from the rotation engine. The display
+maintains an ordered registry populated by page-template instances at boot.
+Each template has a unique `page_id`, integer `page_order`, and
+`page_duration_ms`. The clock is still inserted automatically after every
+normal content page.
+
+The original `metric_1..metric_6` settings remain supported and are implemented
+as a compatibility package. Existing Camper/Home device YAML does not need to
+change. For a template-only configuration, set all six legacy
+`metric_N_enabled` values to `'false'` and instantiate pages directly.
+
+### Numeric / temperature page
+
+Include `packages/page-numeric.yaml` once for every numeric page. There is no
+shared-code count limit.
+
+```yaml
+- path: packages/page-numeric.yaml
+  vars:
+    page_id: kitchen
+    page_label: Kitchen
+    page_entity: sensor.kitchen_temperature
+    page_duration_ms: '4000'
+    page_order: '10'
+    page_graph_interval: 12h
+    page_unit: °F
+    page_suffix: °
+    page_decimals: '1'
+    page_panel_style: '1'
+    page_color_red: 0%
+    page_color_green: 62%
+    page_color_blue: 45%
+```
+
+`page_unit` is Home Assistant sensor metadata and does not convert values.
+`page_suffix` is the text rendered after the number. Colors are independent
+per page.
+
+### Battery page
+
+Include `packages/page-battery.yaml` for each battery percentage page:
+
+```yaml
+- path: packages/page-battery.yaml
+  vars:
+    page_id: main_battery
+    page_label: Battery
+    page_entity: sensor.main_battery_percent
+    page_duration_ms: '4000'
+    page_order: '50'
+    page_graph_interval: 12h
+```
+
+The battery renderer keeps the 0–25 red, 25–50 yellow, 50–75 cyan/blue, and
+75–100 green bands. Multiple battery pages are allowed.
+
+### Camera rotation page
+
+`packages/page-camera.yaml` deliberately puts a still camera view into normal
+rotation. It is optional and separate from alert snapshots. It requires a
+camera-enabled profile because it reuses that profile's shared HTTP requester.
+
+```yaml
+- path: packages/page-camera.yaml
+  vars:
+    page_id: driveway_view
+    page_label: DRIVEWAY
+    page_entity: camera.driveway
+    page_duration_ms: '5000'
+    page_order: '60'
+```
+
+The page requests the camera's current `entity_picture` when it enters
+rotation, releases the decoded image when it leaves, and uses the same
+origin/token validation and RAM guards as the alert design. Adding a camera
+rotation page does **not** change camera-alert trigger rules.
+
+Practical limits remain the device's RAM, flash, component count, and Home
+Assistant subscriptions rather than an artificial page-count constant. CI
+includes a synthetic 12-content-page configuration containing 10 numeric pages,
+one battery page, and one camera page.
+
 ## Hardware overrides
 
 | Setting | Default |
@@ -54,7 +138,7 @@ Roboto value, 36px Roboto footer, 92px Oswald hour/minute.
 hardware profile. Do not copy the S3/full-buffer choice onto a C3 to silence
 warnings. Actual free contiguous memory matters for camera allocations.
 Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior in
-v0.4.0. Quiet-hours automation is not added automatically. Existing per-device
+v0.5.0. Quiet-hours automation is not added automatically. Existing per-device
 quiet-hours logic can be kept in a local package when migrating other minions.
 
 ## Optional camera feature
@@ -67,7 +151,7 @@ instances of `packages/camera-source.yaml`.
 There is **no hard-coded camera count**. ESPHome remote packages allow the same
 file to be listed repeatedly with different `vars`; each instance contributes
 one HA camera attribute subscription, one manual button, one per-source cooldown,
-and whichever detector subscriptions are enabled. Practical flash/RAM/API entity
+one per-camera **Alerts** configuration switch, and whichever detector subscriptions are enabled. Practical flash/RAM/API entity
 limits still apply, but adding a fifth, sixth, or later camera does not require
 editing this repository.
 
@@ -108,6 +192,17 @@ Each `packages/camera-source.yaml` instance requires these variables:
 When person and vehicle are both enabled on one source, they are **OR** triggers.
 A vehicle-only source does not subscribe to its person entity. A manual-only
 source sets both trigger flags false but still gets its snapshot button.
+
+The global **Camera Alerts** switch remains a master control for backward
+compatibility. Every source also exposes its own **<SOURCE> Alerts** switch, so
+automatic alerts can be disabled independently per camera. Manual snapshot
+buttons bypass both automatic-alert switches and cooldowns, but retain the
+readiness/RAM safeguards.
+
+The user-facing diagnostic is **Last Camera Alert**. It remains short, for
+example `FRONT: Person` or `DRIVEWAY: Vehicle`. Manual snapshots do not
+replace it. Internal download/progress status is no longer exposed as a separate
+Home Assistant diagnostic entity.
 
 Example remote package with two cameras:
 
