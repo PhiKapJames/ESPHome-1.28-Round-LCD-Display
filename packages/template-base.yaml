@@ -1,0 +1,182 @@
+# Shared base for template-driven rotation profiles.
+# Rotation items register themselves at boot; there is no numbered page-slot table.
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  min_version: 2026.9.0
+  includes:
+  - <esp_heap_caps.h>
+  on_boot:
+  - priority: -200
+    then:
+    - lambda: |-
+        id(display_initialized) = true;
+
+        const size_t n = id(rotation_pages).size();
+        if (n == 0) {
+          ESP_LOGE("rotation", "No rotation page templates are registered");
+          return;
+        }
+
+        // Stable insertion sort by user-supplied rotation_order. Every registry
+        // vector is swapped together, so page metadata stays aligned.
+        for (size_t i = 1; i < n; i++) {
+          size_t j = i;
+          while (j > 0 && id(rotation_orders)[j - 1] > id(rotation_orders)[j]) {
+            std::swap(id(rotation_orders)[j - 1], id(rotation_orders)[j]);
+            std::swap(id(rotation_pages)[j - 1], id(rotation_pages)[j]);
+            std::swap(id(rotation_durations)[j - 1], id(rotation_durations)[j]);
+            std::swap(id(rotation_kinds)[j - 1], id(rotation_kinds)[j]);
+            std::swap(id(rotation_camera_entities)[j - 1], id(rotation_camera_entities)[j]);
+            std::swap(id(rotation_camera_labels)[j - 1], id(rotation_camera_labels)[j]);
+            std::swap(id(rotation_camera_paths)[j - 1], id(rotation_camera_paths)[j]);
+            j--;
+          }
+        }
+    - script.execute: display_rotation
+  project:
+    name: phikapjames.round-minions
+    version: 0.5.0
+
+logger:
+  level: INFO
+
+spi:
+  clk_pin: ${spi_clk_pin}
+  mosi_pin: ${spi_mosi_pin}
+
+time:
+- platform: homeassistant
+  id: sntp_time
+  timezone: ${timezone}
+  on_time_sync:
+    then:
+    - script.execute: refresh_visible_time
+
+globals:
+- id: rotation_pages
+  type: std::vector<esphome::display::DisplayPage *>
+  restore_value: false
+- id: rotation_durations
+  type: std::vector<uint32_t>
+  restore_value: false
+- id: rotation_orders
+  type: std::vector<int>
+  restore_value: false
+- id: rotation_kinds
+  type: std::vector<uint8_t>
+  restore_value: false
+- id: rotation_camera_entities
+  type: std::vector<std::string>
+  restore_value: false
+- id: rotation_camera_labels
+  type: std::vector<std::string>
+  restore_value: false
+- id: rotation_camera_paths
+  type: std::vector<esphome::text_sensor::TextSensor *>
+  restore_value: false
+
+- id: rotation_content_index
+  type: unsigned int
+  restore_value: false
+  initial_value: '0'
+- id: rotation_visible_index
+  type: unsigned int
+  restore_value: false
+  initial_value: '0'
+- id: active_rotation_item
+  type: unsigned int
+  restore_value: false
+  initial_value: '0'
+- id: active_rotation_kind
+  type: uint8_t
+  restore_value: false
+  initial_value: '0'
+- id: normal_page
+  type: esphome::display::DisplayPage *
+  restore_value: false
+  initial_value: nullptr
+- id: normal_is_clock
+  type: bool
+  restore_value: false
+  initial_value: 'false'
+- id: normal_remaining_ms
+  type: uint32_t
+  restore_value: false
+  initial_value: '8000'
+- id: normal_started_ms
+  type: uint32_t
+  restore_value: false
+  initial_value: '0'
+- id: rotation_resume_pending
+  type: bool
+  restore_value: false
+  initial_value: 'false'
+- id: display_initialized
+  type: bool
+  restore_value: false
+  initial_value: 'false'
+- id: camera_alert_active
+  type: bool
+  restore_value: false
+  initial_value: 'false'
+
+script:
+- id: refresh_visible_time
+  mode: single
+  then:
+  - if:
+      condition:
+        lambda: |-
+          if (id(camera_alert_active) || !id(lcd_backlight_switch).state)
+            return false;
+          auto *page = id(main_display).get_active_page();
+          return page == id(page_clock) ||
+                 (id(normal_page) != nullptr && page == id(normal_page));
+      then:
+      - component.update: main_display
+
+display:
+- platform: mipi_spi
+  id: main_display
+  model: GC9A01A
+  data_rate: ${display_spi_rate}
+  color_depth: ${display_color_depth}
+  buffer_size: ${display_buffer_size}
+  invert_colors: true
+  cs_pin: ${display_cs_pin}
+  dc_pin: ${display_dc_pin}
+  reset_pin: ${display_reset_pin}
+  rotation: ${display_rotation_degrees}
+  update_interval: never
+  auto_clear_enabled: false
+
+output:
+- platform: gpio
+  pin: ${backlight_pin}
+  id: lcd_backlight
+
+switch:
+- platform: output
+  name: LCD Backlight
+  id: lcd_backlight_switch
+  output: lcd_backlight
+  restore_mode: ALWAYS_ON
+
+sensor:
+- platform: template
+  name: Free Heap
+  entity_category: diagnostic
+  unit_of_measurement: B
+  accuracy_decimals: 0
+  state_class: measurement
+  update_interval: 60s
+  lambda: return heap_caps_get_free_size(MALLOC_CAP_8BIT);
+- platform: template
+  name: Largest Free Heap Block
+  entity_category: diagnostic
+  unit_of_measurement: B
+  accuracy_decimals: 0
+  state_class: measurement
+  update_interval: 60s
+  lambda: return heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
