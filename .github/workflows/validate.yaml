@@ -19,6 +19,7 @@ jobs:
         profile:
           - esp32-c3
           - esp32-c3-camera
+          - esp32-c3-multi-camera
           - esp32-c3-one-metric
           - esp32-s3-quad-psram
           - esp32-s3-quad-psram-camera
