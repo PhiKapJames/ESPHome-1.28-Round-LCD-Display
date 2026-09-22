@@ -1,0 +1,14 @@
+# Optional camera item for the template-driven normal rotation.
+# The matching camera-source.yaml instance supplies entity_picture and alert controls.
+esphome:
+  on_boot:
+  - priority: -100
+    then:
+    - lambda: |-
+        id(rotation_orders).push_back(${page_order});
+        id(rotation_pages).push_back(id(page_camera_rotation));
+        id(rotation_durations).push_back(${page_duration_ms});
+        id(rotation_kinds).push_back(1);
+        id(rotation_camera_entities).push_back("${camera_entity}");
+        id(rotation_camera_labels).push_back("${camera_source_label}");
+        id(rotation_camera_paths).push_back(id(camera_picture_path_${camera_id}));
