@@ -1,0 +1,53 @@
+# Rotation engine for numeric/battery templates only.
+script:
+- id: display_rotation
+  mode: single
+  then:
+  - while:
+      condition:
+        lambda: return true;
+      then:
+      - if:
+          condition:
+            lambda: return !id(rotation_pages).empty();
+          then:
+          - lambda: |-
+              if (id(rotation_resume_pending) && id(normal_page) != nullptr) {
+                id(rotation_resume_pending) = false;
+                id(active_rotation_kind) = 0;
+                id(main_display).show_page(id(normal_page));
+              } else {
+                id(rotation_resume_pending) = false;
+                const size_t count = id(rotation_pages).size();
+                if (id(rotation_content_index) >= count)
+                  id(rotation_content_index) = 0;
+
+                id(active_rotation_item) = id(rotation_content_index);
+                id(rotation_visible_index) = id(rotation_content_index);
+                id(active_rotation_kind) = id(rotation_kinds)[id(active_rotation_item)];
+                id(normal_remaining_ms) = id(rotation_durations)[id(active_rotation_item)];
+                id(normal_page) = id(rotation_pages)[id(active_rotation_item)];
+                id(normal_is_clock) = false;
+                id(rotation_content_index) =
+                    (id(rotation_content_index) + 1) % count;
+
+                if (id(active_rotation_kind) != 0) {
+                  ESP_LOGE("rotation",
+                           "Camera rotation item requires a templated-camera profile");
+                  id(active_rotation_kind) = 0;
+                }
+                id(main_display).show_page(id(normal_page));
+              }
+          - component.update: main_display
+          - lambda: id(normal_started_ms) = millis();
+          - delay: !lambda return id(normal_remaining_ms);
+          - lambda: |-
+              id(normal_is_clock) = true;
+              id(normal_page) = id(page_clock);
+              id(normal_remaining_ms) = ${clock_page_duration_ms};
+              id(main_display).show_page(id(page_clock));
+          - component.update: main_display
+          - lambda: id(normal_started_ms) = millis();
+          - delay: !lambda return id(normal_remaining_ms);
+          else:
+          - delay: 1s
