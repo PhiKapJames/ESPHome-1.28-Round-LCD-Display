@@ -1,0 +1,137 @@
+# Six reusable slots. Slot 6 is the horizontal battery-percent presentation.
+# Disabled slots do not subscribe to HA. Small history buffers stay allocated.
+substitutions:
+  _metric_1_source: !include
+    file: metric-source.yaml
+    vars:
+      source_id: ha_temp_1
+      source_entity: ${metric_1_entity}
+      source_unit: ${metric_1_unit}
+      source_precision: ${metric_1_decimals}
+  _metric_1_unused: !include
+    file: metric-unused.yaml
+    vars:
+      source_id: ha_temp_1
+  _metric_2_source: !include
+    file: metric-source.yaml
+    vars:
+      source_id: ha_temp_2
+      source_entity: ${metric_2_entity}
+      source_unit: ${metric_2_unit}
+      source_precision: ${metric_2_decimals}
+  _metric_2_unused: !include
+    file: metric-unused.yaml
+    vars:
+      source_id: ha_temp_2
+  _metric_3_source: !include
+    file: metric-source.yaml
+    vars:
+      source_id: ha_temp_3
+      source_entity: ${metric_3_entity}
+      source_unit: ${metric_3_unit}
+      source_precision: ${metric_3_decimals}
+  _metric_3_unused: !include
+    file: metric-unused.yaml
+    vars:
+      source_id: ha_temp_3
+  _metric_4_source: !include
+    file: metric-source.yaml
+    vars:
+      source_id: ha_temp_4
+      source_entity: ${metric_4_entity}
+      source_unit: ${metric_4_unit}
+      source_precision: ${metric_4_decimals}
+  _metric_4_unused: !include
+    file: metric-unused.yaml
+    vars:
+      source_id: ha_temp_4
+  _metric_5_source: !include
+    file: metric-source.yaml
+    vars:
+      source_id: ha_temp_5
+      source_entity: ${metric_5_entity}
+      source_unit: ${metric_5_unit}
+      source_precision: ${metric_5_decimals}
+  _metric_5_unused: !include
+    file: metric-unused.yaml
+    vars:
+      source_id: ha_temp_5
+  _metric_6_source: !include
+    file: metric-source.yaml
+    vars:
+      source_id: cart_battery
+      source_entity: ${metric_6_entity}
+      source_unit: '%'
+      source_precision: '1'
+  _metric_6_unused: !include
+    file: metric-unused.yaml
+    vars:
+      source_id: cart_battery
+packages:
+  metric_1: ${ _metric_1_source if metric_1_enabled | string | lower == 'true' else _metric_1_unused }
+  metric_2: ${ _metric_2_source if metric_2_enabled | string | lower == 'true' else _metric_2_unused }
+  metric_3: ${ _metric_3_source if metric_3_enabled | string | lower == 'true' else _metric_3_unused }
+  metric_4: ${ _metric_4_source if metric_4_enabled | string | lower == 'true' else _metric_4_unused }
+  metric_5: ${ _metric_5_source if metric_5_enabled | string | lower == 'true' else _metric_5_unused }
+  metric_6: ${ _metric_6_source if metric_6_enabled | string | lower == 'true' else _metric_6_unused }
+graph:
+- id: ha_temp_1_graph
+  duration: ${graph_interval}
+  width: 174
+  height: 18
+  border: false
+  traces:
+  - sensor: ha_temp_1
+    color: color_temp_1
+    line_thickness: 3
+    continuous: true
+- id: ha_temp_2_graph
+  duration: ${graph_interval}
+  width: 174
+  height: 18
+  border: false
+  traces:
+  - sensor: ha_temp_2
+    color: color_temp_2
+    line_thickness: 3
+    continuous: true
+- id: ha_temp_3_graph
+  duration: ${graph_interval}
+  width: 174
+  height: 18
+  border: false
+  traces:
+  - sensor: ha_temp_3
+    color: color_temp_3
+    line_thickness: 3
+    continuous: true
+- id: ha_temp_4_graph
+  duration: ${graph_interval}
+  width: 174
+  height: 18
+  border: false
+  traces:
+  - sensor: ha_temp_4
+    color: color_temp_4
+    line_thickness: 3
+    continuous: true
+- id: ha_temp_5_graph
+  duration: ${graph_interval}
+  width: 174
+  height: 18
+  border: false
+  traces:
+  - sensor: ha_temp_5
+    color: color_temp_5
+    line_thickness: 3
+    continuous: true
+- id: cart_battery_graph
+  duration: ${graph_interval}
+  width: 174
+  height: 18
+  border: false
+  traces:
+  - sensor: cart_battery
+    color: color_cart_battery_temp
+    line_thickness: 3
+    continuous: true

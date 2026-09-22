@@ -1,0 +1,16 @@
+# SYNTHETIC CI FIXTURE. Never install on a real device; no user settings here.
+substitutions:
+  device_name: ci-esp32-s3-quad-psram-camera
+  friendly_name: CI Only
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-s3-quad-psram-camera.yaml
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
+api:
+  encryption:
+    key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+ota:
+- platform: esphome
+  password: not-a-production-password

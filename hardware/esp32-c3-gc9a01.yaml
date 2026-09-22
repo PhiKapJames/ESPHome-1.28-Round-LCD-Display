@@ -1,0 +1,10 @@
+# ESP32-C3: no PSRAM; preserve the small working framebuffer.
+substitutions:
+  display_color_depth: '8'
+  display_buffer_size: 50%
+esp32:
+  board: esp32-c3-devkitm-1
+  cpu_frequency: 160MHz
+  flash_size: 4MB
+  framework:
+    type: esp-idf

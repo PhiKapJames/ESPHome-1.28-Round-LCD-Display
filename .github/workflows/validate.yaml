@@ -1,0 +1,38 @@
+name: Validate and compile synthetic profiles
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    strategy:
+      fail-fast: false
+      matrix:
+        profile:
+          - esp32-c3
+          - esp32-c3-camera
+          - esp32-c3-one-metric
+          - esp32-s3-quad-psram
+          - esp32-s3-quad-psram-camera
+    container:
+      image: ghcr.io/esphome/esphome:2026.9.0
+    steps:
+      # actions/checkout v4.2.2, pinned to its commit rather than a moving tag.
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Check public source and package structure
+        run: |
+          python scripts/check_public.py
+          python scripts/check_project.py
+      - name: ESPHome configuration validation (synthetic values only)
+        run: esphome config tests/${{ matrix.profile }}.yaml
+      - name: Compile synthetic firmware (never install these fixtures)
+        run: esphome compile tests/${{ matrix.profile }}.yaml
+      # Deliberately no artifact upload, device secrets, or OTA deployment.

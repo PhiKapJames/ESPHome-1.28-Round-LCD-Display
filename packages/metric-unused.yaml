@@ -1,0 +1,6 @@
+# An unused slot: no HA subscription and no polling. Its graph remains reserved.
+sensor:
+- platform: template
+  id: ${source_id}
+  internal: true
+  update_interval: never

@@ -1,0 +1,15 @@
+packages:
+  defaults: !include
+    file: ../packages/defaults.yaml
+  hardware: !include
+    file: ../hardware/esp32-c3-gc9a01.yaml
+  core: !include
+    file: ../packages/core.yaml
+  metrics: !include
+    file: ../packages/metrics.yaml
+  theme: !include
+    file: ../packages/theme.yaml
+  metric_page: !include
+    file: ../packages/metric-page.yaml
+  clock_page: !include
+    file: ../packages/clock-page.yaml

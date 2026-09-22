@@ -1,0 +1,265 @@
+# Existing geometry is preserved. Labels, suffixes, and enabled slots are supplied locally.
+display:
+- id: main_display
+  pages:
+  - id: page_metric
+    lambda: !lambda |-
+      struct Metric {
+        const char *title;
+        sensor::Sensor *sensor;
+        graph::Graph *graph;
+        Color accent;
+        const char *unit;
+        int decimals;
+      };
+
+      const Metric metrics[] = {
+        {"${metric_1_label}", id(ha_temp_1), id(ha_temp_1_graph),
+         id(color_temp_1), "${metric_1_suffix}", ${metric_1_decimals}},
+        {"${metric_2_label}", id(ha_temp_2), id(ha_temp_2_graph),
+         id(color_temp_2), "${metric_2_suffix}", ${metric_2_decimals}},
+        {"${metric_3_label}", id(ha_temp_3), id(ha_temp_3_graph),
+         id(color_temp_3), "${metric_3_suffix}", ${metric_3_decimals}},
+        {"${metric_4_label}", id(ha_temp_4), id(ha_temp_4_graph),
+         id(color_temp_4), "${metric_4_suffix}", ${metric_4_decimals}},
+        {"${metric_5_label}", id(ha_temp_5), id(ha_temp_5_graph),
+         id(color_temp_5), "${metric_5_suffix}", ${metric_5_decimals}},
+        {"${metric_6_label}", id(cart_battery), id(cart_battery_graph),
+         id(color_cart_battery_temp), "%", 0},
+      };
+
+      constexpr int metric_count = sizeof(metrics) / sizeof(metrics[0]);
+      int index = id(active_metric_index);
+      if (index < 0 || index >= metric_count) index = 0;
+
+      const auto &metric = metrics[index];
+      const Color accent = metric.accent;
+      const Color dim(accent.r / 2, accent.g / 2, accent.b / 2);
+
+      // Battery identity comes from its sensor, not a fixed playlist slot.
+      const bool is_battery = metric.sensor == id(cart_battery);
+      const float value = metric.sensor->state;
+      const bool value_ok = std::isfinite(value) &&
+          (!is_battery || (value >= 0.0f && value <= 100.0f));
+
+      // Center visible capital-height content, not the font's line box.
+      auto draw_centered = [&](int x, int y, font::Font *f,
+                               Color color, const char *text) {
+        const int baseline = y + f->get_capheight() / 2;
+        it.print(x, baseline, f, color, TextAlign::BASELINE_CENTER, text);
+      };
+
+      // Thick arcs: degrees clockwise from the right-hand side.
+      auto arc = [&](int radius, int start, int end,
+                     int thickness, Color color) {
+        for (int angle = start; angle <= end; angle += 2) {
+          const float a = angle * 0.01745329252f;
+          const int x = 120 + lroundf(radius * cosf(a));
+          const int y = 120 + lroundf(radius * sinf(a));
+          it.filled_circle(x, y, thickness / 2, color);
+        }
+      };
+
+      it.fill(Color::BLACK);
+
+      // Four substantial illuminated brackets, not a hairline border.
+      it.circle(120, 120, 115, dim);
+      arc(115, -150, -108, 6, accent);
+      arc(115,  -72,  -30, 6, accent);
+      arc(115,   30,   72, 6, accent);
+      arc(115,  108,  150, 6, accent);
+
+      // The 44px title is moved inward. Baseline 71 avoids the narrow top.
+      it.print(120, 71, id(title_font), accent,
+               TextAlign::BASELINE_CENTER, metric.title);
+
+      // Background behind the value. Text coordinates stay unchanged.
+      constexpr int PANEL_STYLE = ${metric_panel_style};
+      static_assert(PANEL_STYLE >= 0 && PANEL_STYLE <= 2,
+                    "metric_panel_style must be 0, 1, or 2");
+
+      // Solid charcoal stays distinct from the black page background.
+      // Avoid gradients with this device's 8-bit framebuffer.
+      const Color panel_fill(64, 64, 64);
+      const Color value_background =
+          PANEL_STYLE == 0 ? Color::BLACK : panel_fill;
+
+      // Rounded rectangle built from existing display primitives.
+      // Width/height include both end pixels.
+      auto rounded_box = [&](int x, int y, int width, int height,
+                             int radius, Color color) {
+        if (radius <= 0) {
+          it.filled_rectangle(x, y, width, height, color);
+          return;
+        }
+
+        it.filled_rectangle(x + radius, y,
+                            width - 2 * radius, height, color);
+        it.filled_rectangle(x, y + radius,
+                            width, height - 2 * radius, color);
+
+        it.filled_circle(x + radius, y + radius, radius, color);
+        it.filled_circle(x + width - radius - 1,
+                         y + radius, radius, color);
+        it.filled_circle(x + radius,
+                         y + height - radius - 1, radius, color);
+        it.filled_circle(x + width - radius - 1,
+                         y + height - radius - 1, radius, color);
+      };
+
+      // MDI-inspired silhouette: rounded body and a right-hand terminal.
+      // Its body is deliberately wider than the stock icon so the existing
+      // 84px percentage remains centered and does not need to shrink.
+      // Reference: https://pictogrammers.com/library/mdi/icon/battery/
+      constexpr int BATTERY_X = 8;
+      constexpr int BATTERY_Y = 83;
+      constexpr int BATTERY_W = 220;
+      constexpr int BATTERY_H = 73;
+      constexpr int BATTERY_RIM = 3;
+      constexpr int BATTERY_INNER_X = BATTERY_X + BATTERY_RIM;
+      constexpr int BATTERY_INNER_Y = BATTERY_Y + BATTERY_RIM;
+      constexpr int BATTERY_INNER_W = BATTERY_W - 2 * BATTERY_RIM;
+      constexpr int BATTERY_INNER_H = BATTERY_H - 2 * BATTERY_RIM;
+
+      // Flat shades chosen to stay distinct in the 8-bit framebuffer.
+      const Color battery_empty(64, 64, 64);
+      const Color battery_charge(109, 36, 170);
+      const Color battery_outline = value_ok ? accent : Color(109, 109, 85);
+      int battery_fill_width = 0;
+
+      if (is_battery) {
+        // Terminal first, then body, to leave a clean join on the right.
+        rounded_box(227, 107, 10, 26, 2, battery_outline);
+        rounded_box(BATTERY_X, BATTERY_Y,
+                    BATTERY_W, BATTERY_H, 10, battery_outline);
+        rounded_box(BATTERY_INNER_X, BATTERY_INNER_Y,
+                    BATTERY_INNER_W, BATTERY_INNER_H, 7, battery_empty);
+
+        if (value_ok) {
+          battery_fill_width = static_cast<int>(
+              lroundf(value * BATTERY_INNER_W / 100.0f));
+
+          // Guard rounding at both limits. Invalid values never reach here.
+          if (battery_fill_width < 0) battery_fill_width = 0;
+          if (battery_fill_width > BATTERY_INNER_W)
+            battery_fill_width = BATTERY_INNER_W;
+
+          if (battery_fill_width > 0) {
+            // Clip a full rounded face instead of drawing a square fill
+            // that could overwrite the rim at the rounded corners.
+            it.start_clipping(display::Rect(
+                BATTERY_INNER_X, BATTERY_INNER_Y,
+                battery_fill_width, BATTERY_INNER_H));
+            rounded_box(BATTERY_INNER_X, BATTERY_INNER_Y,
+                        BATTERY_INNER_W, BATTERY_INNER_H, 7,
+                        battery_charge);
+            it.end_clipping();
+          }
+        }
+
+      } else if (PANEL_STYLE == 1) {
+        // An inset face creates a three-pixel accent-colored rim.
+        // Top/bottom remain between the title and history graph.
+        rounded_box(8, 83, 225, 73, 16, accent);
+        rounded_box(11, 86, 219, 67, 13, panel_fill);
+      } else if (PANEL_STYLE == 2) {
+        // A straight instrument-panel band across the circular screen.
+        it.filled_rectangle(0, 83, 240, 73, panel_fill);
+        it.filled_rectangle(0, 83, 240, 3, accent);
+        it.filled_rectangle(0, 153, 240, 3, accent);
+      } else {
+        // Original separator when the value panel is disabled.
+        it.filled_rectangle(78, 83, 32, 3, accent);
+        it.filled_rectangle(130, 83, 32, 3, accent);
+        it.filled_circle(120, 84, 3, accent);
+      }
+
+      // Keep the 84px reading at the actual center of the display.
+      char value_text[32];
+
+      if (value_ok) {
+        snprintf(value_text, sizeof(value_text), "%.*f%s",
+                 metric.decimals, value, metric.unit);
+
+        // Three-digit temperatures may be too wide with a decimal.
+        // Keep the font size; omit the decimal only when necessary.
+        int width, offset, baseline, height;
+        id(temp_font)->measure(value_text, &width, &offset, &baseline, &height);
+        if (width > 220 && metric.decimals > 0) {
+          snprintf(value_text, sizeof(value_text), "%.0f%s",
+                   value, metric.unit);
+        }
+      } else {
+        snprintf(value_text, sizeof(value_text), "%s%s",
+                 metric.decimals > 0 ? "--.-" : "--", metric.unit);
+      }
+
+      // Same 84px font and same centered baseline as before.
+      const int value_baseline =
+          120 + id(temp_font)->get_capheight() / 2;
+
+      if (is_battery) {
+        // Keep the number WHITE over both portions of the battery.
+        // Separate clips give antialiased edges the correct background
+        // on each side of the charge boundary, should bpp be increased.
+        // Nothing here erases the battery fill behind the number.
+        if (battery_fill_width == 0) {
+          it.print(120, value_baseline, id(temp_font), Color::WHITE,
+                   TextAlign::BASELINE_CENTER, value_text, battery_empty);
+        } else if (battery_fill_width == BATTERY_INNER_W) {
+          it.print(120, value_baseline, id(temp_font), Color::WHITE,
+                   TextAlign::BASELINE_CENTER, value_text, battery_charge);
+        } else {
+          const int split_x = BATTERY_INNER_X + battery_fill_width;
+
+          it.start_clipping(display::Rect(0, 0, split_x, 240));
+          it.print(120, value_baseline, id(temp_font), Color::WHITE,
+                   TextAlign::BASELINE_CENTER, value_text, battery_charge);
+          it.end_clipping();
+
+          it.start_clipping(display::Rect(split_x, 0, 240 - split_x, 240));
+          it.print(120, value_baseline, id(temp_font), Color::WHITE,
+                   TextAlign::BASELINE_CENTER, value_text, battery_empty);
+          it.end_clipping();
+        }
+      } else {
+        it.print(120, value_baseline, id(temp_font), Color::WHITE,
+                 TextAlign::BASELINE_CENTER, value_text, value_background);
+      }
+
+      // Real 12-hour history in the strip below the centered value.
+      // Trace colors are configured in graph:, not overridden here.
+      it.graph(33, 156, metric.graph);
+
+      // 36px footer moved inward; no longer placed at Y=210.
+      auto now = id(sntp_time).now();
+      char time_text[16];
+      if (now.is_valid()) {
+        int hour12 = now.hour % 12;
+        if (hour12 == 0) hour12 = 12;
+        snprintf(time_text, sizeof(time_text), "%d:%02d %s",
+                 hour12, now.minute, now.hour >= 12 ? "PM" : "AM");
+      } else {
+        snprintf(time_text, sizeof(time_text), "--:--");
+      }
+      draw_centered(120, 189, id(time_font), Color::WHITE, time_text);
+
+      // Enabled slots only; all six enabled reproduce the original dot positions.
+      const bool metric_enabled[] = {${ 'true' if metric_1_enabled | string | lower == 'true' else 'false' }, ${ 'true' if metric_2_enabled | string | lower == 'true' else 'false' }, ${ 'true' if metric_3_enabled | string | lower == 'true' else 'false' }, ${ 'true' if metric_4_enabled | string | lower == 'true' else 'false' }, ${ 'true' if metric_5_enabled | string | lower == 'true' else 'false' }, ${ 'true' if metric_6_enabled | string | lower == 'true' else 'false' }};
+      int visible_count = 0;
+      for (bool value : metric_enabled) if (value) visible_count++;
+      int visible_index = 0;
+      // Active dot: white core + colored halo.
+      // The black gap makes the halo distinct without a gradient or pulse.
+      for (int i = 0; i < metric_count; i++) {
+        if (!metric_enabled[i]) continue;
+        const int x = 120 + (2 * visible_index - (visible_count - 1)) * 7;
+        visible_index++;
+        if (i == index) {
+          it.filled_circle(x, 221, 7, Color::BLACK);
+          it.filled_ring(x, 221, 6, 5, accent);
+          it.filled_circle(x, 221, 3, Color::WHITE);
+        } else {
+          it.filled_circle(x, 221, 2, Color(64, 64, 85));
+        }
+      }

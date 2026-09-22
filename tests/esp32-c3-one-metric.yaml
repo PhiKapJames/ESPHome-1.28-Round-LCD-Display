@@ -1,0 +1,20 @@
+# SYNTHETIC CI FIXTURE: optional metric/battery slots disabled.
+substitutions:
+  device_name: ci-c3-one-metric
+  metric_2_enabled: 'false'
+  metric_3_enabled: 'false'
+  metric_4_enabled: 'false'
+  metric_5_enabled: 'false'
+  metric_6_enabled: 'false'
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-c3.yaml
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
+api:
+  encryption:
+    key: AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=
+ota:
+- platform: esphome
+  password: not-a-production-password

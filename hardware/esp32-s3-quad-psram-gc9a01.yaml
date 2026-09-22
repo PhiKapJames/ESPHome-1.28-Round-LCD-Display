@@ -1,0 +1,13 @@
+# Hardware-specific. S3 profile requires confirmed QUAD PSRAM; do not use on other S3 modules.
+substitutions:
+  display_color_depth: '16'
+  display_buffer_size: 100%
+esp32:
+  board: esp32-s3-devkitc-1
+  cpu_frequency: 240MHz
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+psram:
+  mode: quad
+  speed: 80MHz

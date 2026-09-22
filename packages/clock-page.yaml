@@ -1,0 +1,94 @@
+# Original working clock renderer, unchanged.
+display:
+- id: main_display
+  pages:
+  - id: page_clock
+    lambda: |-
+      auto now = id(sntp_time).now();
+      char hour_text[4] = "--";
+      char minute_text[4] = "--";
+
+      if (now.is_valid()) {
+        int hour12 = now.hour % 12;
+        if (hour12 == 0) hour12 = 12;
+        snprintf(hour_text, sizeof(hour_text), "%02d", hour12);
+        snprintf(minute_text, sizeof(minute_text), "%02d", now.minute);
+      }
+
+      const Color background = Color::BLACK;
+      const Color cyan = id(color_clock_ring_outer);
+      const Color blue = id(color_clock_ring_inner);
+      const Color purple = id(color_clock_accent);
+
+      auto arc = [&](int radius, int start, int end,
+                     int thickness, Color color) {
+        for (int angle = start; angle <= end; angle += 2) {
+          const float a = angle * 0.01745329252f;
+          const int x = 120 + lroundf(radius * cosf(a));
+          const int y = 120 + lroundf(radius * sinf(a));
+          it.filled_circle(x, y, thickness / 2, color);
+        }
+      };
+
+      it.fill(background);
+
+      // Restore the original nested-ring clock, with stronger line weights.
+      it.filled_ring(120, 120, 115, 112, cyan);
+      it.circle(120, 120, 96, blue);
+      it.circle(120, 120, 95, blue);
+      it.circle(120, 120, 78, blue);
+
+      // Two purple orbital accents.
+      arc(106, -145, -105, 4, purple);
+      arc(106,   35,   75, 4, purple);
+
+      // Four larger nodes, echoing the original clock.
+      it.filled_circle(42, 120, 6, purple);
+      it.filled_circle(198, 120, 6, purple);
+      it.filled_circle(120, 16, 4, cyan);
+      it.filled_circle(120, 224, 4, cyan);
+
+      // Place digits using capital height and baselines.
+      // Their font line boxes may overlap; the visible digits must not.
+      auto draw_clock_field = [&](font::Font *f, const char *text,
+                                  int center_y, bool upper) {
+        const int cap = f->get_capheight();
+        int baseline = center_y + cap / 2;
+
+        // Reserve a real, empty band around the center divider.
+        if (upper && baseline > 110) baseline = 110;
+        if (!upper && baseline - cap < 130) baseline = 130 + cap;
+
+        int width, offset, measured_baseline, height;
+        f->measure(text, &width, &offset, &measured_baseline, &height);
+
+        // Knock out only the small area behind these digits.
+        // Nested rings remain visible around them, not through them.
+        it.filled_rectangle(120 - width / 2 - 5, baseline - cap - 4,
+                            width + 10, cap + 9, background);
+
+        it.print(122, baseline + 2, f, blue,
+                 TextAlign::BASELINE_CENTER, text);
+        it.print(120, baseline, f, Color::WHITE,
+                 TextAlign::BASELINE_CENTER, text);
+      };
+
+      draw_clock_field(id(clock_hour_font), hour_text, 70, true);
+      draw_clock_field(id(clock_minute_font), minute_text, 170, false);
+
+      // Original-style center divider, three nodes, and a center hub.
+      it.filled_rectangle(77, 119, 86, 3, purple);
+      it.filled_circle(77, 120, 3, purple);
+      it.filled_circle(163, 120, 3, purple);
+      it.filled_circle(108, 120, 3, cyan);
+      it.filled_circle(120, 120, 5, cyan);
+      it.filled_circle(132, 120, 3, cyan);
+      it.filled_circle(120, 120, 2, purple);
+
+      // A minute-position marker moves around the outer ring.
+      // It changes only when the display is otherwise refreshed.
+      if (now.is_valid()) {
+        const float a = (now.minute * 6 - 90) * 0.01745329252f;
+        it.filled_circle(120 + lroundf(113 * cosf(a)),
+                         120 + lroundf(113 * sinf(a)), 4, Color::WHITE);
+      }
