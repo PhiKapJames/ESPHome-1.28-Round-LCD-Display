@@ -160,7 +160,7 @@ def test_configs():
     for profile in ('esp32-c3', 'esp32-s3-quad-psram'):
         packages = load(ROOT/'profiles'/f'{profile}.yaml')['packages']
         assert list(packages)[-1] == 'defaults', 'Defaults must resolve before metrics'
-    for fragment in ('metric-page', 'clock-page', 'camera-alerts'):
+    for fragment in ('clock-page', 'camera-alerts', 'page-numeric', 'page-battery', 'page-camera'):
         display_id = load(ROOT/'packages'/f'{fragment}.yaml')['display'][0]['id']
         assert isinstance(display_id, Tagged) and display_id.tag == '!extend'
         assert display_id.value == 'main_display'
@@ -168,10 +168,12 @@ def test_configs():
 
     # Renderer-performance invariants: no runtime trig on normal metric/clock
     # pages, no forced once-per-minute redraw, and hardware-specific outline cost.
-    metric_raw=(ROOT/'packages'/'metric-page.yaml').read_text(encoding='utf-8')
+    metric_raw=(ROOT/'packages'/'page-numeric.yaml').read_text(encoding='utf-8')
+    battery_raw=(ROOT/'packages'/'page-battery.yaml').read_text(encoding='utf-8')
     clock_raw=(ROOT/'packages'/'clock-page.yaml').read_text(encoding='utf-8')
     core_raw=load(ROOT/'packages'/'core.yaml')
     assert 'cosf(' not in metric_raw and 'sinf(' not in metric_raw
+    assert 'cosf(' not in battery_raw and 'sinf(' not in battery_raw
     assert 'cosf(' not in clock_raw and 'sinf(' not in clock_raw
     time_cfg=core_raw['time'][0]
     assert 'on_time' not in time_cfg
@@ -195,8 +197,11 @@ def test_configs():
         references=set(re.findall(r'\bid\(([A-Za-z_][A-Za-z0-9_]*)\)','\n'.join(strings)))
         assert references<=set(ids),f'Missing IDs {references-set(ids)} in {name}'
         assert len(config['display'])==1
-        assert len(config['graph'])==6
-        for graph in config['graph']:
+        imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
+        expected_pages = 1 if name.endswith('one-metric') else 6
+        assert len(imported)==expected_pages
+        assert len(config.get('graph',[]))==expected_pages
+        for graph in config.get('graph',[]):
             assert 'continuous' not in graph and 'sensor' not in graph
             assert graph['width']==174 and graph['height']==18
             assert graph['traces'][0]['continuous'] is True
@@ -206,8 +211,7 @@ def test_configs():
         assert ('camera_alert' in ids)==camera
         assert ('psram' in config)==('s3' in name)
         assert [f['size'] for f in config['font'][:5]]==[44,84,36,92,92]
-        imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
-        assert len(imported)==(1 if name.endswith('one-metric') else 6)
+        assert 'rotation_pages' in ids and 'rotation_orders' in ids
         print(f'PASS {name}: includes/substitutions/IDs/graphs/features')
 
     # Reusable-camera regression: six instances exceed the former four-source design.
@@ -219,6 +223,7 @@ def test_configs():
         assert f'show_camera_snapshot_{source}' in multi_ids
         assert f'camera_source_request_{source}' in multi_ids
         assert f'camera_last_auto_{source}' in multi_ids
+        assert f'camera_alerts_enabled_{source}' in multi_ids
     assert 'camera_detector_driveway_1' in multi_ids
     assert 'camera_detector_driveway_2' in multi_ids
     assert 'camera_detector_parking_2' in multi_ids
@@ -230,19 +235,23 @@ def test_configs():
     assert len([x for x in multi_ids if x.startswith('camera_picture_path_')]) == 6
     print('PASS six reusable camera instances and independent detector routing')
 
-    # Exercise all nonempty enabled-slot combinations without changing firmware.
-    for mask in range(1,64):
+    # Exercise every legacy enabled-slot combination. Zero legacy pages is now
+    # valid because template page instances can provide the rotation instead.
+    for mask in range(0,64):
         override={f'metric_{i+1}_enabled':'true' if mask & (1<<i) else 'false' for i in range(6)}
         config,_=expand_file(ROOT/'tests/esp32-c3.yaml',override)
-        assert len([s for s in config['sensor'] if s['platform']=='homeassistant'])==mask.bit_count()
-    print('PASS all 63 nonempty metric/battery combinations')
-    # The layout cannot support an empty playlist; static_assert enforces that in C++.
-    no_metrics={f'metric_{i}_enabled':'false' for i in range(1,7)}
-    cfg,_=expand_file(ROOT/'tests/esp32-c3.yaml',no_metrics)
-    rotation=next(x for x in cfg['script'] if x['id']=='display_rotation')
-    code=rotation['then'][0]['while']['then'][0]['lambda']
-    assert 'constexpr bool any_metric_enabled = false || false || false || false || false || false;' in code
-    print('PASS empty playlist reaches a compile-time rejection')
+        imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
+        assert len(imported)==mask.bit_count()
+        assert len(config.get('graph',[]))==mask.bit_count()
+    print('PASS all 64 legacy metric/battery combinations, including zero legacy pages')
+
+    core_text=(ROOT/'packages'/'core.yaml').read_text(encoding='utf-8')
+    assert 'rotation_pages' in core_text
+    assert 'rotation_orders' in core_text
+    assert 'rotation_enter_callbacks' in core_text
+    assert 'rotation_exit_callbacks' in core_text
+    assert 'if (count == 0)' in core_text
+    print('PASS dynamic rotation registry and empty-legacy fallback')
 
 if __name__=='__main__':
     test_configs()
