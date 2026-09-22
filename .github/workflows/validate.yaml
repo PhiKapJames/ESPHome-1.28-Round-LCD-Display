@@ -29,6 +29,7 @@ jobs:
           - esp32-s3-quad-psram-camera
           - esp32-s3-home-migration
           - esp32-s3-template-pages
+          - esp32-s3-work-tailscale
     container:
       image: ghcr.io/esphome/esphome:2026.9.0
     steps:
