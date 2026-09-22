@@ -1,0 +1,44 @@
+substitutions:
+  _camera_person_trigger: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_person_detected_${source_num}
+      trigger_entity: ${source_person_entity}
+      source_index: ${source_index}
+      trigger_code: '1'
+  _camera_person_unused: !include
+    file: camera-trigger-unused.yaml
+  _camera_vehicle_trigger: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_vehicle_detected_${source_num}
+      trigger_entity: ${source_vehicle_entity}
+      source_index: ${source_index}
+      trigger_code: '2'
+  _camera_vehicle_unused: !include
+    file: camera-trigger-unused.yaml
+
+packages:
+  person_trigger: ${ _camera_person_trigger if source_trigger_person | string | lower == 'true' else _camera_person_unused }
+  vehicle_trigger: ${ _camera_vehicle_trigger if source_trigger_vehicle | string | lower == 'true' else _camera_vehicle_unused }
+
+text_sensor:
+- platform: homeassistant
+  id: camera_picture_path_${source_num}
+  entity_id: ${source_camera_entity}
+  attribute: entity_picture
+  internal: true
+
+button:
+- platform: template
+  id: show_camera_snapshot_${source_num}
+  name: "${source_button_name}"
+  icon: mdi:camera
+  entity_category: ''
+  on_press:
+    then:
+    - script.execute:
+        id: camera_alert
+        source_index: ${source_index}
+        trigger_code: '0'
+        override_request: true
