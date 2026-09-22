@@ -1,68 +1,16 @@
-# Optional detection-only snapshots. Up to four independently configured camera sources
-# share ONE downloader/decoded image buffer. Camera pages never join the normal playlist.
+# Shared alert-only camera engine.
+# Camera sources are separate reusable package instances; this engine has no source-count limit.
 substitutions:
   camera_image_width: '200'
   camera_image_height: '112'
   camera_hold_time: 15s
   camera_download_timeout: 20s
   camera_error_hold_time: 4s
+  camera_queue_expire_ms: '60000'
+  camera_queue_max_runs: '20'
   camera_min_free_heap: '100000'
   camera_min_largest_block: '60000'
   ha_base_url: http://homeassistant.local:8123
-
-  # Source 1 retains the original single-camera names as compatibility aliases.
-  camera_entity: camera.example_camera
-  person_entity: binary_sensor.example_person
-  camera_source_label: CAMERA
-  camera_status_label: camera
-
-  camera_1_enabled: 'true'
-  camera_1_entity: ${camera_entity}
-  camera_1_source_label: ${camera_source_label}
-  camera_1_status_label: ${camera_status_label}
-  camera_1_button_name: Show Camera Snapshot
-  camera_1_trigger_person: 'true'
-  camera_1_person_entity: ${person_entity}
-  camera_1_trigger_vehicle: 'false'
-  camera_1_vehicle_entity: binary_sensor.example_vehicle
-  camera_1_cooldown_ms: '60000'
-
-  camera_2_enabled: 'false'
-  camera_2_entity: camera.example_camera_2
-  camera_2_source_label: CAMERA 2
-  camera_2_status_label: camera 2
-  camera_2_button_name: Show Camera 2 Snapshot
-  camera_2_trigger_person: 'false'
-  camera_2_person_entity: binary_sensor.example_person_2
-  camera_2_trigger_vehicle: 'false'
-  camera_2_vehicle_entity: binary_sensor.example_vehicle_2
-  camera_2_cooldown_ms: '60000'
-
-  camera_3_enabled: 'false'
-  camera_3_entity: camera.example_camera_3
-  camera_3_source_label: CAMERA 3
-  camera_3_status_label: camera 3
-  camera_3_button_name: Show Camera 3 Snapshot
-  camera_3_trigger_person: 'false'
-  camera_3_person_entity: binary_sensor.example_person_3
-  camera_3_trigger_vehicle: 'false'
-  camera_3_vehicle_entity: binary_sensor.example_vehicle_3
-  camera_3_cooldown_ms: '60000'
-
-  camera_4_enabled: 'false'
-  camera_4_entity: camera.example_camera_4
-  camera_4_source_label: CAMERA 4
-  camera_4_status_label: camera 4
-  camera_4_button_name: Show Camera 4 Snapshot
-  camera_4_trigger_person: 'false'
-  camera_4_person_entity: binary_sensor.example_person_4
-  camera_4_trigger_vehicle: 'false'
-  camera_4_vehicle_entity: binary_sensor.example_vehicle_4
-  camera_4_cooldown_ms: '60000'
-
-packages:
-  sources: !include
-    file: camera-sources.yaml
 
 esphome:
   on_boot:
@@ -92,8 +40,8 @@ image:
 - platform: online_image
   id: camera_snapshot
   http_request_id: camera_http
-  # Placeholder only. The accepted source and current HA camera token replace it.
-  url: ${ha_base_url}/api/camera_proxy/${camera_1_entity}
+  # Placeholder only. A queued source request replaces this before download.
+  url: ${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder
   format: JPEG
   type: RGB565
   transparency: opaque
@@ -120,8 +68,8 @@ image:
         }
 
         id(camera_alert_phase) = 3;
-        std::string status = "Showing " + id(camera_active_status_label) + " snapshot";
-        id(camera_alert_status).publish_state(status);
+        id(camera_alert_status).publish_state(
+            "Showing " + id(camera_active_status_label) + " snapshot");
         ESP_LOGI("camera_alert", "%s ready: %dx%d; free heap=%u, largest=%u",
                  id(camera_active_status_label).c_str(), width, height,
                  (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
@@ -147,10 +95,6 @@ globals:
   type: int
   restore_value: false
   initial_value: '0'
-- id: camera_alert_source_index
-  type: int
-  restore_value: false
-  initial_value: '0'
 - id: camera_alert_trigger_code
   type: int
   restore_value: false
@@ -171,95 +115,41 @@ globals:
   type: std::string
   restore_value: false
   initial_value: '""'
-- id: camera_last_auto_1_ms
-  type: uint32_t
-  restore_value: false
-  initial_value: '0'
-- id: camera_last_auto_2_ms
-  type: uint32_t
-  restore_value: false
-  initial_value: '0'
-- id: camera_last_auto_3_ms
-  type: uint32_t
-  restore_value: false
-  initial_value: '0'
-- id: camera_last_auto_4_ms
-  type: uint32_t
-  restore_value: false
-  initial_value: '0'
 
 script:
 - id: camera_alert
-  # Bounded queue: overlapping source events wait; repeated events for the same
-  # camera are rejected by that source's cooldown when their turn arrives.
+  # The queue is bounded to protect RAM, but camera source count is not hard-coded.
+  # Each queued run contains only small strings/integers; JPEG decoding remains singular.
   mode: queued
-  max_runs: 5
+  max_runs: ${camera_queue_max_runs}
   parameters:
-    source_index: int
+    source_entity: string
+    source_label: string
+    status_label: string
+    picture_path: string
     trigger_code: int
     override_request: bool
+    requested_ms: int
   then:
   - if:
       condition:
         lambda: |-
           if (!id(display_initialized) || id(camera_alert_active))
             return false;
-          if (source_index < 0 || source_index > 3)
-            return false;
-
-          const bool enabled[] = {
-            ${ 'true' if camera_1_enabled | string | lower == 'true' else 'false' },
-            ${ 'true' if camera_2_enabled | string | lower == 'true' else 'false' },
-            ${ 'true' if camera_3_enabled | string | lower == 'true' else 'false' },
-            ${ 'true' if camera_4_enabled | string | lower == 'true' else 'false' }
-          };
-          if (!enabled[source_index])
-            return false;
-
-          if (!override_request && !id(camera_alerts_enabled).state)
-            return false;
 
           if (!override_request) {
-            const uint32_t now_ms = millis();
-            uint32_t last_ms = 0;
-            uint32_t cooldown_ms = 0;
-            switch (source_index) {
-              case 0:
-                last_ms = id(camera_last_auto_1_ms);
-                cooldown_ms = ${camera_1_cooldown_ms};
-                break;
-              case 1:
-                last_ms = id(camera_last_auto_2_ms);
-                cooldown_ms = ${camera_2_cooldown_ms};
-                break;
-              case 2:
-                last_ms = id(camera_last_auto_3_ms);
-                cooldown_ms = ${camera_3_cooldown_ms};
-                break;
-              default:
-                last_ms = id(camera_last_auto_4_ms);
-                cooldown_ms = ${camera_4_cooldown_ms};
-                break;
-            }
-            if (last_ms != 0 && (uint32_t) (now_ms - last_ms) < cooldown_ms)
+            const uint32_t age =
+                millis() - static_cast<uint32_t>(requested_ms);
+            if (age > ${camera_queue_expire_ms}) {
+              ESP_LOGI("camera_alert",
+                       "Dropping stale queued camera request (%u ms old)",
+                       (unsigned) age);
               return false;
+            }
           }
           return true;
       then:
       - lambda: |-
-          const char *entities[] = {
-            "${camera_1_entity}", "${camera_2_entity}",
-            "${camera_3_entity}", "${camera_4_entity}"
-          };
-          const char *source_labels[] = {
-            "${camera_1_source_label}", "${camera_2_source_label}",
-            "${camera_3_source_label}", "${camera_4_source_label}"
-          };
-          const char *status_labels[] = {
-            "${camera_1_status_label}", "${camera_2_status_label}",
-            "${camera_3_status_label}", "${camera_4_status_label}"
-          };
-
           const uint32_t elapsed = millis() - id(normal_started_ms);
           id(normal_remaining_ms) =
               elapsed < id(normal_remaining_ms)
@@ -267,63 +157,32 @@ script:
           id(rotation_resume_pending) = true;
 
           id(camera_alert_active) = true;
-          id(camera_alert_source_index) = source_index;
           id(camera_alert_trigger_code) = trigger_code;
           id(camera_alert_is_override) = override_request;
           id(camera_alert_phase) = 1;
-          id(camera_active_entity) = entities[source_index];
-          id(camera_active_source_label) = source_labels[source_index];
-          id(camera_active_status_label) = status_labels[source_index];
+          id(camera_active_entity) = source_entity;
+          id(camera_active_source_label) = source_label;
+          id(camera_active_status_label) = status_label;
 
-          id(camera_alert_status).publish_state("Waiting for HA camera path");
           const char *reason = override_request ? "Camera snapshot requested" :
                                (trigger_code == 2 ? "Vehicle detected" : "Person detected");
-          ESP_LOGI("camera_alert", "%s on source %d; pausing normal display",
-                   reason, source_index + 1);
+          id(camera_alert_status).publish_state("Preparing " + status_label + " snapshot");
+          ESP_LOGI("camera_alert", "%s for %s; pausing normal display",
+                   reason, status_label.c_str());
 
       - script.stop: display_rotation
       - online_image.release: camera_snapshot
       - display.page.show: page_camera_alert
       - component.update: main_display
 
-      - wait_until:
-          condition:
-            lambda: |-
-              text_sensor::TextSensor *picture = nullptr;
-              switch (id(camera_alert_source_index)) {
-                case 0: picture = id(camera_picture_path_1); break;
-                case 1: picture = id(camera_picture_path_2); break;
-                case 2: picture = id(camera_picture_path_3); break;
-                default: picture = id(camera_picture_path_4); break;
-              }
-              return picture != nullptr && picture->has_state() &&
-                     !picture->state.empty() &&
-                     picture->state != "unknown" &&
-                     picture->state != "unavailable";
-          timeout: 3s
-
       - lambda: |-
-          text_sensor::TextSensor *picture = nullptr;
-          switch (id(camera_alert_source_index)) {
-            case 0: picture = id(camera_picture_path_1); break;
-            case 1: picture = id(camera_picture_path_2); break;
-            case 2: picture = id(camera_picture_path_3); break;
-            default: picture = id(camera_picture_path_4); break;
-          }
-
-          if (picture == nullptr || !picture->has_state()) {
-            id(camera_alert_phase) = 7;
-            id(camera_alert_status).publish_state("Failed: HA camera path missing");
-            return;
-          }
-
-          std::string path = picture->state;
+          std::string path = picture_path;
           const std::string expected =
-              "/api/camera_proxy/" + id(camera_active_entity);
+              "/api/camera_proxy/" + source_entity;
           std::string base = "${ha_base_url}";
           while (!base.empty() && base.back() == '/') base.pop_back();
 
-          // Absolute entity_picture is accepted only for the configured HA origin.
+          // An absolute entity_picture is accepted only for the configured HA origin.
           if (path.compare(0, base.size() + 1, base + "/") == 0)
             path.erase(0, base.size());
 
@@ -367,8 +226,8 @@ script:
           const size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_8BIT);
           const size_t largest =
               heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-          ESP_LOGI("camera_alert", "Preflight source %d free heap=%u, largest=%u",
-                   id(camera_alert_source_index) + 1,
+          ESP_LOGI("camera_alert", "Preflight %s free heap=%u, largest=%u",
+                   status_label.c_str(),
                    (unsigned) free_heap, (unsigned) largest);
 
           if (free_heap < ${camera_min_free_heap} ||
@@ -385,7 +244,7 @@ script:
           id(camera_snapshot).set_url(url);
           id(camera_alert_phase) = 2;
           id(camera_alert_status).publish_state(
-              "Downloading " + id(camera_active_status_label) + " snapshot");
+              "Downloading " + status_label + " snapshot");
 
       - if:
           condition:
@@ -423,17 +282,6 @@ script:
 
       - lambda: |-
           const bool success = id(camera_alert_phase) == 3;
-          const int source = id(camera_alert_source_index);
-          if (!id(camera_alert_is_override)) {
-            const uint32_t now_ms = millis();
-            switch (source) {
-              case 0: id(camera_last_auto_1_ms) = now_ms; break;
-              case 1: id(camera_last_auto_2_ms) = now_ms; break;
-              case 2: id(camera_last_auto_3_ms) = now_ms; break;
-              default: id(camera_last_auto_4_ms) = now_ms; break;
-            }
-          }
-
           id(camera_alert_active) = false;
           id(camera_alert_phase) = 0;
           if (success)
@@ -442,11 +290,16 @@ script:
       - online_image.release: camera_snapshot
 
       - lambda: |-
-          // Remove the token-bearing URL after each request.
+          // Do not retain a token-bearing URL after the request completes.
           id(camera_snapshot).set_url(
-              "${ha_base_url}/api/camera_proxy/" + id(camera_active_entity));
-          ESP_LOGI("camera_alert", "Alert ended for source %d; free heap=%u, largest=%u",
-                   id(camera_alert_source_index) + 1,
+              "${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder");
+
+          // If another camera request is queued, this timestamp prevents it from
+          // subtracting the time spent on the previous alert from the normal page.
+          id(normal_started_ms) = millis();
+
+          ESP_LOGI("camera_alert", "Alert ended for %s; free heap=%u, largest=%u",
+                   id(camera_active_status_label).c_str(),
                    (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
                    (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
 
@@ -538,4 +391,4 @@ font:
 - id: camera_meta_font
   file: gfonts://Roboto
   size: 22
-  glyphs: ' /0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+  glyphs: ' -_/0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
