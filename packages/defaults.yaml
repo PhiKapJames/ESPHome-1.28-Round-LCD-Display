@@ -3,9 +3,7 @@ substitutions:
   device_name: round-minion
   friendly_name: Round Minion
   timezone: Etc/UTC
-  graph_interval: 12h
   clock_page_duration_ms: '8000'
-  metric_panel_style: '1'
   spi_clk_pin: GPIO1
   spi_mosi_pin: GPIO2
   display_cs_pin: GPIO5
@@ -14,42 +12,3 @@ substitutions:
   backlight_pin: GPIO6
   display_rotation_degrees: '0'
   display_spi_rate: 80MHz
-  metric_1_enabled: 'true'
-  metric_1_label: Metric 1
-  metric_1_entity: sensor.example_metric_1
-  metric_1_duration_ms: '8000'
-  metric_1_unit: °F
-  metric_1_suffix: °
-  metric_1_decimals: '1'
-  metric_2_enabled: 'true'
-  metric_2_label: Metric 2
-  metric_2_entity: sensor.example_metric_2
-  metric_2_duration_ms: '8000'
-  metric_2_unit: °F
-  metric_2_suffix: °
-  metric_2_decimals: '1'
-  metric_3_enabled: 'true'
-  metric_3_label: Metric 3
-  metric_3_entity: sensor.example_metric_3
-  metric_3_duration_ms: '8000'
-  metric_3_unit: °F
-  metric_3_suffix: °
-  metric_3_decimals: '1'
-  metric_4_enabled: 'true'
-  metric_4_label: Metric 4
-  metric_4_entity: sensor.example_metric_4
-  metric_4_duration_ms: '8000'
-  metric_4_unit: °F
-  metric_4_suffix: °
-  metric_4_decimals: '1'
-  metric_5_enabled: 'true'
-  metric_5_label: Metric 5
-  metric_5_entity: sensor.example_metric_5
-  metric_5_duration_ms: '8000'
-  metric_5_unit: °F
-  metric_5_suffix: °
-  metric_5_decimals: '1'
-  metric_6_enabled: 'true'
-  metric_6_label: Battery
-  metric_6_entity: sensor.example_metric_6
-  metric_6_duration_ms: '8000'
