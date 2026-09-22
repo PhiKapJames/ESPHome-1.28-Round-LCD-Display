@@ -47,8 +47,7 @@ script:
             return false;
 
           if (!override_request &&
-              (!id(camera_alerts_enabled).state ||
-               !id(camera_alerts_enabled_${camera_id}).state))
+              !id(camera_alerts_enabled_${camera_id}).state)
             return false;
 
           if (!override_request) {
