@@ -6,13 +6,6 @@ substitutions:
   ha_base_url: http://homeassistant.local:8123
   clock_page_duration_ms: '4000'
 
-  # Disable the backward-compatible six-slot layer entirely.
-  metric_1_enabled: 'false'
-  metric_2_enabled: 'false'
-  metric_3_enabled: 'false'
-  metric_4_enabled: 'false'
-  metric_5_enabled: 'false'
-  metric_6_enabled: 'false'
 
 packages:
   round_minion: !include
