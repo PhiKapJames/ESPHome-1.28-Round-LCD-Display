@@ -1,0 +1,205 @@
+# SYNTHETIC CI FIXTURE. Mirrors the remote Work S3 + Tailscale shape; never install.
+substitutions:
+  device_name: ci-work-s3-minion
+  friendly_name: CI Work S3 Minion
+  timezone: America/New_York
+  clock_page_duration_ms: '4000'
+  ha_base_url: http://100.64.0.10:8123
+
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-s3-quad-psram-camera.yaml
+
+  gazebo_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: gazebo
+      page_label: Gazebo
+      page_entity: sensor.example_gazebo
+      page_duration_ms: '4000'
+      page_order: '10'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 90.2%
+      page_color_green: 62.4%
+      page_color_blue: 0%
+
+  shed_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: shed
+      page_label: Shed
+      page_entity: sensor.example_shed
+      page_duration_ms: '4000'
+      page_order: '20'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 33.7%
+      page_color_green: 70.6%
+      page_color_blue: 91.4%
+
+  kitchen_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: kitchen
+      page_label: Kitchen
+      page_entity: sensor.example_kitchen
+      page_duration_ms: '4000'
+      page_order: '30'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 0%
+      page_color_green: 62.0%
+      page_color_blue: 45.1%
+
+  master_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: master
+      page_label: Master
+      page_entity: sensor.example_master
+      page_duration_ms: '4000'
+      page_order: '40'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 94.1%
+      page_color_green: 89.4%
+      page_color_blue: 25.9%
+
+  bunk_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: bunk
+      page_label: Bunk
+      page_entity: sensor.example_bunk
+      page_duration_ms: '4000'
+      page_order: '50'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 80.0%
+      page_color_green: 47.5%
+      page_color_blue: 65.5%
+
+  driveway_camera: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: driveway
+      camera_entity: camera.example_driveway
+      camera_source_label: DRIVEWAY
+      camera_status_label: driveway
+      camera_button_name: Show Driveway Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_driveway_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_driveway_vehicle
+      camera_cooldown_ms: '60000'
+
+external_components:
+- source:
+    type: git
+    url: https://github.com/Csontikka/esphome-tailscale.git
+    ref: v0.5.12
+  components: [tailscale]
+  refresh: 1d
+
+tailscale:
+  auth_key: NOT_A_REAL_TAILSCALE_AUTH_KEY
+  hostname: ci-work-s3-minion
+  max_peers: 16
+  netmap_buffer_kb: 128
+  disable_telemetry: true
+
+time:
+- platform: sntp
+  id: tailscale_time
+  timezone: America/New_York
+  servers:
+  - 0.pool.ntp.org
+  - 1.pool.ntp.org
+  on_time_sync:
+    then:
+    - script.execute: update_backlight
+  on_time:
+  - seconds: 0
+    minutes: /1
+    then:
+    - script.execute: update_backlight
+
+esphome:
+  on_boot:
+  - priority: -90
+    then:
+    - script.execute: update_backlight
+
+script:
+- id: update_backlight
+  mode: restart
+  then:
+  - lambda: |-
+      auto now = id(tailscale_time).now();
+      const bool time_ok = now.is_valid();
+      bool in_quiet = false;
+
+      if (time_ok) {
+        const int seconds_now =
+            now.hour * 3600 + now.minute * 60 + now.second;
+        constexpr int quiet_start = 18 * 3600;
+        constexpr int quiet_end = 7 * 3600;
+        in_quiet =
+            seconds_now >= quiet_start || seconds_now < quiet_end;
+      }
+
+      const bool want_on = !time_ok || !in_quiet;
+
+      if (want_on != id(lcd_backlight_switch).state) {
+        if (want_on)
+          id(lcd_backlight_switch).turn_on();
+        else
+          id(lcd_backlight_switch).turn_off();
+      }
+
+binary_sensor:
+- platform: tailscale
+  connected:
+    name: VPN Connected
+    id: work_vpn_connected
+
+text_sensor:
+- platform: tailscale
+  ip_address:
+    name: VPN IP
+    id: work_vpn_ip
+  memory_mode:
+    name: VPN Device Memory
+    id: work_vpn_memory
+  ha_connection_route:
+    name: HA API Connection Route
+    id: work_ha_route
+
+api:
+  encryption:
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+
+ota:
+- platform: esphome
+  password: not-a-production-password
+
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
+  output_power: 8.5
