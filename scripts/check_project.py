@@ -230,6 +230,43 @@ def test_configs():
     assert len([x for x in multi_ids if x.startswith('camera_picture_path_')]) == 6
     print('PASS six reusable camera instances and independent detector routing')
 
+    # Template-driven rotation has no numbered page-slot ceiling.
+    templated,_=expand_file(ROOT/'tests/esp32-c3-templated.yaml')
+    templated_ids=definition_ids(templated)
+    assert len(templated_ids)==len(set(templated_ids)), 'Duplicate IDs in C3 templated fixture'
+    templated_strings=list(all_strings(templated))
+    assert not any('${' in s for s in templated_strings)
+    templated_refs=set(re.findall(r'\bid\(([A-Za-z_][A-Za-z0-9_]*)\)','\n'.join(templated_strings)))
+    assert templated_refs<=set(templated_ids), f'Missing template IDs {templated_refs-set(templated_ids)}'
+    imported=[s for s in templated['sensor'] if s['platform']=='homeassistant']
+    assert len(imported)==11, 'Expected 10 numeric templates plus one battery template'
+    assert len(templated['graph'])==11
+    assert len([x for x in templated_ids if str(x).startswith('rotation_page_')])==11
+    assert 'page_metric' not in templated_ids
+    print('PASS arbitrary template rotation: 10 numeric + 1 battery pages')
+
+    templated_cam,_=expand_file(ROOT/'tests/esp32-s3-templated-camera.yaml')
+    cam_ids=set(definition_ids(templated_cam))
+    cam_strings=list(all_strings(templated_cam))
+    assert not any('${' in s for s in cam_strings)
+    cam_refs=set(re.findall(r'\bid\(([A-Za-z_][A-Za-z0-9_]*)\)','\n'.join(cam_strings)))
+    assert cam_refs<=cam_ids, f'Missing templated-camera IDs {cam_refs-cam_ids}'
+    assert 'page_camera_rotation' in cam_ids
+    assert 'camera_rotation_page' in cam_ids
+    assert 'last_camera_alert' in cam_ids
+    for source in ('front','garage','driveway','camper'):
+        assert f'camera_alerts_{source}' in cam_ids
+        assert f'show_camera_snapshot_{source}' in cam_ids
+    assert 'camera_detector_front_1' in cam_ids
+    assert 'camera_detector_front_2' in cam_ids
+    assert 'camera_detector_garage_1' in cam_ids
+    assert 'camera_detector_garage_2' not in cam_ids
+    assert 'camera_detector_driveway_1' in cam_ids
+    assert 'camera_detector_driveway_2' in cam_ids
+    assert 'camera_detector_camper_1' in cam_ids
+    assert 'camera_detector_camper_2' not in cam_ids
+    print('PASS templated S3 mixed rotation, per-camera alert switches, and camera pages')
+
     # Exercise all nonempty enabled-slot combinations without changing firmware.
     for mask in range(1,64):
         override={f'metric_{i+1}_enabled':'true' if mask & (1<<i) else 'false' for i in range(6)}
