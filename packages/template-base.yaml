@@ -6,6 +6,7 @@ esphome:
   min_version: 2026.9.0
   includes:
   - <esp_heap_caps.h>
+  - <esphome/components/text_sensor/text_sensor.h>
   on_boot:
   - priority: -200
     then:
