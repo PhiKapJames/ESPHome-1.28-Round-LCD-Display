@@ -2,6 +2,7 @@
 substitutions:
   display_color_depth: '8'
   display_buffer_size: 50%
+  battery_outline_quality: '1'
 esp32:
   board: esp32-c3-devkitm-1
   cpu_frequency: 160MHz
