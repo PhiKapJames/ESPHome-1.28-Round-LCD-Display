@@ -53,6 +53,71 @@ image:
   on_download_finished:
     then:
     - lambda: |-
+        const bool alert_download =
+            id(camera_alert_active) && id(camera_alert_phase) == 2;
+        const bool rotation_download =
+            id(camera_rotation_active) && id(camera_rotation_phase) == 2;
+        if (!alert_download && !rotation_download)
+          return;
+
+        const int width = id(camera_snapshot).get_width();
+        const int height = id(camera_snapshot).get_height();
+        if (cached || width <= 0 || height <= 0 ||
+            width > ${camera_image_width} ||
+            height > ${camera_image_height}) {
+          if (alert_download) id(camera_alert_phase) = 4;
+          if (rotation_download) id(camera_rotation_phase) = 4;
+          ESP_LOGW("camera_alert", "No valid fresh snapshot was received");
+          return;
+        }
+
+        if (alert_download) id(camera_alert_phase) = 3;
+        if (rotation_download) id(camera_rotation_phase) = 3;
+        ESP_LOGI("camera_alert", "%s ready: %dx%d; free heap=%u, largest=%u",
+                 id(camera_active_status_label).c_str(), width, height,
+                 (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
+                 (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+  on_error:
+    then:
+    - lambda: |-
+        const bool alert_download =
+            id(camera_alert_active) && id(camera_alert_phase) == 2;
+        const bool rotation_download =
+            id(camera_rotation_active) && id(camera_rotation_phase) == 2;
+        if (!alert_download && !rotation_download)
+          return;
+        if (alert_download) id(camera_alert_phase) = 4;
+        if (rotation_download) id(camera_rotation_phase) = 4;
+        ESP_LOGW("camera_alert", "Snapshot failed; check HA address, camera, and free RAM");
+
+text_sensor: NONE
+    text_sensor: NONE
+
+http_request:
+  id: camera_http
+  timeout: 5s
+  follow_redirects: false
+  verify_ssl: true
+  buffer_size_rx: 1024
+  buffer_size_tx: 512
+
+image:
+- platform: online_image
+  id: camera_snapshot
+  http_request_id: camera_http
+  # Placeholder only. A queued source request replaces this before download.
+  url: ${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder
+  format: JPEG
+  type: RGB565
+  transparency: opaque
+  resize: ${camera_image_width}x${camera_image_height}
+  update_interval: never
+  buffer_size: 4096
+  request_headers:
+    Cache-Control: no-cache
+  on_download_finished:
+    then:
+    - lambda: |-
         if (!id(camera_alert_active) || id(camera_alert_phase) != 2)
           return;
 
@@ -111,6 +176,14 @@ globals:
   type: std::string
   restore_value: false
   initial_value: '""'
+- id: camera_rotation_active
+  type: bool
+  restore_value: false
+  initial_value: 'false'
+- id: camera_rotation_phase
+  type: int
+  restore_value: false
+  initial_value: '0'
 
 script:
 - id: camera_alert
@@ -146,11 +219,17 @@ script:
           return true;
       then:
       - lambda: |-
-          const uint32_t elapsed = millis() - id(normal_started_ms);
-          id(normal_remaining_ms) =
-              elapsed < id(normal_remaining_ms)
-              ? id(normal_remaining_ms) - elapsed : 1;
-          id(rotation_resume_pending) = true;
+          if (id(camera_rotation_active)) {
+            // A real alert supersedes an optional camera page in the normal
+            // rotation. Resume at the next item after the alert.
+            id(rotation_resume_pending) = false;
+          } else {
+            const uint32_t elapsed = millis() - id(normal_started_ms);
+            id(normal_remaining_ms) =
+                elapsed < id(normal_remaining_ms)
+                ? id(normal_remaining_ms) - elapsed : 1;
+            id(rotation_resume_pending) = true;
+          }
 
           id(camera_alert_active) = true;
           id(camera_alert_trigger_code) = trigger_code;
@@ -169,6 +248,10 @@ script:
           ESP_LOGI("camera_alert", "%s for %s; pausing normal display",
                    reason, status_label.c_str());
 
+      - script.stop: camera_rotation_page
+      - lambda: |-
+          id(camera_rotation_active) = false;
+          id(camera_rotation_phase) = 0;
       - script.stop: display_rotation
       - online_image.release: camera_snapshot
       - display.page.show: page_camera_alert
@@ -274,10 +357,8 @@ script:
           - delay: ${camera_error_hold_time}
 
       - lambda: |-
-          const bool success = id(camera_alert_phase) == 3;
           id(camera_alert_active) = false;
           id(camera_alert_phase) = 0;
-          if (success)
 
       - online_image.release: camera_snapshot
 
