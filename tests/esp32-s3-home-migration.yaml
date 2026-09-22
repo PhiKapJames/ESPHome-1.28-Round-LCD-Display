@@ -1,0 +1,136 @@
+# SYNTHETIC CI FIXTURE. Mirrors the Home S3 migration shape; never install.
+substitutions:
+  device_name: ci-home-s3-minion
+  friendly_name: CI Home S3 Minion
+  timezone: America/New_York
+  graph_interval: 12h
+  clock_page_duration_ms: '4000'
+  metric_panel_style: '1'
+
+  metric_1_label: Gazebo
+  metric_1_entity: sensor.example_gazebo
+  metric_1_enabled: 'true'
+  metric_1_duration_ms: '4000'
+
+  metric_2_label: Shed
+  metric_2_entity: sensor.example_shed
+  metric_2_enabled: 'true'
+  metric_2_duration_ms: '4000'
+
+  metric_3_label: Kitchen
+  metric_3_entity: sensor.example_kitchen
+  metric_3_enabled: 'true'
+  metric_3_duration_ms: '4000'
+
+  metric_4_label: Master
+  metric_4_entity: sensor.example_master
+  metric_4_enabled: 'true'
+  metric_4_duration_ms: '4000'
+
+  metric_5_label: Bunk
+  metric_5_entity: sensor.example_bunk
+  metric_5_enabled: 'true'
+  metric_5_duration_ms: '4000'
+
+  metric_6_enabled: 'false'
+
+  ha_base_url: http://homeassistant.local:8123
+
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-s3-quad-psram-camera.yaml
+
+  front_camera: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: front
+      camera_entity: camera.example_front_fluent_lens_0
+      camera_source_label: FRONT
+      camera_status_label: front
+      camera_button_name: Show Front Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_front_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_front_vehicle
+      camera_cooldown_ms: '60000'
+
+  garage_camera: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: garage
+      camera_entity: camera.example_garage_fluent
+      camera_source_label: GARAGE
+      camera_status_label: garage
+      camera_button_name: Show Garage Snapshot
+      camera_trigger_person: 'false'
+      camera_person_entity: binary_sensor.example_garage_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_garage_vehicle
+      camera_cooldown_ms: '60000'
+
+esphome:
+  on_boot:
+  - priority: -90
+    then:
+    - script.execute: update_backlight
+
+time:
+- id: !extend sntp_time
+  on_time_sync:
+    then:
+    - script.execute: update_backlight
+  on_time:
+  - seconds: 0
+    minutes: /1
+    then:
+    - script.execute: update_backlight
+
+binary_sensor:
+- platform: homeassistant
+  id: override_light
+  entity_id: switch.example_family_room_lights
+  internal: true
+  on_state:
+    then:
+    - script.execute: update_backlight
+
+script:
+- id: update_backlight
+  mode: restart
+  then:
+  - lambda: |-
+      auto now = id(sntp_time).now();
+      const bool time_ok = now.is_valid();
+      bool in_quiet = false;
+
+      if (time_ok) {
+        const int seconds_now =
+            now.hour * 3600 + now.minute * 60 + now.second;
+        constexpr int quiet_start = 23 * 3600;
+        constexpr int quiet_end = 6 * 3600;
+        in_quiet =
+            seconds_now >= quiet_start || seconds_now < quiet_end;
+      }
+
+      const bool want_on =
+          !time_ok || id(override_light).state || !in_quiet;
+
+      if (want_on != id(lcd_backlight_switch).state) {
+        if (want_on)
+          id(lcd_backlight_switch).turn_on();
+        else
+          id(lcd_backlight_switch).turn_off();
+      }
+
+api:
+  encryption:
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+
+ota:
+- platform: esphome
+  password: not-a-production-password
+
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
+  output_power: 8.5
