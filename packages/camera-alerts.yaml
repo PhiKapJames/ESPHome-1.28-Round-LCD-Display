@@ -17,7 +17,7 @@ esphome:
   - priority: -99
     then:
     - lambda: |-
-        id(camera_alert_status).publish_state("Idle");
+        id(last_camera_alert).publish_state("None");
 
 logger:
   logs:
@@ -62,14 +62,11 @@ image:
             width > ${camera_image_width} ||
             height > ${camera_image_height}) {
           id(camera_alert_phase) = 4;
-          id(camera_alert_status).publish_state("Failed: no fresh image");
           ESP_LOGW("camera_alert", "No valid fresh snapshot was received");
           return;
         }
 
         id(camera_alert_phase) = 3;
-        id(camera_alert_status).publish_state(
-            "Showing " + id(camera_active_status_label) + " snapshot");
         ESP_LOGI("camera_alert", "%s ready: %dx%d; free heap=%u, largest=%u",
                  id(camera_active_status_label).c_str(), width, height,
                  (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
@@ -80,13 +77,12 @@ image:
         if (!id(camera_alert_active) || id(camera_alert_phase) != 2)
           return;
         id(camera_alert_phase) = 4;
-        id(camera_alert_status).publish_state("Failed: HTTP/auth/JPEG/memory");
         ESP_LOGW("camera_alert", "Snapshot failed; check HA address, camera, and free RAM");
 
 text_sensor:
 - platform: template
-  id: camera_alert_status
-  name: Camera Alert Status
+  id: last_camera_alert
+  name: Last Camera Alert
   entity_category: diagnostic
   update_interval: never
 
@@ -166,7 +162,10 @@ script:
 
           const char *reason = override_request ? "Camera snapshot requested" :
                                (trigger_code == 2 ? "Vehicle detected" : "Person detected");
-          id(camera_alert_status).publish_state("Preparing " + status_label + " snapshot");
+          if (!override_request) {
+            id(last_camera_alert).publish_state(
+                source_label + (trigger_code == 2 ? ": Vehicle" : ": Person"));
+          }
           ESP_LOGI("camera_alert", "%s for %s; pausing normal display",
                    reason, status_label.c_str());
 
@@ -193,7 +192,6 @@ script:
               question == std::string::npos ||
               path.substr(0, question) != expected) {
             id(camera_alert_phase) = 7;
-            id(camera_alert_status).publish_state("Failed: HA camera path missing");
             ESP_LOGW("camera_alert", "Missing or unexpected HA camera path");
             return;
           }
@@ -218,7 +216,6 @@ script:
           }
           if (!token_ok) {
             id(camera_alert_phase) = 7;
-            id(camera_alert_status).publish_state("Failed: camera token missing");
             ESP_LOGW("camera_alert", "No usable HA camera token");
             return;
           }
@@ -233,7 +230,6 @@ script:
           if (free_heap < ${camera_min_free_heap} ||
               largest < ${camera_min_largest_block}) {
             id(camera_alert_phase) = 6;
-            id(camera_alert_status).publish_state("Skipped image: low free RAM");
             ESP_LOGW("camera_alert", "RAM guard: showing a text-only alert");
             return;
           }
@@ -243,8 +239,6 @@ script:
               "&_esphome=" + std::to_string(millis());
           id(camera_snapshot).set_url(url);
           id(camera_alert_phase) = 2;
-          id(camera_alert_status).publish_state(
-              "Downloading " + status_label + " snapshot");
 
       - if:
           condition:
@@ -261,7 +255,6 @@ script:
               then:
               - lambda: |-
                   id(camera_alert_phase) = 5;
-                  id(camera_alert_status).publish_state("Failed: download timeout");
                   ESP_LOGW("camera_alert", "Snapshot timed out");
 
       - if:
@@ -285,7 +278,6 @@ script:
           id(camera_alert_active) = false;
           id(camera_alert_phase) = 0;
           if (success)
-            id(camera_alert_status).publish_state("Idle: last snapshot succeeded");
 
       - online_image.release: camera_snapshot
 
