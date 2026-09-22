@@ -175,6 +175,10 @@ def test_configs():
     assert 'cosf(' not in metric_raw and 'sinf(' not in metric_raw
     assert 'cosf(' not in battery_raw and 'sinf(' not in battery_raw
     assert 'cosf(' not in clock_raw and 'sinf(' not in clock_raw
+    for page_raw in (metric_raw, battery_raw):
+        assert 'MAX_VISIBLE_DOTS = 9' in page_raw
+        assert 'more_before' in page_raw and 'more_after' in page_raw
+        assert 'it.line(' in page_raw
     time_cfg=core_raw['time'][0]
     assert 'on_time' not in time_cfg
     c3_hw=load(ROOT/'hardware'/'esp32-c3-gc9a01.yaml')['substitutions']
@@ -253,7 +257,10 @@ def test_configs():
     assert 'rotation_page_camera_front' in template_ids
     assert 'rotation_camera_picture_camera_front' in template_ids
     assert 'rotation_camera_image_camera_front' in template_ids
+    camera_page_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
+    assert 'MAX_VISIBLE_DOTS' not in camera_page_raw
     print('PASS 10 numeric + battery + camera rotation template stress fixture')
+    print('PASS sliding nine-dot indicator with overflow chevrons; camera page stays clean')
 
     home_cfg,_=expand_file(ROOT/'tests/esp32-s3-home-migration.yaml')
     home_ids=set(definition_ids(home_cfg))
