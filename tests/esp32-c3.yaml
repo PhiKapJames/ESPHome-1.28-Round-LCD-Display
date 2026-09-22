@@ -5,6 +5,8 @@ substitutions:
 packages:
   round_minion: !include
     file: ../profiles/esp32-c3.yaml
+  explicit_page: !include
+    file: one-numeric-page.yaml
 wifi:
   ssid: ROUND_MINIONS_CI_ONLY
   password: not-a-real-network-password
