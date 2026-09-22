@@ -1,0 +1,94 @@
+# COPY LOCALLY. This example uses the opt-in template rotation architecture.
+# Existing legacy device YAMLs do not need to be converted.
+substitutions:
+  device_name: round-minion-template-example
+  friendly_name: Round Minion Template Example
+  timezone: Etc/UTC
+  ha_base_url: http://homeassistant.local:8123
+  clock_page_duration_ms: '4000'
+
+packages:
+  round_minion:
+    url: https://github.com/PhiKapJames/HaEspRoundMinions
+    ref: main  # Pin a tested commit SHA in deployed device files.
+    files:
+      - profiles/esp32-s3-quad-psram-templated-camera.yaml
+
+      - path: packages/rotation-numeric-page.yaml
+        vars:
+          page_id: living_room
+          page_order: '10'
+          page_duration_ms: '4000'
+          page_label: Living
+          page_entity: sensor.example_living_temperature
+          page_unit: °F
+          page_suffix: °
+          page_decimals: '1'
+          page_graph_interval: 12h
+          page_color_red: '90.2%'
+          page_color_green: '62.4%'
+          page_color_blue: '0%'
+
+      - path: packages/rotation-numeric-page.yaml
+        vars:
+          page_id: bedroom
+          page_order: '20'
+          page_duration_ms: '4000'
+          page_label: Bedroom
+          page_entity: sensor.example_bedroom_temperature
+          page_unit: °F
+          page_suffix: °
+          page_decimals: '1'
+          page_graph_interval: 12h
+          page_color_red: '33.7%'
+          page_color_green: '70.6%'
+          page_color_blue: '91.4%'
+
+      - path: packages/rotation-battery-page.yaml
+        vars:
+          page_id: house_battery
+          page_order: '30'
+          page_duration_ms: '4000'
+          page_label: Battery
+          page_entity: sensor.example_battery
+          page_graph_interval: 12h
+          page_graph_color_red: '60%'
+          page_graph_color_green: '25%'
+          page_graph_color_blue: '100%'
+
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: driveway
+          camera_entity: camera.example_driveway
+          camera_source_label: DRIVEWAY
+          camera_status_label: driveway
+          camera_button_name: Show Driveway Snapshot
+          camera_trigger_person: 'true'
+          camera_person_entity: binary_sensor.example_driveway_person
+          camera_trigger_vehicle: 'true'
+          camera_vehicle_entity: binary_sensor.example_driveway_vehicle
+          camera_cooldown_ms: '60000'
+
+      # Optional: place this camera into the normal metric/clock rotation too.
+      - path: packages/rotation-camera-page.yaml
+        vars:
+          page_order: '40'
+          page_duration_ms: '5000'
+          camera_id: driveway
+          camera_entity: camera.example_driveway
+          camera_source_label: DRIVEWAY
+
+    refresh: 1d
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+- platform: esphome
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
+  output_power: 8.5
