@@ -16,7 +16,8 @@ configuration before installing. See [validation](docs/VALIDATION.md).
 - Any number of reusable numeric/temperature and battery-percentage rotation
   pages, ordered with `page_order`.
 - Large centered readings, rounded panels, location accents, real 12-hour graphs,
-  and page-position dots with an active halo.
+  and a sliding page-position indicator. Up to nine dots are shown at once;
+  left/right chevrons indicate additional pages before or after the visible window.
 - A shared large-font clock between each enabled content page.
 - A horizontal battery silhouette filled from the reported percentage, with
   red/yellow/cyan/green charge bands and a high-contrast outlined value.
