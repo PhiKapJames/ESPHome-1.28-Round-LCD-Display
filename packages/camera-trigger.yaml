@@ -1,13 +1,13 @@
+# Optional detector contribution for one camera source.
 binary_sensor:
 - platform: homeassistant
-  id: ${trigger_id}
+  id: camera_detector_${camera_id}_${trigger_code}
   entity_id: ${trigger_entity}
   internal: true
   trigger_on_initial_state: false
   on_press:
     then:
     - script.execute:
-        id: camera_alert
-        source_index: ${source_index}
+        id: camera_source_request_${camera_id}
         trigger_code: ${trigger_code}
         override_request: false
