@@ -1,0 +1,138 @@
+# SYNTHETIC CI FIXTURE. Template rotation plus alert sources and camera pages.
+substitutions:
+  device_name: ci-s3-templated-camera
+  friendly_name: CI S3 Templated Camera
+  ha_base_url: http://homeassistant.local:8123
+
+packages:
+  base: !include
+    file: ../profiles/esp32-s3-quad-psram-templated-camera.yaml
+
+  room_1: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: room_1
+      page_order: '10'
+      page_duration_ms: '4000'
+      page_label: Room 1
+      page_entity: sensor.example_room_1
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '90.2%'
+      page_color_green: '62.4%'
+      page_color_blue: '0%'
+
+  room_2: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: room_2
+      page_order: '20'
+      page_duration_ms: '4000'
+      page_label: Room 2
+      page_entity: sensor.example_room_2
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '33.7%'
+      page_color_green: '70.6%'
+      page_color_blue: '91.4%'
+
+  battery: !include
+    file: ../packages/rotation-battery-page.yaml
+    vars:
+      page_id: battery
+      page_order: '30'
+      page_duration_ms: '4000'
+      page_label: Battery
+      page_entity: sensor.example_battery
+      page_graph_interval: 12h
+      page_graph_color_red: '60%'
+      page_graph_color_green: '25%'
+      page_graph_color_blue: '100%'
+
+  front_source: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: front
+      camera_entity: camera.example_front
+      camera_source_label: FRONT
+      camera_status_label: front
+      camera_button_name: Show Front Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_front_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_front_vehicle
+      camera_cooldown_ms: '60000'
+
+  garage_source: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: garage
+      camera_entity: camera.example_garage
+      camera_source_label: GARAGE
+      camera_status_label: garage
+      camera_button_name: Show Garage Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_garage_person
+      camera_trigger_vehicle: 'false'
+      camera_vehicle_entity: binary_sensor.example_garage_vehicle
+      camera_cooldown_ms: '60000'
+
+  driveway_source: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: driveway
+      camera_entity: camera.example_driveway
+      camera_source_label: DRIVEWAY
+      camera_status_label: driveway
+      camera_button_name: Show Driveway Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_driveway_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_driveway_vehicle
+      camera_cooldown_ms: '60000'
+
+  camper_source: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: camper
+      camera_entity: camera.example_camper
+      camera_source_label: CAMPER
+      camera_status_label: camper
+      camera_button_name: Show Camper Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_camper_person
+      camera_trigger_vehicle: 'false'
+      camera_vehicle_entity: binary_sensor.example_camper_vehicle
+      camera_cooldown_ms: '60000'
+
+  front_rotation: !include
+    file: ../packages/rotation-camera-page.yaml
+    vars:
+      page_order: '40'
+      page_duration_ms: '5000'
+      camera_id: front
+      camera_entity: camera.example_front
+      camera_source_label: FRONT
+
+  driveway_rotation: !include
+    file: ../packages/rotation-camera-page.yaml
+    vars:
+      page_order: '50'
+      page_duration_ms: '5000'
+      camera_id: driveway
+      camera_entity: camera.example_driveway
+      camera_source_label: DRIVEWAY
+
+api:
+  encryption:
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+ota:
+- platform: esphome
+  password: not-a-production-password
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
