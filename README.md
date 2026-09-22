@@ -14,8 +14,7 @@ configuration before installing. See [validation](docs/VALIDATION.md).
 ## What it displays
 
 - Any number of reusable numeric/temperature and battery-percentage rotation
-  pages, ordered with `page_order`. The original five-numeric-plus-battery
-  settings remain as a backward-compatible shim.
+  pages, ordered with `page_order`.
 - Large centered readings, rounded panels, location accents, real 12-hour graphs,
   and page-position dots with an active halo.
 - A shared large-font clock between each enabled content page.
@@ -35,12 +34,11 @@ configuration before installing. See [validation](docs/VALIDATION.md).
   Overrides bypass automatic enable/cooldown, not readiness or RAM checks.
 - Alerts save the current page and its remaining duration, then resume afterward.
 
-Version 0.5.0 replaces the fixed six-slot scheduler with an ordered runtime page
-registry. Existing `metric_1..metric_6` private configs still build the same
-legacy pages automatically, so current Camper/Home deployments do not need to
-change. New configurations can disable all legacy slots and instantiate
-`page-numeric.yaml`, `page-battery.yaml`, and optionally `page-camera.yaml`
-as many times as practical hardware resources allow.
+Version 0.5.0 replaces the fixed six-slot scheduler with one ordered runtime
+page registry. Pages are explicit template instances: `page-numeric.yaml`,
+`page-battery.yaml`, and optionally `page-camera.yaml`. There is no fixed
+numeric/battery page count in shared code; practical hardware resources are the
+limit.
 
 ## Installation
 
@@ -118,15 +116,10 @@ See [configuration reference](docs/CONFIGURATION.md). Site settings can be share
 with a local package such as `!include minion-sites/site.yaml`. These local site
 files and `secrets.yaml` must **not** be uploaded to this repository.
 
-The original `metric_1..metric_6` substitutions are now a compatibility
-layer. Slots 1–5 instantiate numeric-page templates and slot 6 instantiates the
-battery template. Existing device YAML may keep using them unchanged.
-
-New configurations can disable all six legacy slots and add any number of
-template instances directly. Each page supplies its own `page_id`,
-`page_order`, duration, source entity, and renderer-specific settings. This
-means configurations such as 10 temperature pages + 1 battery page are ordinary
-configuration changes rather than shared-code changes. See
+Rotation content is defined entirely by template instances. Each page supplies
+its own `page_id`, `page_order`, duration, source entity, and renderer-specific
+settings. Configurations such as 10 temperature pages + 1 battery page are
+ordinary configuration changes rather than shared-code changes. See
 [configuration reference](docs/CONFIGURATION.md) and
 [template example](examples/template-pages.example.yaml).
 
