@@ -1,0 +1,45 @@
+# Private device/site settings and secrets must stay out of the public tree.
+secrets.yaml
+secrets.yml
+**/secrets.yaml
+**/secrets.yml
+private/
+devices/
+sites/
+minion-sites/
+*.private.yaml
+*.private.yml
+*.local.yaml
+*.local.yml
+.env
+.env.*
+
+# ESPHome builds, caches, compile bundles, and logs can contain credentials.
+.esphome/
+**/.esphome/
+.pio/
+**/.pio/
+build/
+*.bin
+*.elf
+*.map
+*.log
+*.zip
+*.tar
+*.tar.gz
+
+# Do not commit camera images, font binaries, or downloaded assets.
+*.jpg
+*.jpeg
+*.png
+*.webp
+*.ttf
+*.woff
+*.woff2
+*.otf
+
+# Developer environment
+.venv/
+__pycache__/
+*.pyc
+.DS_Store
