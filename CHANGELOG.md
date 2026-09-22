@@ -4,8 +4,8 @@
 
 - Replaced the fixed six-slot scheduler with an ordered dynamic page registry.
 - Added reusable numeric, battery, and optional camera rotation-page templates.
-- Retained metric_1..metric_6 as a backward-compatible configuration shim.
-- Added an independent Alerts switch for every camera source.
+- Removed the fixed metric_1..metric_6 slot model entirely; all content pages are explicit templates.
+- Added an independent Alerts switch for every camera source and removed the global master alert switch.
 - Added a compact Last Camera Alert diagnostic; engine progress status is internal.
 - Added CI coverage for 10 numeric + 1 battery + 1 camera rotation page.
 
