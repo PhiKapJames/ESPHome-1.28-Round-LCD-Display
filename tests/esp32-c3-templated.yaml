@@ -1,0 +1,191 @@
+# SYNTHETIC CI FIXTURE. Proves arbitrary template counts beyond the legacy six slots.
+substitutions:
+  device_name: ci-c3-templated
+  friendly_name: CI C3 Templated
+
+packages:
+  base: !include
+    file: ../profiles/esp32-c3-templated.yaml
+
+  metric_1: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_1
+      page_order: '10'
+      page_duration_ms: '4000'
+      page_label: Metric 1
+      page_entity: sensor.example_metric_1
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '90.2%'
+      page_color_green: '62.4%'
+      page_color_blue: '0%'
+
+  metric_2: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_2
+      page_order: '20'
+      page_duration_ms: '4000'
+      page_label: Metric 2
+      page_entity: sensor.example_metric_2
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '33.7%'
+      page_color_green: '70.6%'
+      page_color_blue: '91.4%'
+
+  metric_3: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_3
+      page_order: '30'
+      page_duration_ms: '4000'
+      page_label: Metric 3
+      page_entity: sensor.example_metric_3
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '0%'
+      page_color_green: '62%'
+      page_color_blue: '45.1%'
+
+  metric_4: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_4
+      page_order: '40'
+      page_duration_ms: '4000'
+      page_label: Metric 4
+      page_entity: sensor.example_metric_4
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '94.1%'
+      page_color_green: '89.4%'
+      page_color_blue: '25.9%'
+
+  metric_5: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_5
+      page_order: '50'
+      page_duration_ms: '4000'
+      page_label: Metric 5
+      page_entity: sensor.example_metric_5
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '80%'
+      page_color_green: '47.5%'
+      page_color_blue: '65.5%'
+
+  metric_6: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_6
+      page_order: '60'
+      page_duration_ms: '4000'
+      page_label: Metric 6
+      page_entity: sensor.example_metric_6
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '90.2%'
+      page_color_green: '62.4%'
+      page_color_blue: '0%'
+
+  metric_7: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_7
+      page_order: '70'
+      page_duration_ms: '4000'
+      page_label: Metric 7
+      page_entity: sensor.example_metric_7
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '33.7%'
+      page_color_green: '70.6%'
+      page_color_blue: '91.4%'
+
+  metric_8: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_8
+      page_order: '80'
+      page_duration_ms: '4000'
+      page_label: Metric 8
+      page_entity: sensor.example_metric_8
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '0%'
+      page_color_green: '62%'
+      page_color_blue: '45.1%'
+
+  metric_9: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_9
+      page_order: '90'
+      page_duration_ms: '4000'
+      page_label: Metric 9
+      page_entity: sensor.example_metric_9
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '94.1%'
+      page_color_green: '89.4%'
+      page_color_blue: '25.9%'
+
+  metric_10: !include
+    file: ../packages/rotation-numeric-page.yaml
+    vars:
+      page_id: metric_10
+      page_order: '100'
+      page_duration_ms: '4000'
+      page_label: Metric 10
+      page_entity: sensor.example_metric_10
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_graph_interval: 12h
+      page_color_red: '80%'
+      page_color_green: '47.5%'
+      page_color_blue: '65.5%'
+
+  battery: !include
+    file: ../packages/rotation-battery-page.yaml
+    vars:
+      page_id: battery
+      page_order: '110'
+      page_duration_ms: '4000'
+      page_label: Battery
+      page_entity: sensor.example_battery
+      page_graph_interval: 12h
+      page_graph_color_red: '60%'
+      page_graph_color_green: '25%'
+      page_graph_color_blue: '100%'
+
+api:
+  encryption:
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+ota:
+- platform: esphome
+  password: not-a-production-password
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
