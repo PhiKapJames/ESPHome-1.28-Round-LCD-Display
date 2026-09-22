@@ -3,26 +3,7 @@ substitutions:
   device_name: round-minion-example
   friendly_name: Round Minion Example
   timezone: Etc/UTC
-  ha_base_url: http://homeassistant.local:8123
-
-  metric_1_label: Room 1
-  metric_1_entity: sensor.example_metric_1
-  metric_1_enabled: 'true'
-  metric_2_label: Room 2
-  metric_2_entity: sensor.example_metric_2
-  metric_2_enabled: 'true'
-  metric_3_label: Room 3
-  metric_3_entity: sensor.example_metric_3
-  metric_3_enabled: 'true'
-  metric_4_label: Room 4
-  metric_4_entity: sensor.example_metric_4
-  metric_4_enabled: 'true'
-  metric_5_label: Room 5
-  metric_5_entity: sensor.example_metric_5
-  metric_5_enabled: 'true'
-  metric_6_label: Battery
-  metric_6_entity: sensor.example_metric_6
-  metric_6_enabled: 'true'
+  clock_page_duration_ms: '8000'
 
 packages:
   round_minion:
@@ -30,6 +11,23 @@ packages:
     ref: main  # Pin a tested commit SHA in deployed device files.
     files:
       - profiles/esp32-c3-camera.yaml
+
+      - path: packages/page-numeric.yaml
+        vars:
+          page_id: room
+          page_label: Room
+          page_entity: sensor.example_metric_1
+          page_duration_ms: '8000'
+          page_order: '10'
+          page_graph_interval: 12h
+          page_unit: °F
+          page_suffix: °
+          page_decimals: '1'
+          page_panel_style: '1'
+          page_color_red: 33.7%
+          page_color_green: 70.6%
+          page_color_blue: 91.4%
+
       - path: packages/camera-source.yaml
         vars:
           camera_id: example
@@ -46,13 +44,13 @@ packages:
 
 api:
   encryption:
-    key: !secret 'api_encryption_key'
+    key: !secret api_encryption_key
 
 ota:
 - platform: esphome
-  password: !secret 'ota_password'
+  password: !secret ota_password
 
 wifi:
-  ssid: !secret 'wifi_ssid'
-  password: !secret 'wifi_password'
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password
   output_power: 8.5

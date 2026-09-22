@@ -31,7 +31,7 @@ for path in sorted(ROOT.rglob('*')):
         errors.append(f'Private key in {rel}')
     if path.suffix in {'.yaml','.yml'}:
         for line in text.splitlines():
-            m=re.match(r'^\s*(?:entity_id|(?:metric_\d+|camera|person)_entity):\s*(\S+)',line)
+            m=re.match(r'^\s*(?:entity_id|page_entity|camera_entity|camera_person_entity|camera_vehicle_entity|trigger_entity):\s*(\S+)',line)
             if m:
                 val=m.group(1).strip('"\'')
                 if not val.startswith('${') and not re.match(r'(?:sensor|camera|binary_sensor)\.example_',val):

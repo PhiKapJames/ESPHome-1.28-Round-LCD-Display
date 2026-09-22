@@ -1,0 +1,80 @@
+# COPY LOCALLY. Demonstrates template-driven rotation with no legacy slot limit.
+substitutions:
+  device_name: round-minion-template-example
+  friendly_name: Round Minion Template Example
+  timezone: Etc/UTC
+  ha_base_url: http://homeassistant.local:8123
+  clock_page_duration_ms: '4000'
+
+
+packages:
+  round_minion:
+    url: https://github.com/PhiKapJames/HaEspRoundMinions
+    ref: main  # Pin a tested commit SHA in deployed files.
+    files:
+      - profiles/esp32-s3-quad-psram-camera.yaml
+
+      - path: packages/page-numeric.yaml
+        vars:
+          page_id: kitchen
+          page_label: Kitchen
+          page_entity: sensor.example_kitchen_temperature
+          page_duration_ms: '4000'
+          page_order: '10'
+          page_graph_interval: 12h
+          page_unit: °F
+          page_suffix: °
+          page_decimals: '1'
+          page_panel_style: '1'
+          page_color_red: 0%
+          page_color_green: 62%
+          page_color_blue: 45%
+
+      - path: packages/page-numeric.yaml
+        vars:
+          page_id: outside
+          page_label: Outside
+          page_entity: sensor.example_outside_temperature
+          page_duration_ms: '4000'
+          page_order: '20'
+          page_graph_interval: 12h
+          page_unit: °F
+          page_suffix: °
+          page_decimals: '1'
+          page_panel_style: '1'
+          page_color_red: 33.7%
+          page_color_green: 70.6%
+          page_color_blue: 91.4%
+
+      - path: packages/page-battery.yaml
+        vars:
+          page_id: house_battery
+          page_label: Battery
+          page_entity: sensor.example_battery
+          page_duration_ms: '4000'
+          page_order: '30'
+          page_graph_interval: 12h
+
+      # Optional: deliberately place a camera view into normal rotation.
+      # This requires a *-camera profile because it reuses camera_http.
+      - path: packages/page-camera.yaml
+        vars:
+          page_id: driveway_view
+          page_label: DRIVEWAY
+          page_entity: camera.example_driveway
+          page_duration_ms: '5000'
+          page_order: '40'
+
+    refresh: 1d
+
+api:
+  encryption:
+    key: !secret api_encryption_key
+
+ota:
+- platform: esphome
+  password: !secret ota_password
+
+wifi:
+  ssid: !secret wifi_ssid
+  password: !secret wifi_password

@@ -159,8 +159,8 @@ def test_configs():
     # These assertions catch the two integration errors found by initial CI.
     for profile in ('esp32-c3', 'esp32-s3-quad-psram'):
         packages = load(ROOT/'profiles'/f'{profile}.yaml')['packages']
-        assert list(packages)[-1] == 'defaults', 'Defaults must resolve before metrics'
-    for fragment in ('metric-page', 'clock-page', 'camera-alerts'):
+        assert list(packages)[-1] == 'defaults', 'Shared defaults must resolve first'
+    for fragment in ('clock-page', 'camera-alerts', 'page-numeric', 'page-battery', 'page-camera'):
         display_id = load(ROOT/'packages'/f'{fragment}.yaml')['display'][0]['id']
         assert isinstance(display_id, Tagged) and display_id.tag == '!extend'
         assert display_id.value == 'main_display'
@@ -168,11 +168,17 @@ def test_configs():
 
     # Renderer-performance invariants: no runtime trig on normal metric/clock
     # pages, no forced once-per-minute redraw, and hardware-specific outline cost.
-    metric_raw=(ROOT/'packages'/'metric-page.yaml').read_text(encoding='utf-8')
+    metric_raw=(ROOT/'packages'/'page-numeric.yaml').read_text(encoding='utf-8')
+    battery_raw=(ROOT/'packages'/'page-battery.yaml').read_text(encoding='utf-8')
     clock_raw=(ROOT/'packages'/'clock-page.yaml').read_text(encoding='utf-8')
     core_raw=load(ROOT/'packages'/'core.yaml')
     assert 'cosf(' not in metric_raw and 'sinf(' not in metric_raw
+    assert 'cosf(' not in battery_raw and 'sinf(' not in battery_raw
     assert 'cosf(' not in clock_raw and 'sinf(' not in clock_raw
+    for page_raw in (metric_raw, battery_raw):
+        assert 'MAX_VISIBLE_DOTS = 9' in page_raw
+        assert 'more_before' in page_raw and 'more_after' in page_raw
+        assert 'it.line(' in page_raw
     time_cfg=core_raw['time'][0]
     assert 'on_time' not in time_cfg
     c3_hw=load(ROOT/'hardware'/'esp32-c3-gc9a01.yaml')['substitutions']
@@ -195,8 +201,10 @@ def test_configs():
         references=set(re.findall(r'\bid\(([A-Za-z_][A-Za-z0-9_]*)\)','\n'.join(strings)))
         assert references<=set(ids),f'Missing IDs {references-set(ids)} in {name}'
         assert len(config['display'])==1
-        assert len(config['graph'])==6
-        for graph in config['graph']:
+        imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
+        assert len(imported)==1
+        assert len(config.get('graph',[]))==1
+        for graph in config.get('graph',[]):
             assert 'continuous' not in graph and 'sensor' not in graph
             assert graph['width']==174 and graph['height']==18
             assert graph['traces'][0]['continuous'] is True
@@ -206,8 +214,7 @@ def test_configs():
         assert ('camera_alert' in ids)==camera
         assert ('psram' in config)==('s3' in name)
         assert [f['size'] for f in config['font'][:5]]==[44,84,36,92,92]
-        imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
-        assert len(imported)==(1 if name.endswith('one-metric') else 6)
+        assert 'rotation_pages' in ids and 'rotation_orders' in ids
         print(f'PASS {name}: includes/substitutions/IDs/graphs/features')
 
     # Reusable-camera regression: six instances exceed the former four-source design.
@@ -219,6 +226,7 @@ def test_configs():
         assert f'show_camera_snapshot_{source}' in multi_ids
         assert f'camera_source_request_{source}' in multi_ids
         assert f'camera_last_auto_{source}' in multi_ids
+        assert f'camera_alerts_enabled_{source}' in multi_ids
     assert 'camera_detector_driveway_1' in multi_ids
     assert 'camera_detector_driveway_2' in multi_ids
     assert 'camera_detector_parking_2' in multi_ids
@@ -230,19 +238,55 @@ def test_configs():
     assert len([x for x in multi_ids if x.startswith('camera_picture_path_')]) == 6
     print('PASS six reusable camera instances and independent detector routing')
 
-    # Exercise all nonempty enabled-slot combinations without changing firmware.
-    for mask in range(1,64):
-        override={f'metric_{i+1}_enabled':'true' if mask & (1<<i) else 'false' for i in range(6)}
-        config,_=expand_file(ROOT/'tests/esp32-c3.yaml',override)
-        assert len([s for s in config['sensor'] if s['platform']=='homeassistant'])==mask.bit_count()
-    print('PASS all 63 nonempty metric/battery combinations')
-    # The layout cannot support an empty playlist; static_assert enforces that in C++.
-    no_metrics={f'metric_{i}_enabled':'false' for i in range(1,7)}
-    cfg,_=expand_file(ROOT/'tests/esp32-c3.yaml',no_metrics)
-    rotation=next(x for x in cfg['script'] if x['id']=='display_rotation')
-    code=rotation['then'][0]['while']['then'][0]['lambda']
-    assert 'constexpr bool any_metric_enabled = false || false || false || false || false || false;' in code
-    print('PASS empty playlist reaches a compile-time rejection')
+    assert 'last_camera_alert' in multi_ids
+    last_alert=next(x for x in multi['text_sensor'] if x.get('id')=='last_camera_alert')
+    assert last_alert['name']=='Last Camera Alert'
+    assert next(x for x in multi['text_sensor'] if x.get('id')=='camera_alert_status')['internal'] is True
+    print('PASS Last Camera Alert diagnostic and internal engine status')
+
+    template_cfg,_=expand_file(ROOT/'tests/esp32-s3-template-pages.yaml')
+    template_ids=set(definition_ids(template_cfg))
+    imported=[s for s in template_cfg['sensor'] if s['platform']=='homeassistant']
+    assert len(imported)==11
+    assert len(template_cfg.get('graph',[]))==11
+    for i in range(1,11):
+        assert f'rotation_page_numeric_{i}' in template_ids
+        assert f'rotation_sensor_numeric_{i}' in template_ids
+    assert 'rotation_page_battery_main' in template_ids
+    assert 'rotation_battery_sensor_battery_main' in template_ids
+    assert 'rotation_page_camera_front' in template_ids
+    assert 'rotation_camera_picture_camera_front' in template_ids
+    assert 'rotation_camera_image_camera_front' in template_ids
+    camera_page_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
+    assert 'MAX_VISIBLE_DOTS' not in camera_page_raw
+    print('PASS 10 numeric + battery + camera rotation template stress fixture')
+    print('PASS sliding nine-dot indicator with overflow chevrons; camera page stays clean')
+
+    home_cfg,_=expand_file(ROOT/'tests/esp32-s3-home-migration.yaml')
+    home_ids=set(definition_ids(home_cfg))
+    home_imported=[s for s in home_cfg['sensor'] if s['platform']=='homeassistant']
+    assert len(home_imported)==5
+    for page in ('gazebo','shed','kitchen','master','bunk'):
+        assert f'rotation_page_{page}' in home_ids
+    for source in ('front','garage','driveway','camper'):
+        assert f'camera_alerts_enabled_{source}' in home_ids
+    print('PASS Home S3 shape uses five explicit pages and four per-camera alert controls')
+
+    # The fixed slot implementation is intentionally gone.
+    for retired in ('metrics.yaml','metric-page.yaml','metric-source.yaml',
+                    'metric-unused.yaml','legacy-pages.yaml','page-unused.yaml'):
+        assert not (ROOT/'packages'/retired).exists(), f'Retired compatibility file still present: {retired}'
+    defaults=load(ROOT/'packages'/'defaults.yaml')['substitutions']
+    assert not any(re.match(r'metric_\\d+_', key) for key in defaults)
+    print('PASS no fixed-slot compatibility layer remains')
+
+    core_text=(ROOT/'packages'/'core.yaml').read_text(encoding='utf-8')
+    assert 'rotation_pages' in core_text
+    assert 'rotation_orders' in core_text
+    assert 'rotation_enter_callbacks' in core_text
+    assert 'rotation_exit_callbacks' in core_text
+    assert 'if (count == 0)' in core_text
+    print('PASS dynamic rotation registry and empty-registry clock fallback')
 
 if __name__=='__main__':
     test_configs()

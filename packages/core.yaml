@@ -1,4 +1,4 @@
-# Shared scheduler, display bus, backlight, and heap diagnostics. Credentials are deliberately absent.
+# Shared scheduler, display bus, backlight, heap diagnostics, and dynamic page registry.
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
@@ -14,12 +14,15 @@ esphome:
     - script.execute: display_rotation
   project:
     name: phikapjames.round-minions
-    version: 0.4.0
+    version: 0.5.0
+
 logger:
   level: INFO
+
 spi:
   clk_pin: ${spi_clk_pin}
   mosi_pin: ${spi_mosi_pin}
+
 time:
 - platform: homeassistant
   id: sntp_time
@@ -27,15 +30,40 @@ time:
   on_time_sync:
     then:
     - script.execute: refresh_visible_time
+
 globals:
 - id: rotation_content_index
   type: unsigned int
   restore_value: false
   initial_value: '0'
-- id: active_metric_index
+- id: active_rotation_index
   type: int
   restore_value: false
-  initial_value: '0'
+  initial_value: '-1'
+- id: rotation_pages
+  type: std::vector<esphome::display::DisplayPage *>
+  restore_value: false
+  initial_value: 'std::vector<esphome::display::DisplayPage *>{}'
+- id: rotation_durations
+  type: std::vector<uint32_t>
+  restore_value: false
+  initial_value: 'std::vector<uint32_t>{}'
+- id: rotation_orders
+  type: std::vector<int>
+  restore_value: false
+  initial_value: 'std::vector<int>{}'
+- id: rotation_enter_callbacks
+  type: std::vector<std::function<void()>>
+  restore_value: false
+  initial_value: 'std::vector<std::function<void()>>{}'
+- id: rotation_exit_callbacks
+  type: std::vector<std::function<void()>>
+  restore_value: false
+  initial_value: 'std::vector<std::function<void()>>{}'
+- id: rotation_registry_sorted
+  type: bool
+  restore_value: false
+  initial_value: 'false'
 - id: active_content_duration_ms
   type: uint32_t
   restore_value: false
@@ -68,6 +96,7 @@ globals:
   type: bool
   restore_value: false
   initial_value: 'false'
+
 script:
 - id: refresh_visible_time
   mode: single
@@ -75,12 +104,11 @@ script:
   - if:
       condition:
         lambda: |-
-          auto *page = id(main_display).get_active_page();
           return !id(camera_alert_active) &&
-                 id(lcd_backlight_switch).state &&
-                 (page == id(page_clock) || page == id(page_metric));
+                 id(lcd_backlight_switch).state;
       then:
       - component.update: main_display
+
 - id: display_rotation
   mode: single
   then:
@@ -89,54 +117,82 @@ script:
         lambda: return true;
       then:
       - lambda: !lambda |-
+          if (!id(rotation_registry_sorted)) {
+            const size_t count = id(rotation_pages).size();
+            for (size_t i = 0; i < count; i++) {
+              size_t best = i;
+              for (size_t j = i + 1; j < count; j++) {
+                if (id(rotation_orders)[j] < id(rotation_orders)[best])
+                  best = j;
+              }
+              if (best != i) {
+                std::swap(id(rotation_pages)[i], id(rotation_pages)[best]);
+                std::swap(id(rotation_durations)[i], id(rotation_durations)[best]);
+                std::swap(id(rotation_orders)[i], id(rotation_orders)[best]);
+                std::swap(id(rotation_enter_callbacks)[i], id(rotation_enter_callbacks)[best]);
+                std::swap(id(rotation_exit_callbacks)[i], id(rotation_exit_callbacks)[best]);
+              }
+            }
+            id(rotation_registry_sorted) = true;
+          }
+
           if (id(rotation_resume_pending) && id(normal_page) != nullptr) {
             id(rotation_resume_pending) = false;
+            const int index = id(active_rotation_index);
+            if (!id(normal_is_clock) &&
+                index >= 0 &&
+                static_cast<size_t>(index) < id(rotation_enter_callbacks).size() &&
+                id(rotation_enter_callbacks)[index]) {
+              id(rotation_enter_callbacks)[index]();
+            }
             id(main_display).show_page(id(normal_page));
           } else {
             id(rotation_resume_pending) = false;
-            struct ContentPage {
-              display::DisplayPage *page;
-              int metric_index;
-              uint32_t duration_ms;
-              bool enabled;
-            };
-            const ContentPage candidates[] = {
-              {id(page_metric), 0, ${metric_1_duration_ms}, ${ 'true' if metric_1_enabled | string | lower == 'true' else 'false' }},
-              {id(page_metric), 1, ${metric_2_duration_ms}, ${ 'true' if metric_2_enabled | string | lower == 'true' else 'false' }},
-              {id(page_metric), 2, ${metric_3_duration_ms}, ${ 'true' if metric_3_enabled | string | lower == 'true' else 'false' }},
-              {id(page_metric), 3, ${metric_4_duration_ms}, ${ 'true' if metric_4_enabled | string | lower == 'true' else 'false' }},
-              {id(page_metric), 4, ${metric_5_duration_ms}, ${ 'true' if metric_5_enabled | string | lower == 'true' else 'false' }},
-              {id(page_metric), 5, ${metric_6_duration_ms}, ${ 'true' if metric_6_enabled | string | lower == 'true' else 'false' }},
-            };
-            // No camera entry: snapshots interrupt the playlist, never join it.
-            constexpr bool any_metric_enabled = ${ 'true' if metric_1_enabled | string | lower == 'true' else 'false' } || ${ 'true' if metric_2_enabled | string | lower == 'true' else 'false' } || ${ 'true' if metric_3_enabled | string | lower == 'true' else 'false' } || ${ 'true' if metric_4_enabled | string | lower == 'true' else 'false' } || ${ 'true' if metric_5_enabled | string | lower == 'true' else 'false' } || ${ 'true' if metric_6_enabled | string | lower == 'true' else 'false' };
-            static_assert(any_metric_enabled, "Enable at least one metric slot");
-            ContentPage content_pages[6];
-            unsigned int content_count = 0;
-            for (const auto &candidate : candidates) {
-              if (candidate.enabled) content_pages[content_count++] = candidate;
+            const size_t count = id(rotation_pages).size();
+
+            if (count == 0) {
+              id(active_rotation_index) = -1;
+              id(normal_is_clock) = true;
+              id(normal_page) = id(page_clock);
+              id(normal_remaining_ms) = ${clock_page_duration_ms};
+              id(main_display).show_page(id(page_clock));
+            } else {
+              if (id(rotation_content_index) >= count)
+                id(rotation_content_index) = 0;
+
+              const size_t index = id(rotation_content_index);
+              id(active_rotation_index) = static_cast<int>(index);
+              id(active_content_duration_ms) = id(rotation_durations)[index];
+              id(normal_remaining_ms) = id(rotation_durations)[index];
+              id(normal_page) = id(rotation_pages)[index];
+              id(normal_is_clock) = false;
+
+              if (id(rotation_enter_callbacks)[index])
+                id(rotation_enter_callbacks)[index]();
+
+              id(main_display).show_page(id(rotation_pages)[index]);
+              id(rotation_content_index) =
+                  static_cast<unsigned int>((index + 1) % count);
             }
-            if (id(rotation_content_index) >= content_count)
-              id(rotation_content_index) = 0;
-            const auto &item = content_pages[id(rotation_content_index)];
-            id(active_metric_index) = item.metric_index;
-            id(active_content_duration_ms) = item.duration_ms;
-            id(normal_remaining_ms) = item.duration_ms;
-            id(normal_page) = item.page;
-            id(normal_is_clock) = false;
-            id(main_display).show_page(item.page);
-            id(rotation_content_index) =
-                (id(rotation_content_index) + 1) % content_count;
           }
+
       - component.update: main_display
       - lambda: id(normal_started_ms) = millis();
       - delay: !lambda |-
           return id(normal_remaining_ms);
+
       - if:
           condition:
             lambda: return !id(normal_is_clock);
           then:
           - lambda: |-
+              const int index = id(active_rotation_index);
+              if (index >= 0 &&
+                  static_cast<size_t>(index) < id(rotation_exit_callbacks).size() &&
+                  id(rotation_exit_callbacks)[index]) {
+                id(rotation_exit_callbacks)[index]();
+              }
+
               id(normal_is_clock) = true;
               id(normal_page) = id(page_clock);
               id(normal_remaining_ms) = ${clock_page_duration_ms};
@@ -145,6 +201,7 @@ script:
           - lambda: id(normal_started_ms) = millis();
           - delay: !lambda |-
               return id(normal_remaining_ms);
+
 display:
 - platform: mipi_spi
   id: main_display
@@ -159,16 +216,19 @@ display:
   rotation: ${display_rotation_degrees}
   update_interval: never
   auto_clear_enabled: false
+
 output:
 - platform: gpio
   pin: ${backlight_pin}
   id: lcd_backlight
+
 switch:
 - platform: output
   name: LCD Backlight
   id: lcd_backlight_switch
   output: lcd_backlight
   restore_mode: ALWAYS_ON
+
 sensor:
 - platform: template
   name: Free Heap

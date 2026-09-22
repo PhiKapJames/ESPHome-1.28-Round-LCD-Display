@@ -1,0 +1,17 @@
+packages:
+  numeric_test: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: test_metric
+      page_label: Test
+      page_entity: sensor.example_test_metric
+      page_duration_ms: '4000'
+      page_order: '10'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 0%
+      page_color_green: 80%
+      page_color_blue: 100%

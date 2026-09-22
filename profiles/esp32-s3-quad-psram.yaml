@@ -3,15 +3,10 @@ packages:
     file: ../hardware/esp32-s3-quad-psram-gc9a01.yaml
   core: !include
     file: ../packages/core.yaml
-  metrics: !include
-    file: ../packages/metrics.yaml
   theme: !include
     file: ../packages/theme.yaml
-  metric_page: !include
-    file: ../packages/metric-page.yaml
   clock_page: !include
     file: ../packages/clock-page.yaml
-  # ESPHome resolves package definitions in reverse declaration order.
-  # Load defaults before conditional metric packages; local settings still win.
+  # Defaults provide only shared identity/rendering settings; pages are explicit templates.
   defaults: !include
     file: ../packages/defaults.yaml

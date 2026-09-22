@@ -1,0 +1,224 @@
+# Optional reusable camera page for the normal rotation.
+# Requires a *-camera profile so the shared camera_http requester exists.
+# This is separate from camera alerts; adding it does not make alerts part of the playlist.
+substitutions:
+  page_id: example_camera
+  page_label: CAMERA
+  page_entity: camera.example_camera
+  page_duration_ms: '8000'
+  page_order: '100'
+  ha_base_url: http://homeassistant.local:8123
+  page_camera_image_width: '200'
+  page_camera_image_height: '112'
+  page_camera_min_free_heap: '100000'
+  page_camera_min_largest_block: '60000'
+
+esphome:
+  on_boot:
+  - priority: -50
+    then:
+    - lambda: |-
+        id(rotation_pages).push_back(id(rotation_page_${page_id}));
+        id(rotation_durations).push_back(${page_duration_ms});
+        id(rotation_orders).push_back(${page_order});
+        id(rotation_enter_callbacks).push_back([](){
+          id(rotation_camera_prepare_${page_id}).execute();
+        });
+        id(rotation_exit_callbacks).push_back([](){
+          id(rotation_camera_cleanup_${page_id}).execute();
+        });
+        id(rotation_registry_sorted) = false;
+
+text_sensor:
+- platform: homeassistant
+  id: rotation_camera_picture_${page_id}
+  entity_id: ${page_entity}
+  attribute: entity_picture
+  internal: true
+
+globals:
+- id: rotation_camera_phase_${page_id}
+  type: int
+  restore_value: false
+  initial_value: '0'
+
+image:
+- platform: online_image
+  id: rotation_camera_image_${page_id}
+  http_request_id: camera_http
+  url: ${ha_base_url}/api/camera_proxy/${page_entity}
+  format: JPEG
+  type: RGB565
+  transparency: opaque
+  resize: ${page_camera_image_width}x${page_camera_image_height}
+  update_interval: never
+  buffer_size: 4096
+  request_headers:
+    Cache-Control: no-cache
+  on_download_finished:
+    then:
+    - lambda: |-
+        if (id(rotation_camera_phase_${page_id}) != 2)
+          return;
+        const int width = id(rotation_camera_image_${page_id}).get_width();
+        const int height = id(rotation_camera_image_${page_id}).get_height();
+        if (cached || width <= 0 || height <= 0 ||
+            width > ${page_camera_image_width} ||
+            height > ${page_camera_image_height}) {
+          id(rotation_camera_phase_${page_id}) = 4;
+        } else {
+          id(rotation_camera_phase_${page_id}) = 3;
+        }
+        if (id(main_display).get_active_page() == id(rotation_page_${page_id}))
+          id(main_display).update();
+  on_error:
+    then:
+    - lambda: |-
+        if (id(rotation_camera_phase_${page_id}) == 2)
+          id(rotation_camera_phase_${page_id}) = 4;
+        if (id(main_display).get_active_page() == id(rotation_page_${page_id}))
+          id(main_display).update();
+
+script:
+- id: rotation_camera_prepare_${page_id}
+  mode: restart
+  then:
+  - online_image.release: rotation_camera_image_${page_id}
+  - lambda: |-
+      id(rotation_camera_phase_${page_id}) = 1;
+
+      if (!id(rotation_camera_picture_${page_id}).has_state()) {
+        id(rotation_camera_phase_${page_id}) = 4;
+        return;
+      }
+
+      std::string path = id(rotation_camera_picture_${page_id}).state;
+      const std::string expected = "/api/camera_proxy/${page_entity}";
+      std::string base = "${ha_base_url}";
+      while (!base.empty() && base.back() == '/') base.pop_back();
+
+      if (path.compare(0, base.size() + 1, base + "/") == 0)
+        path.erase(0, base.size());
+
+      const auto question = path.find('?');
+      if (base.empty() ||
+          (base.compare(0, 7, "http://") != 0 &&
+           base.compare(0, 8, "https://") != 0) ||
+          question == std::string::npos ||
+          path.substr(0, question) != expected) {
+        id(rotation_camera_phase_${page_id}) = 4;
+        return;
+      }
+
+      auto token_pos = path.find("?token=");
+      if (token_pos == std::string::npos)
+        token_pos = path.find("&token=");
+
+      std::string token;
+      if (token_pos != std::string::npos) {
+        token_pos += 7;
+        const auto token_end = path.find_first_of("&#", token_pos);
+        token = path.substr(token_pos, token_end - token_pos);
+      }
+
+      bool token_ok = !token.empty() && token.size() <= 128;
+      for (char c : token) {
+        if (!((c >= '0' && c <= '9') ||
+              (c >= 'a' && c <= 'f') ||
+              (c >= 'A' && c <= 'F')))
+          token_ok = false;
+      }
+      if (!token_ok) {
+        id(rotation_camera_phase_${page_id}) = 4;
+        return;
+      }
+
+      const size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+      const size_t largest =
+          heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+      if (free_heap < ${page_camera_min_free_heap} ||
+          largest < ${page_camera_min_largest_block}) {
+        id(rotation_camera_phase_${page_id}) = 5;
+        return;
+      }
+
+      id(rotation_camera_image_${page_id}).set_url(
+          base + expected + "?token=" + token +
+          "&width=${page_camera_image_width}&height=${page_camera_image_height}" +
+          "&_esphome=" + std::to_string(millis()));
+      id(rotation_camera_phase_${page_id}) = 2;
+  - if:
+      condition:
+        lambda: return id(rotation_camera_phase_${page_id}) == 2;
+      then:
+      - component.update: rotation_camera_image_${page_id}
+
+- id: rotation_camera_cleanup_${page_id}
+  mode: restart
+  then:
+  - online_image.release: rotation_camera_image_${page_id}
+  - lambda: |-
+      id(rotation_camera_phase_${page_id}) = 0;
+      id(rotation_camera_image_${page_id}).set_url(
+          "${ha_base_url}/api/camera_proxy/${page_entity}");
+
+display:
+- id: !extend main_display
+  pages:
+  - id: rotation_page_${page_id}
+    lambda: |-
+      it.fill(Color::BLACK);
+
+      const int source_width = id(rotation_camera_image_${page_id}).get_width();
+      const int source_height = id(rotation_camera_image_${page_id}).get_height();
+      const int phase = id(rotation_camera_phase_${page_id});
+
+      if (phase == 3 && source_width > 0 && source_height > 0) {
+        constexpr int SCREEN_SIZE = 240;
+        const int crop_size =
+            source_width < source_height ? source_width : source_height;
+        const int crop_x = (source_width - crop_size) / 2;
+        const int crop_y = (source_height - crop_size) / 2;
+
+        uint16_t source_index[SCREEN_SIZE];
+        for (int i = 0; i < SCREEN_SIZE; i++) {
+          source_index[i] = static_cast<uint16_t>(
+              ((2 * i + 1) * crop_size) / (2 * SCREEN_SIZE));
+        }
+
+        for (int y = 0; y < SCREEN_SIZE; ) {
+          const int sy = source_index[y];
+          int next_y = y + 1;
+          while (next_y < SCREEN_SIZE && source_index[next_y] == sy)
+            next_y++;
+
+          for (int x = 0; x < SCREEN_SIZE; ) {
+            const int sx = source_index[x];
+            int next_x = x + 1;
+            while (next_x < SCREEN_SIZE && source_index[next_x] == sx)
+              next_x++;
+
+            const Color pixel =
+                id(rotation_camera_image_${page_id}).get_pixel(
+                    crop_x + sx, crop_y + sy);
+            it.filled_rectangle(x, y, next_x - x, next_y - y, pixel);
+            x = next_x;
+          }
+          y = next_y;
+        }
+        return;
+      }
+
+      const Color accent(20, 155, 220);
+      it.filled_ring(120, 120, 116, 113, accent);
+      it.print(120, 67, id(title_font), accent,
+               TextAlign::BASELINE_CENTER, "${page_label}");
+
+      const char *line1 = phase == 5 ? "Low RAM" :
+                          phase == 4 ? "No image" : "Loading";
+      const char *line2 = phase == 5 ? "No image" :
+                          phase == 4 ? "Check HA" : "camera";
+      it.print(120, 127, id(time_font), Color::WHITE,
+               TextAlign::BASELINE_CENTER, line1);
+      it.print(120, 169, id(time_font), Color::WHITE,
+               TextAlign::BASELINE_CENTER, line2);

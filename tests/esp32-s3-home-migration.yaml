@@ -3,42 +3,103 @@ substitutions:
   device_name: ci-home-s3-minion
   friendly_name: CI Home S3 Minion
   timezone: America/New_York
-  graph_interval: 12h
   clock_page_duration_ms: '4000'
-  metric_panel_style: '1'
 
-  metric_1_label: Gazebo
-  metric_1_entity: sensor.example_gazebo
-  metric_1_enabled: 'true'
-  metric_1_duration_ms: '4000'
 
-  metric_2_label: Shed
-  metric_2_entity: sensor.example_shed
-  metric_2_enabled: 'true'
-  metric_2_duration_ms: '4000'
 
-  metric_3_label: Kitchen
-  metric_3_entity: sensor.example_kitchen
-  metric_3_enabled: 'true'
-  metric_3_duration_ms: '4000'
 
-  metric_4_label: Master
-  metric_4_entity: sensor.example_master
-  metric_4_enabled: 'true'
-  metric_4_duration_ms: '4000'
 
-  metric_5_label: Bunk
-  metric_5_entity: sensor.example_bunk
-  metric_5_enabled: 'true'
-  metric_5_duration_ms: '4000'
-
-  metric_6_enabled: 'false'
 
   ha_base_url: http://homeassistant.local:8123
 
 packages:
   round_minion: !include
     file: ../profiles/esp32-s3-quad-psram-camera.yaml
+
+  gazebo_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: gazebo
+      page_label: Gazebo
+      page_entity: sensor.example_gazebo
+      page_duration_ms: '4000'
+      page_order: '10'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 90.2%
+      page_color_green: 62.4%
+      page_color_blue: 0%
+
+  shed_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: shed
+      page_label: Shed
+      page_entity: sensor.example_shed
+      page_duration_ms: '4000'
+      page_order: '20'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 33.7%
+      page_color_green: 70.6%
+      page_color_blue: 91.4%
+
+  kitchen_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: kitchen
+      page_label: Kitchen
+      page_entity: sensor.example_kitchen
+      page_duration_ms: '4000'
+      page_order: '30'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 0%
+      page_color_green: 62.0%
+      page_color_blue: 45.1%
+
+  master_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: master
+      page_label: Master
+      page_entity: sensor.example_master
+      page_duration_ms: '4000'
+      page_order: '40'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 94.1%
+      page_color_green: 89.4%
+      page_color_blue: 25.9%
+
+  bunk_page: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: bunk
+      page_label: Bunk
+      page_entity: sensor.example_bunk
+      page_duration_ms: '4000'
+      page_order: '50'
+      page_graph_interval: 12h
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 80.0%
+      page_color_green: 47.5%
+      page_color_blue: 65.5%
 
   front_camera: !include
     file: ../packages/camera-source.yaml

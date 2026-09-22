@@ -9,32 +9,95 @@ packages deliberately contain no `!secret` lookups.
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| `device_name` | `round-minion` | Set a unique name; preserve existing names when migrating. |
+| `device_name` | `round-minion` | Set a unique name; preserve it across firmware updates. |
 | `friendly_name` | `Round Minion` | User-facing device name. |
-| `timezone` | `Etc/UTC` | Your timezone; not inferred from the builder's location. |
-| `graph_interval` | `12h` | Graph history. |
-| `clock_page_duration_ms` | `'8000'` | Milliseconds, positive integer string. |
-| `metric_panel_style` | `'1'` | 0 none / 1 rounded panel / 2 horizontal band. Battery always uses its own body. |
-| `metric_N_enabled` | `'true'` | N=1–6. Use `'true'` or `'false'`. Must leave at least one enabled. |
-| `metric_N_label` | `Metric N`, slot 6 `Battery` | Keep short enough for 44px type. No embedded quotes, backslashes, or newlines. |
-| `metric_N_entity` | `sensor.example_metric_N` | Real HA entity of a numeric sensor; ignored for a disabled slot. |
-| `metric_N_duration_ms` | `'8000'` | Positive integer milliseconds for each content page. |
-| `metric_N_unit` | `°F` | N=1–5; metadata, **not conversion**. |
-| `metric_N_suffix` | `°` | N=1–5; text after displayed number. |
-| `metric_N_decimals` | `'1'` | N=1–5; decimals in the number. Slot 6 displays whole percent. |
+| `timezone` | `Etc/UTC` | Device timezone. |
+| `clock_page_duration_ms` | `'8000'` | Clock interstitial duration after every content page. |
 
-For example, no battery on a display:
+## Rotation page templates
+
+Version 0.5.0 removes the six-page limit from the rotation engine. The display
+maintains an ordered registry populated by page-template instances at boot.
+Each template has a unique `page_id`, integer `page_order`, and
+`page_duration_ms`. The clock is still inserted automatically after every
+normal content page.
+
+### Numeric / temperature page
+
+Include `packages/page-numeric.yaml` once for every numeric page. There is no
+shared-code count limit.
 
 ```yaml
-substitutions:
-  metric_6_enabled: 'false'
+- path: packages/page-numeric.yaml
+  vars:
+    page_id: kitchen
+    page_label: Kitchen
+    page_entity: sensor.kitchen_temperature
+    page_duration_ms: '4000'
+    page_order: '10'
+    page_graph_interval: 12h
+    page_unit: °F
+    page_suffix: °
+    page_decimals: '1'
+    page_panel_style: '1'
+    page_color_red: 0%
+    page_color_green: 62%
+    page_color_blue: 45%
 ```
 
-The 84px value stays centered. Values wider than 220 pixels can lose the decimal
-rather than shrinking the font. Other very long numeric values/suffixes are not
-arbitrarily auto-fit. The current geometry is for temperatures and battery
-percentages, not long text. Font families/sizes remain 44px Roboto title, 84px
-Roboto value, 36px Roboto footer, 92px Oswald hour/minute.
+`page_unit` is Home Assistant sensor metadata and does not convert values.
+`page_suffix` is the text rendered after the number. Colors are independent
+per page.
+
+### Battery page
+
+Include `packages/page-battery.yaml` for each battery percentage page:
+
+```yaml
+- path: packages/page-battery.yaml
+  vars:
+    page_id: main_battery
+    page_label: Battery
+    page_entity: sensor.main_battery_percent
+    page_duration_ms: '4000'
+    page_order: '50'
+    page_graph_interval: 12h
+```
+
+The battery renderer keeps the 0–25 red, 25–50 yellow, 50–75 cyan/blue, and
+75–100 green bands. Multiple battery pages are allowed.
+
+### Camera rotation page
+
+`packages/page-camera.yaml` deliberately puts a still camera view into normal
+rotation. It is optional and separate from alert snapshots. It requires a
+camera-enabled profile because it reuses that profile's shared HTTP requester.
+
+```yaml
+- path: packages/page-camera.yaml
+  vars:
+    page_id: driveway_view
+    page_label: DRIVEWAY
+    page_entity: camera.driveway
+    page_duration_ms: '5000'
+    page_order: '60'
+```
+
+The page requests the camera's current `entity_picture` when it enters
+rotation, releases the decoded image when it leaves, and uses the same
+origin/token validation and RAM guards as the alert design. Adding a camera
+rotation page does **not** change camera-alert trigger rules.
+
+Practical limits remain the device's RAM, flash, component count, and Home
+Assistant subscriptions rather than an artificial page-count constant. CI
+includes a synthetic 12-content-page configuration containing 10 numeric pages,
+one battery page, and one camera page.
+
+Numeric and battery pages show a sliding page-position indicator. Up to nine
+page dots are displayed at once. When earlier pages are outside the visible
+window a left chevron is shown; when later pages are outside the visible window
+a right chevron is shown. The active page stays centered when possible. Camera
+rotation pages remain clean full-screen images and do not overlay the indicator.
 
 ## Hardware overrides
 
@@ -54,20 +117,20 @@ Roboto value, 36px Roboto footer, 92px Oswald hour/minute.
 hardware profile. Do not copy the S3/full-buffer choice onto a C3 to silence
 warnings. Actual free contiguous memory matters for camera allocations.
 Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior in
-v0.4.0. Quiet-hours automation is not added automatically. Existing per-device
+v0.5.0. Quiet-hours automation is not added automatically. Existing per-device
 quiet-hours logic can be kept in a local package when migrating other minions.
 
 ## Optional camera feature
 
-A `*-camera.yaml` profile adds the **shared camera engine only**: HTTP/JPEG
-download, the single decoded image buffer, full-screen rendering, Camera Alerts
-switch, timeout/RAM guards, and the alert queue. Camera sources are separate
+A `*-camera.yaml` profile adds the shared camera engine: HTTP/JPEG download,
+the single decoded alert image buffer, full-screen rendering, timeout/RAM guards,
+and the alert queue. Camera sources are separate
 instances of `packages/camera-source.yaml`.
 
 There is **no hard-coded camera count**. ESPHome remote packages allow the same
 file to be listed repeatedly with different `vars`; each instance contributes
 one HA camera attribute subscription, one manual button, one per-source cooldown,
-and whichever detector subscriptions are enabled. Practical flash/RAM/API entity
+one per-camera **Alerts** configuration switch, and whichever detector subscriptions are enabled. Practical flash/RAM/API entity
 limits still apply, but adding a fifth, sixth, or later camera does not require
 editing this repository.
 
@@ -109,6 +172,16 @@ When person and vehicle are both enabled on one source, they are **OR** triggers
 A vehicle-only source does not subscribe to its person entity. A manual-only
 source sets both trigger flags false but still gets its snapshot button.
 
+Every source exposes its own **<SOURCE> Alerts** switch, so automatic alerts are
+enabled or disabled independently per camera. Manual snapshot buttons bypass
+that source's automatic-alert switch and cooldown, but retain the readiness/RAM
+safeguards.
+
+The user-facing diagnostic is **Last Camera Alert**. It remains short, for
+example `FRONT: Person` or `DRIVEWAY: Vehicle`. Manual snapshots do not
+replace it. Internal download/progress status is no longer exposed as a separate
+Home Assistant diagnostic entity.
+
 Example remote package with two cameras:
 
 ```yaml
@@ -147,12 +220,12 @@ packages:
     refresh: 1d
 ```
 
-Only **one JPEG is decoded at a time**, regardless of how many source instances
-are configured. Source requests enter a bounded shared queue containing strings
-and small parameters, not images. Per-source cooldowns suppress duplicate
+Only **one alert JPEG is decoded at a time**, regardless of how many camera
+sources are configured. Source requests enter a bounded shared queue containing
+strings and small parameters, not images. Per-source cooldowns suppress duplicate
 automatic detections before queueing; stale automatic requests expire so a burst
-cannot monopolize the display indefinitely. Manual requests bypass the automatic
-Camera Alerts switch and source cooldown but use the same single-buffer engine.
+cannot monopolize the display indefinitely. Manual requests bypass the source
+Alerts switch and cooldown but use the same alert engine.
 
 The original RAM thresholds are conservative checks, not guarantees of decoder
 success. Camera access tokens come from each source's current `entity_picture`,

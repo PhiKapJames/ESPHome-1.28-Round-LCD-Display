@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: validate-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-24.04
@@ -24,11 +28,12 @@ jobs:
           - esp32-s3-quad-psram
           - esp32-s3-quad-psram-camera
           - esp32-s3-home-migration
+          - esp32-s3-template-pages
     container:
       image: ghcr.io/esphome/esphome:2026.9.0
     steps:
-      # actions/checkout v4.2.2, pinned to its commit rather than a moving tag.
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      # actions/checkout v7.0.1 (Node 24), pinned to its commit rather than a moving tag.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
       - name: Check public source and package structure
         run: |
           python scripts/check_public.py

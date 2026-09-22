@@ -46,7 +46,8 @@ script:
           if (!id(display_initialized))
             return false;
 
-          if (!override_request && !id(camera_alerts_enabled).state)
+          if (!override_request &&
+              !id(camera_alerts_enabled_${camera_id}).state)
             return false;
 
           if (!override_request) {
@@ -84,6 +85,15 @@ script:
           trigger_code: !lambda return trigger_code;
           override_request: !lambda return override_request;
           requested_ms: !lambda return static_cast<int32_t>(millis());
+
+switch:
+- platform: template
+  id: camera_alerts_enabled_${camera_id}
+  name: "${camera_source_label} Alerts"
+  entity_category: config
+  icon: mdi:bell
+  optimistic: true
+  restore_mode: RESTORE_DEFAULT_ON
 
 button:
 - platform: template

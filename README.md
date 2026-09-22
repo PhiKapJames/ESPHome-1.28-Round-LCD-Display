@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.4.0 — renderer performance candidate.** The package structure has been
+**Version: 0.5.0 — template rotation candidate.** The package structure has been
 checked offline. The initial package extraction has not yet been compiled as ESPHome
 firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
 and compilation after publication. Check those results and validate your local
@@ -13,9 +13,11 @@ configuration before installing. See [validation](docs/VALIDATION.md).
 
 ## What it displays
 
-- Up to five numeric/temperature pages and one optional battery-percentage page.
+- Any number of reusable numeric/temperature and battery-percentage rotation
+  pages, ordered with `page_order`.
 - Large centered readings, rounded panels, location accents, real 12-hour graphs,
-  and page-position dots with an active halo.
+  and a sliding page-position indicator. Up to nine dots are shown at once;
+  left/right chevrons indicate additional pages before or after the visible window.
 - A shared large-font clock between each enabled content page.
 - A horizontal battery silhouette filled from the reported percentage, with
   red/yellow/cyan/green charge bands and a high-contrast outlined value.
@@ -24,15 +26,20 @@ configuration before installing. See [validation](docs/VALIDATION.md).
   device's private package list. Each source can trigger on person, vehicle,
   both (OR), or neither/manual-only. Single-lens and multi-lens cameras are
   treated the same; configure the HA camera entity whose image you want.
-  Camera pages never join the regular playlist or add a page dot.
-- A manual/automation snapshot button for every configured camera source.
+  Alert snapshots never join the regular playlist unless a separate
+  `page-camera.yaml` rotation-page template is explicitly configured.
+- An optional normal-rotation camera-page template for deliberately putting a
+  camera view into the playlist.
+- A manual/automation snapshot button and independent Alerts switch for every
+  configured camera source.
   Overrides bypass automatic enable/cooldown, not readiness or RAM checks.
 - Alerts save the current page and its remaining duration, then resume afterward.
 
-Version 0.4.0 preserves the established rendering geometry and snapshot behavior
-while reducing avoidable render work: static arc coordinates are precomputed,
-the minute marker uses a lookup table, and the redundant once-per-minute forced
-redraw is removed.
+Version 0.5.0 replaces the fixed six-slot scheduler with one ordered runtime
+page registry. Pages are explicit template instances: `page-numeric.yaml`,
+`page-battery.yaml`, and optionally `page-camera.yaml`. There is no fixed
+numeric/battery page count in shared code; practical hardware resources are the
+limit.
 
 ## Installation
 
@@ -110,17 +117,15 @@ See [configuration reference](docs/CONFIGURATION.md). Site settings can be share
 with a local package such as `!include minion-sites/site.yaml`. These local site
 files and `secrets.yaml` must **not** be uploaded to this repository.
 
-Slots 1–5 accept numeric values with a configurable label, unit suffix, and
-number of decimals. Slot 6 is the battery presentation and expects **0–100%**.
-Disable a slot with `metric_3_enabled: 'false'`. Disabled slots are removed from
-the playlist and page dots and have no Home Assistant subscription. In v0.4.0,
-the small per-slot graph allocations are still reserved. All slots cannot be
-disabled. The relative order of enabled slots is 1 through 6.
+Rotation content is defined entirely by template instances. Each page supplies
+its own `page_id`, `page_order`, duration, source entity, and renderer-specific
+settings. Configurations such as 10 temperature pages + 1 battery page are
+ordinary configuration changes rather than shared-code changes. See
+[configuration reference](docs/CONFIGURATION.md) and
+[template example](examples/template-pages.example.yaml).
 
-The configured `unit` is metadata, not unit conversion. Home Assistant must
-supply the values in the intended units. Add a conversion filter locally when
-needed. Adding more than six slots or changing their order is a code change in
-this initial release, not a runtime Home Assistant setting.
+The configured numeric-page `page_unit` is metadata, not unit conversion.
+Home Assistant must supply values in the intended units.
 
 Camera snapshots use the camera entity's `entity_picture` attribute and its
 rotating token. Set `ha_base_url` to the same Home Assistant instance importing
@@ -154,7 +159,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.4.0 remains a hardware-validation candidate, not
+Version 0.5.0 remains a hardware-validation candidate, not
 a claim of hardware validation. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed
 remote package may use a tested full commit SHA, avoiding an assumed tag or a
