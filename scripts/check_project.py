@@ -235,6 +235,27 @@ def test_configs():
     assert len([x for x in multi_ids if x.startswith('camera_picture_path_')]) == 6
     print('PASS six reusable camera instances and independent detector routing')
 
+    assert 'last_camera_alert' in multi_ids
+    last_alert=next(x for x in multi['text_sensor'] if x.get('id')=='last_camera_alert')
+    assert last_alert['name']=='Last Camera Alert'
+    assert next(x for x in multi['text_sensor'] if x.get('id')=='camera_alert_status')['internal'] is True
+    print('PASS Last Camera Alert diagnostic and internal engine status')
+
+    template_cfg,_=expand_file(ROOT/'tests/esp32-s3-template-pages.yaml')
+    template_ids=set(definition_ids(template_cfg))
+    imported=[s for s in template_cfg['sensor'] if s['platform']=='homeassistant']
+    assert len(imported)==11
+    assert len(template_cfg.get('graph',[]))==11
+    for i in range(1,11):
+        assert f'rotation_page_numeric_{i}' in template_ids
+        assert f'rotation_sensor_numeric_{i}' in template_ids
+    assert 'rotation_page_battery_main' in template_ids
+    assert 'rotation_battery_sensor_battery_main' in template_ids
+    assert 'rotation_page_camera_front' in template_ids
+    assert 'rotation_camera_picture_camera_front' in template_ids
+    assert 'rotation_camera_image_camera_front' in template_ids
+    print('PASS 10 numeric + battery + camera rotation template stress fixture')
+
     # Exercise every legacy enabled-slot combination. Zero legacy pages is now
     # valid because template page instances can provide the rotation instead.
     for mask in range(0,64):
