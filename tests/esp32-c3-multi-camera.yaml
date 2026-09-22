@@ -1,36 +1,101 @@
 # SYNTHETIC CI FIXTURE. Never install on a real device.
+# Six sources intentionally exceed the old four-source implementation.
 substitutions:
   device_name: ci-esp32-c3-multi-camera
-  friendly_name: CI Multi Camera
-
-  # Source 1: person OR vehicle.
-  camera_1_trigger_person: 'true'
-  camera_1_person_entity: binary_sensor.example_driveway_person
-  camera_1_trigger_vehicle: 'true'
-  camera_1_vehicle_entity: binary_sensor.example_driveway_vehicle
-
-  # Source 2: vehicle only.
-  camera_2_enabled: 'true'
-  camera_2_entity: camera.example_parking_camera
-  camera_2_source_label: PARKING
-  camera_2_status_label: parking
-  camera_2_button_name: Show Parking Snapshot
-  camera_2_trigger_person: 'false'
-  camera_2_trigger_vehicle: 'true'
-  camera_2_vehicle_entity: binary_sensor.example_parking_vehicle
-
+  friendly_name: CI Many Cameras
 packages:
   round_minion: !include
     file: ../profiles/esp32-c3-camera.yaml
 
-wifi:
-  ssid: ROUND_MINIONS_CI_ONLY
-  password: not-a-real-network-password
+  driveway: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: driveway
+      camera_entity: camera.example_driveway
+      camera_source_label: DRIVEWAY
+      camera_status_label: driveway
+      camera_button_name: Show Driveway Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_driveway_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_driveway_vehicle
+      camera_cooldown_ms: '60000'
 
+  parking: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: parking
+      camera_entity: camera.example_parking
+      camera_source_label: PARKING
+      camera_status_label: parking
+      camera_button_name: Show Parking Snapshot
+      camera_trigger_person: 'false'
+      camera_person_entity: binary_sensor.example_parking_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_parking_vehicle
+      camera_cooldown_ms: '60000'
+
+  backyard: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: backyard
+      camera_entity: camera.example_backyard
+      camera_source_label: BACKYARD
+      camera_status_label: backyard
+      camera_button_name: Show Backyard Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_backyard_person
+      camera_trigger_vehicle: 'false'
+      camera_vehicle_entity: binary_sensor.example_backyard_vehicle
+      camera_cooldown_ms: '60000'
+
+  garage: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: garage
+      camera_entity: camera.example_garage
+      camera_source_label: GARAGE
+      camera_status_label: garage
+      camera_button_name: Show Garage Snapshot
+      camera_trigger_person: 'false'
+      camera_person_entity: binary_sensor.example_garage_person
+      camera_trigger_vehicle: 'false'
+      camera_vehicle_entity: binary_sensor.example_garage_vehicle
+      camera_cooldown_ms: '60000'
+
+  side: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: side
+      camera_entity: camera.example_side
+      camera_source_label: SIDE
+      camera_status_label: side
+      camera_button_name: Show Side Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_side_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_side_vehicle
+      camera_cooldown_ms: '45000'
+
+  street: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: street
+      camera_entity: camera.example_street
+      camera_source_label: STREET
+      camera_status_label: street
+      camera_button_name: Show Street Snapshot
+      camera_trigger_person: 'false'
+      camera_person_entity: binary_sensor.example_street_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_street_vehicle
+      camera_cooldown_ms: '30000'
 api:
   encryption:
     key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
-
 ota:
 - platform: esphome
   password: not-a-production-password
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
