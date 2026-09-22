@@ -93,6 +93,12 @@ Assistant subscriptions rather than an artificial page-count constant. CI
 includes a synthetic 12-content-page configuration containing 10 numeric pages,
 one battery page, and one camera page.
 
+Numeric and battery pages show a sliding page-position indicator. Up to nine
+page dots are displayed at once. When earlier pages are outside the visible
+window a left chevron is shown; when later pages are outside the visible window
+a right chevron is shown. The active page stays centered when possible. Camera
+rotation pages remain clean full-screen images and do not overlay the indicator.
+
 ## Hardware overrides
 
 | Setting | Default |
