@@ -109,6 +109,16 @@ packages:
       camera_vehicle_entity: binary_sensor.example_driveway_vehicle
       camera_cooldown_ms: '60000'
 
+esp32:
+  framework:
+    sdkconfig_options:
+      CONFIG_LWIP_TCPIP_TASK_STACK_SIZE: "6144"
+      CONFIG_LWIP_CHECK_THREAD_SAFETY: y
+      CONFIG_LWIP_TCPIP_CORE_LOCKING: n
+
+logger:
+  baud_rate: 921600
+
 external_components:
 - source:
     type: git
