@@ -63,25 +63,32 @@ display:
         it.print(x, baseline, f, color, TextAlign::BASELINE_CENTER, text);
       };
 
-      // Thick arcs: degrees clockwise from the right-hand side.
-      auto arc = [&](int radius, int start, int end,
-                     int thickness, Color color) {
-        for (int angle = start; angle <= end; angle += 2) {
-          const float a = angle * 0.01745329252f;
-          const int x = 120 + lroundf(radius * cosf(a));
-          const int y = 120 + lroundf(radius * sinf(a));
-          it.filled_circle(x, y, thickness / 2, color);
-        }
+      // Static arc coordinates are precomputed once in source so the renderer
+      // does no sin/cos work on every display pass. Coordinates match the
+      // previous 2-degree/radius-115 geometry.
+      static constexpr int METRIC_ARC_POINTS[][2] = {
+        {20,63},{22,59},{25,56},{27,52},{29,49},{32,46},{35,43},{37,40},
+        {40,37},{43,35},{46,32},{49,29},{52,27},{56,25},{59,22},{63,20},
+        {66,18},{70,17},{73,15},{77,13},{81,12},{84,11},
+        {156,11},{159,12},{163,13},{167,15},{170,17},{174,18},{178,20},
+        {181,22},{184,25},{188,27},{191,29},{194,32},{197,35},{200,37},
+        {203,40},{205,43},{208,46},{211,49},{213,52},{215,56},{218,59},{220,63},
+        {220,177},{218,181},{215,184},{213,188},{211,191},{208,194},{205,197},
+        {203,200},{200,203},{197,205},{194,208},{191,211},{188,213},{184,215},
+        {181,218},{178,220},{174,222},{170,223},{167,225},{163,227},{159,228},
+        {156,229},{84,229},{81,228},{77,227},{73,225},{70,223},{66,222},
+        {63,220},{59,218},{56,215},{52,213},{49,211},{46,208},{43,205},
+        {40,203},{37,200},{35,197},{32,194},{29,191},{27,188},{25,184},
+        {22,181},{20,177}
       };
 
       it.fill(Color::BLACK);
 
-      // Four substantial illuminated brackets, not a hairline border.
+      // Four substantial illuminated brackets, unchanged visually.
       it.circle(120, 120, 115, dim);
-      arc(115, -150, -108, 6, accent);
-      arc(115,  -72,  -30, 6, accent);
-      arc(115,   30,   72, 6, accent);
-      arc(115,  108,  150, 6, accent);
+      for (const auto &point : METRIC_ARC_POINTS) {
+        it.filled_circle(point[0], point[1], 3, accent);
+      }
 
       // The 44px title is moved inward. Baseline 71 avoids the narrow top.
       it.print(120, 71, id(title_font), accent,
@@ -214,17 +221,32 @@ display:
           120 + id(temp_font)->get_capheight() / 2;
 
       if (is_battery) {
-        // High-contrast outlined percentage: a 2px black keyline makes the
-        // white 84px value readable over red/yellow/cyan/green and empty gray.
+        // Hardware profile selects outline cost. C3 uses four cardinal keyline
+        // draws; S3 keeps the full eight-direction outline.
+        constexpr int BATTERY_OUTLINE_QUALITY = ${battery_outline_quality};
+        static_assert(BATTERY_OUTLINE_QUALITY == 1 ||
+                      BATTERY_OUTLINE_QUALITY == 2,
+                      "battery_outline_quality must be 1 or 2");
+
         const Color outline(0, 0, 0);
-        const int outline_offsets[][2] = {
-          {-2, 0}, {2, 0}, {0, -2}, {0, 2},
+        static constexpr int CARDINAL_OFFSETS[][2] = {
+          {-2, 0}, {2, 0}, {0, -2}, {0, 2}
+        };
+        static constexpr int DIAGONAL_OFFSETS[][2] = {
           {-2, -2}, {-2, 2}, {2, -2}, {2, 2}
         };
-        for (const auto &offset : outline_offsets) {
+
+        for (const auto &offset : CARDINAL_OFFSETS) {
           it.print(120 + offset[0], value_baseline + offset[1],
                    id(temp_font), outline,
                    TextAlign::BASELINE_CENTER, value_text);
+        }
+        if constexpr (BATTERY_OUTLINE_QUALITY == 2) {
+          for (const auto &offset : DIAGONAL_OFFSETS) {
+            it.print(120 + offset[0], value_baseline + offset[1],
+                     id(temp_font), outline,
+                     TextAlign::BASELINE_CENTER, value_text);
+          }
         }
         it.print(120, value_baseline, id(temp_font), Color::WHITE,
                  TextAlign::BASELINE_CENTER, value_text);
