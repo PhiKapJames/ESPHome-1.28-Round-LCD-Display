@@ -90,60 +90,6 @@ image:
         if (rotation_download) id(camera_rotation_phase) = 4;
         ESP_LOGW("camera_alert", "Snapshot failed; check HA address, camera, and free RAM");
 
-text_sensor: NONE
-    text_sensor: NONE
-
-http_request:
-  id: camera_http
-  timeout: 5s
-  follow_redirects: false
-  verify_ssl: true
-  buffer_size_rx: 1024
-  buffer_size_tx: 512
-
-image:
-- platform: online_image
-  id: camera_snapshot
-  http_request_id: camera_http
-  # Placeholder only. A queued source request replaces this before download.
-  url: ${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder
-  format: JPEG
-  type: RGB565
-  transparency: opaque
-  resize: ${camera_image_width}x${camera_image_height}
-  update_interval: never
-  buffer_size: 4096
-  request_headers:
-    Cache-Control: no-cache
-  on_download_finished:
-    then:
-    - lambda: |-
-        if (!id(camera_alert_active) || id(camera_alert_phase) != 2)
-          return;
-
-        const int width = id(camera_snapshot).get_width();
-        const int height = id(camera_snapshot).get_height();
-        if (cached || width <= 0 || height <= 0 ||
-            width > ${camera_image_width} ||
-            height > ${camera_image_height}) {
-          id(camera_alert_phase) = 4;
-          ESP_LOGW("camera_alert", "No valid fresh snapshot was received");
-          return;
-        }
-
-        id(camera_alert_phase) = 3;
-        ESP_LOGI("camera_alert", "%s ready: %dx%d; free heap=%u, largest=%u",
-                 id(camera_active_status_label).c_str(), width, height,
-                 (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
-                 (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-  on_error:
-    then:
-    - lambda: |-
-        if (!id(camera_alert_active) || id(camera_alert_phase) != 2)
-          return;
-        id(camera_alert_phase) = 4;
-        ESP_LOGW("camera_alert", "Snapshot failed; check HA address, camera, and free RAM");
-
 text_sensor:
 - platform: template
   id: last_camera_alert
@@ -220,8 +166,6 @@ script:
       then:
       - lambda: |-
           if (id(camera_rotation_active)) {
-            // A real alert supersedes an optional camera page in the normal
-            // rotation. Resume at the next item after the alert.
             id(rotation_resume_pending) = false;
           } else {
             const uint32_t elapsed = millis() - id(normal_started_ms);
@@ -357,6 +301,7 @@ script:
           - delay: ${camera_error_hold_time}
 
       - lambda: |-
+          const bool success = id(camera_alert_phase) == 3;
           id(camera_alert_active) = false;
           id(camera_alert_phase) = 0;
 
@@ -377,6 +322,132 @@ script:
                    (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
 
       - script.execute: display_rotation
+
+- id: camera_rotation_page
+  # Used only by the opt-in template rotation profiles. Existing Camper/Home
+  # configurations never call this script.
+  mode: single
+  parameters:
+    source_entity: string
+    source_label: string
+    picture_path: string
+    duration_ms: int
+  then:
+  - if:
+      condition:
+        lambda: return id(display_initialized) && !id(camera_alert_active);
+      then:
+      - lambda: |-
+          id(camera_rotation_active) = true;
+          id(camera_rotation_phase) = 1;
+          id(camera_active_entity) = source_entity;
+          id(camera_active_source_label) = source_label;
+          id(camera_active_status_label) = source_label;
+
+      - online_image.release: camera_snapshot
+      - display.page.show: page_camera_rotation
+      - component.update: main_display
+
+      - lambda: |-
+          std::string path = picture_path;
+          const std::string expected = "/api/camera_proxy/" + source_entity;
+          std::string base = "${ha_base_url}";
+          while (!base.empty() && base.back() == '/') base.pop_back();
+
+          if (path.compare(0, base.size() + 1, base + "/") == 0)
+            path.erase(0, base.size());
+
+          const auto question = path.find('?');
+          if (base.empty() ||
+              (base.compare(0, 7, "http://") != 0 &&
+               base.compare(0, 8, "https://") != 0) ||
+              question == std::string::npos ||
+              path.substr(0, question) != expected) {
+            id(camera_rotation_phase) = 7;
+            ESP_LOGW("camera_rotation", "Missing or unexpected HA camera path");
+            return;
+          }
+
+          auto token_pos = path.find("?token=");
+          if (token_pos == std::string::npos)
+            token_pos = path.find("&token=");
+
+          std::string token;
+          if (token_pos != std::string::npos) {
+            token_pos += 7;
+            const auto token_end = path.find_first_of("&#", token_pos);
+            token = path.substr(token_pos, token_end - token_pos);
+          }
+
+          bool token_ok = !token.empty() && token.size() <= 128;
+          for (char ch : token) {
+            if (!((ch >= '0' && ch <= '9') ||
+                  (ch >= 'a' && ch <= 'f') ||
+                  (ch >= 'A' && ch <= 'F')))
+              token_ok = false;
+          }
+          if (!token_ok) {
+            id(camera_rotation_phase) = 7;
+            ESP_LOGW("camera_rotation", "No usable HA camera token");
+            return;
+          }
+
+          const size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_8BIT);
+          const size_t largest =
+              heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+          if (free_heap < ${camera_min_free_heap} ||
+              largest < ${camera_min_largest_block}) {
+            id(camera_rotation_phase) = 6;
+            ESP_LOGW("camera_rotation", "RAM guard skipped rotation camera image");
+            return;
+          }
+
+          id(camera_snapshot).set_url(
+              base + expected + "?token=" + token +
+              "&width=${camera_image_width}&height=${camera_image_height}" +
+              "&_esphome=" + std::to_string(millis()));
+          id(camera_rotation_phase) = 2;
+
+      - if:
+          condition:
+            lambda: return id(camera_rotation_phase) == 2;
+          then:
+          - component.update: camera_snapshot
+          - wait_until:
+              condition:
+                lambda: return id(camera_rotation_phase) != 2;
+              timeout: ${camera_download_timeout}
+          - if:
+              condition:
+                lambda: return id(camera_rotation_phase) == 2;
+              then:
+              - lambda: |-
+                  id(camera_rotation_phase) = 5;
+                  ESP_LOGW("camera_rotation", "Snapshot timed out");
+
+      - if:
+          condition:
+            lambda: return id(camera_rotation_phase) != 3;
+          then:
+          - online_image.release: camera_snapshot
+
+      - component.update: main_display
+
+      - if:
+          condition:
+            lambda: return id(camera_rotation_phase) == 3;
+          then:
+          - delay: !lambda return static_cast<uint32_t>(duration_ms);
+          else:
+          - delay: ${camera_error_hold_time}
+
+      - lambda: |-
+          id(camera_rotation_active) = false;
+          id(camera_rotation_phase) = 0;
+      - online_image.release: camera_snapshot
+      - lambda: |-
+          id(camera_snapshot).set_url(
+              "${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder");
 
 switch:
 - platform: template
@@ -457,6 +528,71 @@ display:
       it.print(120, 161, id(time_font), Color::WHITE,
                TextAlign::BASELINE_CENTER, line2);
       it.print(120, 210, id(camera_meta_font), alert_color,
+               TextAlign::BASELINE_CENTER,
+               id(camera_active_source_label).c_str());
+
+  - id: page_camera_rotation
+    lambda: |-
+      it.fill(Color::BLACK);
+
+      const int source_width = id(camera_snapshot).get_width();
+      const int source_height = id(camera_snapshot).get_height();
+
+      if (id(camera_rotation_active) && id(camera_rotation_phase) == 3 &&
+          source_width > 0 && source_height > 0) {
+        constexpr int SCREEN_SIZE = 240;
+        const int crop_size =
+            source_width < source_height ? source_width : source_height;
+        const int crop_x = (source_width - crop_size) / 2;
+        const int crop_y = (source_height - crop_size) / 2;
+
+        uint16_t source_index[SCREEN_SIZE];
+        for (int i = 0; i < SCREEN_SIZE; i++) {
+          source_index[i] = static_cast<uint16_t>(
+              ((2 * i + 1) * crop_size) / (2 * SCREEN_SIZE));
+        }
+
+        for (int y = 0; y < SCREEN_SIZE; ) {
+          const int sy = source_index[y];
+          int next_y = y + 1;
+          while (next_y < SCREEN_SIZE && source_index[next_y] == sy)
+            next_y++;
+
+          for (int x = 0; x < SCREEN_SIZE; ) {
+            const int sx = source_index[x];
+            int next_x = x + 1;
+            while (next_x < SCREEN_SIZE && source_index[next_x] == sx)
+              next_x++;
+            const Color pixel =
+                id(camera_snapshot).get_pixel(crop_x + sx, crop_y + sy);
+            it.filled_rectangle(x, y, next_x - x, next_y - y, pixel);
+            x = next_x;
+          }
+          y = next_y;
+        }
+        return;
+      }
+
+      const Color accent(0, 204, 255);
+      it.filled_ring(120, 120, 116, 113, accent);
+
+      const char *line1 = "Loading";
+      const char *line2 = "camera";
+      if (id(camera_rotation_phase) == 4) {
+        line1 = "No image"; line2 = "Check HA";
+      } else if (id(camera_rotation_phase) == 5) {
+        line1 = "Timed out"; line2 = "No image";
+      } else if (id(camera_rotation_phase) == 6) {
+        line1 = "Low RAM"; line2 = "No image";
+      } else if (id(camera_rotation_phase) == 7) {
+        line1 = "No source"; line2 = "Check HA";
+      }
+
+      it.print(120, 110, id(time_font), Color::WHITE,
+               TextAlign::BASELINE_CENTER, line1);
+      it.print(120, 152, id(time_font), Color::WHITE,
+               TextAlign::BASELINE_CENTER, line2);
+      it.print(120, 210, id(camera_meta_font), accent,
                TextAlign::BASELINE_CENTER,
                id(camera_active_source_label).c_str());
 
