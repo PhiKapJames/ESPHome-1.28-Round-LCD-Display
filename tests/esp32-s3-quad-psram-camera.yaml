@@ -1,17 +1,29 @@
-# SYNTHETIC CI FIXTURE. Never install on a real device; no user settings here.
+# SYNTHETIC CI FIXTURE. Never install on a real device.
 substitutions:
   device_name: ci-esp32-s3-quad-psram-camera
   friendly_name: CI Only
 packages:
   round_minion: !include
     file: ../profiles/esp32-s3-quad-psram-camera.yaml
-wifi:
-  ssid: ROUND_MINIONS_CI_ONLY
-  password: not-a-real-network-password
+  camera_test: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: test
+      camera_entity: camera.example_camera
+      camera_source_label: TEST
+      camera_status_label: test
+      camera_button_name: Show Test Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_person
+      camera_trigger_vehicle: 'false'
+      camera_vehicle_entity: binary_sensor.example_vehicle
+      camera_cooldown_ms: '60000'
 api:
   encryption:
-    # Public synthetic bytes 1..32, not a production key.
     key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
 ota:
 - platform: esphome
   password: not-a-production-password
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
