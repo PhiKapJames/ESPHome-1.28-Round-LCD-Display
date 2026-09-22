@@ -138,6 +138,13 @@ script:
 
           if (id(rotation_resume_pending) && id(normal_page) != nullptr) {
             id(rotation_resume_pending) = false;
+            const int index = id(active_rotation_index);
+            if (!id(normal_is_clock) &&
+                index >= 0 &&
+                static_cast<size_t>(index) < id(rotation_enter_callbacks).size() &&
+                id(rotation_enter_callbacks)[index]) {
+              id(rotation_enter_callbacks)[index]();
+            }
             id(main_display).show_page(id(normal_page));
           } else {
             id(rotation_resume_pending) = false;
