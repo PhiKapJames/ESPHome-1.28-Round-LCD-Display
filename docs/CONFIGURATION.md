@@ -48,12 +48,13 @@ Roboto value, 36px Roboto footer, 92px Oswald hour/minute.
 | `backlight_pin` | `GPIO6` |
 | `display_rotation_degrees` | `'0'` |
 | `display_spi_rate` | `80MHz` |
+| `battery_outline_quality` | hardware profile | `1` = four-direction C3 keyline; `2` = full eight-direction S3 keyline. |
 
-`display_color_depth` and `display_buffer_size` are supplied by the selected
+`display_color_depth`, `display_buffer_size`, and `battery_outline_quality` are supplied by the selected
 hardware profile. Do not copy the S3/full-buffer choice onto a C3 to silence
 warnings. Actual free contiguous memory matters for camera allocations.
 Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior in
-v0.3.0. Quiet-hours automation is not added automatically. Existing per-device
+v0.4.0. Quiet-hours automation is not added automatically. Existing per-device
 quiet-hours logic can be kept in a local package when migrating other minions.
 
 ## Optional camera feature
@@ -171,3 +172,20 @@ many devices; root/device values take precedence over inherited packages.
 Credentials stay in the local ESPHome `secrets.yaml`. Avoid connecting a minion
 to both Home and another HA that publish colliding entity IDs unless you have a
 separate deliberate routing design.
+
+
+## Renderer performance notes
+
+Version 0.4.0 precomputes the static metric and clock arc coordinates and the
+60 minute-marker positions. This removes runtime sine/cosine calculations from
+normal metric/clock drawing without changing those coordinates.
+
+The display still refreshes on each normal page transition. The previous extra
+full redraw at every minute boundary was removed because normal pages already
+rotate every few seconds; Home Assistant time synchronization can still request
+a refresh when time first becomes valid.
+
+C3 keeps the 50% framebuffer to preserve camera RAM headroom and uses the
+four-direction battery percentage keyline. S3 quad-PSRAM keeps its 100%
+framebuffer and full eight-direction keyline. This is an intentional
+hardware-performance difference, not a layout/theme difference.
