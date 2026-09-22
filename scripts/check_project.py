@@ -88,7 +88,7 @@ def render(value,env,here):
     if isinstance(value,list): return [render(v,env,here) for v in value]
     if not isinstance(value,str): return value
     def evaluate(expr): return JINJA.compile_expression(expr.strip(),undefined_to_none=False)(**env)
-    full=FULL_EXPR.fullmatch(value)
+    full=EXPR.fullmatch(value)
     if full:
         result=evaluate(full.group(1))
         return deepcopy(result)
