@@ -1,0 +1,13 @@
+binary_sensor:
+- platform: homeassistant
+  id: ${trigger_id}
+  entity_id: ${trigger_entity}
+  internal: true
+  trigger_on_initial_state: false
+  on_press:
+    then:
+    - script.execute:
+        id: camera_alert
+        source_index: ${source_index}
+        trigger_code: ${trigger_code}
+        override_request: false

@@ -1,31 +1,85 @@
-# Optional detection-only snapshot + HA override. Runtime access token is never stored in this repository.
+# Optional detection-only snapshots. Up to four independently configured camera sources
+# share ONE downloader/decoded image buffer. Camera pages never join the normal playlist.
 substitutions:
-  camera_entity: camera.example_camera
   camera_image_width: '200'
   camera_image_height: '112'
   camera_hold_time: 15s
   camera_download_timeout: 20s
   camera_error_hold_time: 4s
-  camera_cooldown: 60s
   camera_min_free_heap: '100000'
   camera_min_largest_block: '60000'
   ha_base_url: http://homeassistant.local:8123
+
+  # Source 1 retains the original single-camera names as compatibility aliases.
+  camera_entity: camera.example_camera
   person_entity: binary_sensor.example_person
   camera_source_label: CAMERA
   camera_status_label: camera
+
+  camera_1_enabled: 'true'
+  camera_1_entity: ${camera_entity}
+  camera_1_source_label: ${camera_source_label}
+  camera_1_status_label: ${camera_status_label}
+  camera_1_button_name: Show Camera Snapshot
+  camera_1_trigger_person: 'true'
+  camera_1_person_entity: ${person_entity}
+  camera_1_trigger_vehicle: 'false'
+  camera_1_vehicle_entity: binary_sensor.example_vehicle
+  camera_1_cooldown_ms: '60000'
+
+  camera_2_enabled: 'false'
+  camera_2_entity: camera.example_camera_2
+  camera_2_source_label: CAMERA 2
+  camera_2_status_label: camera 2
+  camera_2_button_name: Show Camera 2 Snapshot
+  camera_2_trigger_person: 'false'
+  camera_2_person_entity: binary_sensor.example_person_2
+  camera_2_trigger_vehicle: 'false'
+  camera_2_vehicle_entity: binary_sensor.example_vehicle_2
+  camera_2_cooldown_ms: '60000'
+
+  camera_3_enabled: 'false'
+  camera_3_entity: camera.example_camera_3
+  camera_3_source_label: CAMERA 3
+  camera_3_status_label: camera 3
+  camera_3_button_name: Show Camera 3 Snapshot
+  camera_3_trigger_person: 'false'
+  camera_3_person_entity: binary_sensor.example_person_3
+  camera_3_trigger_vehicle: 'false'
+  camera_3_vehicle_entity: binary_sensor.example_vehicle_3
+  camera_3_cooldown_ms: '60000'
+
+  camera_4_enabled: 'false'
+  camera_4_entity: camera.example_camera_4
+  camera_4_source_label: CAMERA 4
+  camera_4_status_label: camera 4
+  camera_4_button_name: Show Camera 4 Snapshot
+  camera_4_trigger_person: 'false'
+  camera_4_person_entity: binary_sensor.example_person_4
+  camera_4_trigger_vehicle: 'false'
+  camera_4_vehicle_entity: binary_sensor.example_vehicle_4
+  camera_4_cooldown_ms: '60000'
+
+packages:
+  sources: !include
+    file: camera-sources.yaml
+
 esphome:
   on_boot:
   - priority: -99
     then:
-    - lambda: !lambda |-
+    - lambda: |-
         id(camera_alert_status).publish_state("Idle");
+
 logger:
   logs:
+    # entity_picture contains a rotating access token. Keep URL-bearing logs muted.
     online_image: NONE
     http_request: NONE
     http_request.idf: NONE
     homeassistant.text_sensor: NONE
     text_sensor: NONE
+
 http_request:
   id: camera_http
   timeout: 5s
@@ -33,11 +87,13 @@ http_request:
   verify_ssl: true
   buffer_size_rx: 1024
   buffer_size_tx: 512
+
 image:
 - platform: online_image
   id: camera_snapshot
   http_request_id: camera_http
-  url: ${ha_base_url}/api/camera_proxy/${camera_entity}
+  # Placeholder only. The accepted source and current HA camera token replace it.
+  url: ${ha_base_url}/api/camera_proxy/${camera_1_entity}
   format: JPEG
   type: RGB565
   transparency: opaque
@@ -49,10 +105,9 @@ image:
   on_download_finished:
     then:
     - lambda: |-
-        // The callback only records completion. Do not release the image
-        // or start another download inside this callback.
         if (!id(camera_alert_active) || id(camera_alert_phase) != 2)
           return;
+
         const int width = id(camera_snapshot).get_width();
         const int height = id(camera_snapshot).get_height();
         if (cached || width <= 0 || height <= 0 ||
@@ -63,21 +118,12 @@ image:
           ESP_LOGW("camera_alert", "No valid fresh snapshot was received");
           return;
         }
+
         id(camera_alert_phase) = 3;
-        auto now = id(sntp_time).now();
-        if (now.is_valid()) {
-          char stamp[20];
-          int hour12 = now.hour % 12;
-          if (hour12 == 0) hour12 = 12;
-          snprintf(stamp, sizeof(stamp), "%d:%02d %s",
-                   hour12, now.minute, now.hour >= 12 ? "PM" : "AM");
-          id(camera_fetch_time) = stamp;
-        } else {
-          id(camera_fetch_time) = "--:--";
-        }
-        id(camera_alert_status).publish_state("Showing ${camera_status_label} snapshot");
-        ESP_LOGI("camera_alert", "${camera_status_label} ready: %dx%d; free heap=%u, largest=%u",
-                 width, height,
+        std::string status = "Showing " + id(camera_active_status_label) + " snapshot";
+        id(camera_alert_status).publish_state(status);
+        ESP_LOGI("camera_alert", "%s ready: %dx%d; free heap=%u, largest=%u",
+                 id(camera_active_status_label).c_str(), width, height,
                  (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
                  (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
   on_error:
@@ -88,41 +134,24 @@ image:
         id(camera_alert_phase) = 4;
         id(camera_alert_status).publish_state("Failed: HTTP/auth/JPEG/memory");
         ESP_LOGW("camera_alert", "Snapshot failed; check HA address, camera, and free RAM");
+
 text_sensor:
-- platform: homeassistant
-  id: camera_picture_path
-  entity_id: ${camera_entity}
-  attribute: entity_picture
-  internal: true
 - platform: template
   id: camera_alert_status
   name: Camera Alert Status
   entity_category: diagnostic
   update_interval: never
-binary_sensor:
-- platform: homeassistant
-  id: camera_person_detected
-  entity_id: ${person_entity}
-  internal: true
-  trigger_on_initial_state: false
-  on_press:
-    then:
-    - script.execute:
-        id: camera_alert
-        override_request: false
-button:
-- platform: template
-  id: show_camera_snapshot
-  name: Show Camera Snapshot
-  icon: mdi:camera
-  entity_category: ''
-  on_press:
-    then:
-    - script.execute:
-        id: camera_alert
-        override_request: true
+
 globals:
 - id: camera_alert_phase
+  type: int
+  restore_value: false
+  initial_value: '0'
+- id: camera_alert_source_index
+  type: int
+  restore_value: false
+  initial_value: '0'
+- id: camera_alert_trigger_code
   type: int
   restore_value: false
   initial_value: '0'
@@ -130,18 +159,44 @@ globals:
   type: bool
   restore_value: false
   initial_value: 'false'
-- id: camera_fetch_time
+- id: camera_active_entity
   type: std::string
   restore_value: false
-  initial_value: '"--:--"'
+  initial_value: '""'
+- id: camera_active_source_label
+  type: std::string
+  restore_value: false
+  initial_value: '""'
+- id: camera_active_status_label
+  type: std::string
+  restore_value: false
+  initial_value: '""'
+- id: camera_last_auto_1_ms
+  type: uint32_t
+  restore_value: false
+  initial_value: '0'
+- id: camera_last_auto_2_ms
+  type: uint32_t
+  restore_value: false
+  initial_value: '0'
+- id: camera_last_auto_3_ms
+  type: uint32_t
+  restore_value: false
+  initial_value: '0'
+- id: camera_last_auto_4_ms
+  type: uint32_t
+  restore_value: false
+  initial_value: '0'
+
 script:
-- id: camera_alert_cooldown
-  mode: restart
-  then:
-  - delay: ${camera_cooldown}
 - id: camera_alert
-  mode: single
+  # Bounded queue: overlapping source events wait; repeated events for the same
+  # camera are rejected by that source's cooldown when their turn arrives.
+  mode: queued
+  max_runs: 5
   parameters:
+    source_index: int
+    trigger_code: int
     override_request: bool
   then:
   - if:
@@ -149,46 +204,129 @@ script:
         lambda: |-
           if (!id(display_initialized) || id(camera_alert_active))
             return false;
-          if (!override_request && (!id(camera_alerts_enabled).state ||
-              id(camera_alert_cooldown).is_running()))
+          if (source_index < 0 || source_index > 3)
             return false;
+
+          const bool enabled[] = {
+            ${ 'true' if camera_1_enabled | string | lower == 'true' else 'false' },
+            ${ 'true' if camera_2_enabled | string | lower == 'true' else 'false' },
+            ${ 'true' if camera_3_enabled | string | lower == 'true' else 'false' },
+            ${ 'true' if camera_4_enabled | string | lower == 'true' else 'false' }
+          };
+          if (!enabled[source_index])
+            return false;
+
+          if (!override_request && !id(camera_alerts_enabled).state)
+            return false;
+
+          if (!override_request) {
+            const uint32_t now_ms = millis();
+            uint32_t last_ms = 0;
+            uint32_t cooldown_ms = 0;
+            switch (source_index) {
+              case 0:
+                last_ms = id(camera_last_auto_1_ms);
+                cooldown_ms = ${camera_1_cooldown_ms};
+                break;
+              case 1:
+                last_ms = id(camera_last_auto_2_ms);
+                cooldown_ms = ${camera_2_cooldown_ms};
+                break;
+              case 2:
+                last_ms = id(camera_last_auto_3_ms);
+                cooldown_ms = ${camera_3_cooldown_ms};
+                break;
+              default:
+                last_ms = id(camera_last_auto_4_ms);
+                cooldown_ms = ${camera_4_cooldown_ms};
+                break;
+            }
+            if (last_ms != 0 && (uint32_t) (now_ms - last_ms) < cooldown_ms)
+              return false;
+          }
           return true;
       then:
       - lambda: |-
+          const char *entities[] = {
+            "${camera_1_entity}", "${camera_2_entity}",
+            "${camera_3_entity}", "${camera_4_entity}"
+          };
+          const char *source_labels[] = {
+            "${camera_1_source_label}", "${camera_2_source_label}",
+            "${camera_3_source_label}", "${camera_4_source_label}"
+          };
+          const char *status_labels[] = {
+            "${camera_1_status_label}", "${camera_2_status_label}",
+            "${camera_3_status_label}", "${camera_4_status_label}"
+          };
+
           const uint32_t elapsed = millis() - id(normal_started_ms);
           id(normal_remaining_ms) =
               elapsed < id(normal_remaining_ms)
               ? id(normal_remaining_ms) - elapsed : 1;
           id(rotation_resume_pending) = true;
+
           id(camera_alert_active) = true;
+          id(camera_alert_source_index) = source_index;
+          id(camera_alert_trigger_code) = trigger_code;
           id(camera_alert_is_override) = override_request;
           id(camera_alert_phase) = 1;
-          id(camera_fetch_time) = "--:--";
+          id(camera_active_entity) = entities[source_index];
+          id(camera_active_source_label) = source_labels[source_index];
+          id(camera_active_status_label) = status_labels[source_index];
+
           id(camera_alert_status).publish_state("Waiting for HA camera path");
-          ESP_LOGI("camera_alert", "%s; pausing normal display",
-                   override_request ? "Camera snapshot requested" : "Person detected");
+          const char *reason = override_request ? "Camera snapshot requested" :
+                               (trigger_code == 2 ? "Vehicle detected" : "Person detected");
+          ESP_LOGI("camera_alert", "%s on source %d; pausing normal display",
+                   reason, source_index + 1);
+
       - script.stop: display_rotation
       - online_image.release: camera_snapshot
       - display.page.show: page_camera_alert
       - component.update: main_display
+
       - wait_until:
           condition:
             lambda: |-
-              return id(camera_picture_path).has_state() &&
-                     !id(camera_picture_path).state.empty() &&
-                     id(camera_picture_path).state != "unknown" &&
-                     id(camera_picture_path).state != "unavailable";
+              text_sensor::TextSensor *picture = nullptr;
+              switch (id(camera_alert_source_index)) {
+                case 0: picture = id(camera_picture_path_1); break;
+                case 1: picture = id(camera_picture_path_2); break;
+                case 2: picture = id(camera_picture_path_3); break;
+                default: picture = id(camera_picture_path_4); break;
+              }
+              return picture != nullptr && picture->has_state() &&
+                     !picture->state.empty() &&
+                     picture->state != "unknown" &&
+                     picture->state != "unavailable";
           timeout: 3s
+
       - lambda: |-
-          std::string path = id(camera_picture_path).state;
-          const std::string expected = "/api/camera_proxy/${camera_entity}";
+          text_sensor::TextSensor *picture = nullptr;
+          switch (id(camera_alert_source_index)) {
+            case 0: picture = id(camera_picture_path_1); break;
+            case 1: picture = id(camera_picture_path_2); break;
+            case 2: picture = id(camera_picture_path_3); break;
+            default: picture = id(camera_picture_path_4); break;
+          }
+
+          if (picture == nullptr || !picture->has_state()) {
+            id(camera_alert_phase) = 7;
+            id(camera_alert_status).publish_state("Failed: HA camera path missing");
+            return;
+          }
+
+          std::string path = picture->state;
+          const std::string expected =
+              "/api/camera_proxy/" + id(camera_active_entity);
           std::string base = "${ha_base_url}";
           while (!base.empty() && base.back() == '/') base.pop_back();
 
-          // An absolute entity_picture is accepted only if it points at
-          // the configured HA origin. Never send its token elsewhere.
+          // Absolute entity_picture is accepted only for the configured HA origin.
           if (path.compare(0, base.size() + 1, base + "/") == 0)
             path.erase(0, base.size());
+
           const auto question = path.find('?');
           if (base.empty() ||
               (base.compare(0, 7, "http://") != 0 &&
@@ -201,21 +339,23 @@ script:
             return;
           }
 
-          // Extract the current token, retaining no unrelated URL params.
           auto token_pos = path.find("?token=");
           if (token_pos == std::string::npos)
             token_pos = path.find("&token=");
+
           std::string token;
           if (token_pos != std::string::npos) {
             token_pos += 7;
             const auto token_end = path.find_first_of("&#", token_pos);
             token = path.substr(token_pos, token_end - token_pos);
           }
+
           bool token_ok = !token.empty() && token.size() <= 128;
           for (char c : token) {
             if (!((c >= '0' && c <= '9') ||
                   (c >= 'a' && c <= 'f') ||
-                  (c >= 'A' && c <= 'F'))) token_ok = false;
+                  (c >= 'A' && c <= 'F')))
+              token_ok = false;
           }
           if (!token_ok) {
             id(camera_alert_phase) = 7;
@@ -225,9 +365,12 @@ script:
           }
 
           const size_t free_heap = heap_caps_get_free_size(MALLOC_CAP_8BIT);
-          const size_t largest = heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
-          ESP_LOGI("camera_alert", "Preflight free heap=%u, largest=%u",
+          const size_t largest =
+              heap_caps_get_largest_free_block(MALLOC_CAP_8BIT);
+          ESP_LOGI("camera_alert", "Preflight source %d free heap=%u, largest=%u",
+                   id(camera_alert_source_index) + 1,
                    (unsigned) free_heap, (unsigned) largest);
+
           if (free_heap < ${camera_min_free_heap} ||
               largest < ${camera_min_largest_block}) {
             id(camera_alert_phase) = 6;
@@ -236,14 +379,14 @@ script:
             return;
           }
 
-          // Ask HA to reduce the JPEG too. ESPHome resize bounds the
-          // decoded image, but HA may only approximately scale its JPEG.
           const std::string url = base + expected + "?token=" + token +
               "&width=${camera_image_width}&height=${camera_image_height}" +
               "&_esphome=" + std::to_string(millis());
-          id(camera_snapshot).set_url(url); // Does not download by itself.
+          id(camera_snapshot).set_url(url);
           id(camera_alert_phase) = 2;
-          id(camera_alert_status).publish_state("Downloading ${camera_status_label} snapshot");
+          id(camera_alert_status).publish_state(
+              "Downloading " + id(camera_active_status_label) + " snapshot");
+
       - if:
           condition:
             lambda: return id(camera_alert_phase) == 2;
@@ -261,12 +404,15 @@ script:
                   id(camera_alert_phase) = 5;
                   id(camera_alert_status).publish_state("Failed: download timeout");
                   ESP_LOGW("camera_alert", "Snapshot timed out");
+
       - if:
           condition:
             lambda: return id(camera_alert_phase) != 3;
           then:
           - online_image.release: camera_snapshot
+
       - component.update: main_display
+
       - if:
           condition:
             lambda: return id(camera_alert_phase) == 3;
@@ -274,24 +420,38 @@ script:
           - delay: ${camera_hold_time}
           else:
           - delay: ${camera_error_hold_time}
+
       - lambda: |-
           const bool success = id(camera_alert_phase) == 3;
+          const int source = id(camera_alert_source_index);
+          if (!id(camera_alert_is_override)) {
+            const uint32_t now_ms = millis();
+            switch (source) {
+              case 0: id(camera_last_auto_1_ms) = now_ms; break;
+              case 1: id(camera_last_auto_2_ms) = now_ms; break;
+              case 2: id(camera_last_auto_3_ms) = now_ms; break;
+              default: id(camera_last_auto_4_ms) = now_ms; break;
+            }
+          }
+
           id(camera_alert_active) = false;
           id(camera_alert_phase) = 0;
           if (success)
             id(camera_alert_status).publish_state("Idle: last snapshot succeeded");
-          // On failure leave the diagnostic reason visible in HA.
+
       - online_image.release: camera_snapshot
+
       - lambda: |-
-          // Drop the token-bearing request URL. Native attribute updates
-          // will supply the current token for the next accepted detection.
+          // Remove the token-bearing URL after each request.
           id(camera_snapshot).set_url(
-              "${ha_base_url}/api/camera_proxy/${camera_entity}");
-          ESP_LOGI("camera_alert", "Alert ended; free heap=%u, largest=%u",
+              "${ha_base_url}/api/camera_proxy/" + id(camera_active_entity));
+          ESP_LOGI("camera_alert", "Alert ended for source %d; free heap=%u, largest=%u",
+                   id(camera_alert_source_index) + 1,
                    (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
                    (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
-      - script.execute: camera_alert_cooldown
+
       - script.execute: display_rotation
+
 switch:
 - platform: template
   id: camera_alerts_enabled
@@ -299,6 +459,7 @@ switch:
   entity_category: config
   optimistic: true
   restore_mode: RESTORE_DEFAULT_ON
+
 display:
 - id: !extend main_display
   pages:
@@ -311,28 +472,18 @@ display:
 
       if (id(camera_alert_active) && id(camera_alert_phase) == 3 &&
           source_width > 0 && source_height > 0) {
-        // Center-crop a square from the decoded landscape snapshot.
-        // The existing 200x112 maximum is deliberately unchanged:
-        // render larger without allocating a second/full-size image.
-        // The square fills all 240x240 pixels; the round LCD masks corners.
         constexpr int SCREEN_SIZE = 240;
         const int crop_size =
             source_width < source_height ? source_width : source_height;
         const int crop_x = (source_width - crop_size) / 2;
         const int crop_y = (source_height - crop_size) / 2;
 
-        // Pixel-center nearest-neighbor mapping. This small lookup table
-        // uses 480 bytes on the stack, not a new image/framebuffer.
         uint16_t source_index[SCREEN_SIZE];
         for (int i = 0; i < SCREEN_SIZE; i++) {
           source_index[i] = static_cast<uint16_t>(
               ((2 * i + 1) * crop_size) / (2 * SCREEN_SIZE));
         }
 
-        // Adjacent output pixels often use the same source pixel.
-        // Draw each repeated block once instead of fetching it repeatedly.
-        // No persistent state: safe when the MIPI driver calls this lambda
-        // more than once for its existing 50% framebuffer.
         for (int y = 0; y < SCREEN_SIZE; ) {
           const int sy = source_index[y];
           int next_y = y + 1;
@@ -352,18 +503,16 @@ display:
           }
           y = next_y;
         }
-
-        // Deliberately no title, frame, timestamp, footer, or page dots
-        // over a successfully loaded camera snapshot.
         return;
       }
 
-      // Keep the existing loading/error feedback until an image is ready.
       const Color alert_color(255, 182, 0);
       it.filled_ring(120, 120, 116, 113, alert_color);
+
+      const char *heading = id(camera_alert_is_override) ? "Camera" :
+                            (id(camera_alert_trigger_code) == 2 ? "Vehicle" : "Person");
       it.print(120, 58, id(title_font), alert_color,
-               TextAlign::BASELINE_CENTER,
-               id(camera_alert_is_override) ? "Camera" : "Person");
+               TextAlign::BASELINE_CENTER, heading);
 
       const char *line1 = "Loading";
       const char *line2 = "snapshot";
@@ -376,12 +525,15 @@ display:
       } else if (id(camera_alert_phase) == 7) {
         line1 = "No source"; line2 = "Check HA";
       }
+
       it.print(120, 119, id(time_font), Color::WHITE,
                TextAlign::BASELINE_CENTER, line1);
       it.print(120, 161, id(time_font), Color::WHITE,
                TextAlign::BASELINE_CENTER, line2);
       it.print(120, 210, id(camera_meta_font), alert_color,
-               TextAlign::BASELINE_CENTER, "${camera_source_label}");
+               TextAlign::BASELINE_CENTER,
+               id(camera_active_source_label).c_str());
+
 font:
 - id: camera_meta_font
   file: gfonts://Roboto

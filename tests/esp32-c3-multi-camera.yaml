@@ -1,0 +1,36 @@
+# SYNTHETIC CI FIXTURE. Never install on a real device.
+substitutions:
+  device_name: ci-esp32-c3-multi-camera
+  friendly_name: CI Multi Camera
+
+  # Source 1: person OR vehicle.
+  camera_1_trigger_person: 'true'
+  camera_1_person_entity: binary_sensor.example_driveway_person
+  camera_1_trigger_vehicle: 'true'
+  camera_1_vehicle_entity: binary_sensor.example_driveway_vehicle
+
+  # Source 2: vehicle only.
+  camera_2_enabled: 'true'
+  camera_2_entity: camera.example_parking_camera
+  camera_2_source_label: PARKING
+  camera_2_status_label: parking
+  camera_2_button_name: Show Parking Snapshot
+  camera_2_trigger_person: 'false'
+  camera_2_trigger_vehicle: 'true'
+  camera_2_vehicle_entity: binary_sensor.example_parking_vehicle
+
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-c3-camera.yaml
+
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
+
+api:
+  encryption:
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+
+ota:
+- platform: esphome
+  password: not-a-production-password

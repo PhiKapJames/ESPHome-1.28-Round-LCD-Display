@@ -1,0 +1,20 @@
+text_sensor:
+- platform: homeassistant
+  id: camera_picture_path_${source_num}
+  entity_id: ${source_camera_entity}
+  attribute: entity_picture
+  internal: true
+
+button:
+- platform: template
+  id: show_camera_snapshot_${source_num}
+  name: "${source_button_name}"
+  icon: mdi:camera
+  entity_category: ''
+  on_press:
+    then:
+    - script.execute:
+        id: camera_alert
+        source_index: ${source_index}
+        trigger_code: '0'
+        override_request: true

@@ -58,37 +58,79 @@ quiet-hours logic can be kept in a local package when migrating other minions.
 
 ## Optional camera feature
 
-Only a `*-camera.yaml` profile includes HTTP/image decoding, the detection
-subscription, camera status, enable switch, and override button. Basic profiles
-compile without those components. Default values:
+Only a `*-camera.yaml` profile includes HTTP/image decoding, camera-source
+subscriptions, status, the global Camera Alerts switch, and manual snapshot
+buttons. Basic profiles compile without those components.
+
+The camera engine supports **up to four independent sources** while keeping one
+shared downloader/decoded image buffer. A source is a Home Assistant
+`camera.*` entity; it does not need to have a particular lens count. For a
+dual-lens camera, choose whichever lens camera entity you want. For a
+single-lens camera, use its one camera entity directly.
+
+Shared settings:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `ha_base_url` | `http://homeassistant.local:8123` | HA origin reachable by the device; same HA that provides the attribute. |
-| `camera_entity` | `camera.example_camera` | Camera entity to read `entity_picture` from. |
-| `person_entity` | `binary_sensor.example_person` | New off-to-on transitions trigger an alert. Initial on state is ignored. |
-| `camera_source_label` | `CAMERA` | Loading/error footer; use uppercase letters/digits/spaces/slashes. |
-| `camera_status_label` | `camera` | Human-readable status prefix. No quotes, slashes requiring escapes, or newlines. |
+| `ha_base_url` | `http://homeassistant.local:8123` | HA origin reachable by the device; same HA that provides camera attributes. |
 | `camera_image_width` | `'200'` | Maximum decoded source width; not output-screen width. |
 | `camera_image_height` | `'112'` | Maximum decoded source height. Image is center-cropped and scaled for 240×240. |
-| `camera_hold_time` | `15s` | Display time **after** decode succeeds. |
-| `camera_download_timeout` | `20s` | Cooperative overall backstop; individual HTTP operations can block. |
+| `camera_hold_time` | `15s` | Display time after decode succeeds. |
+| `camera_download_timeout` | `20s` | Cooperative whole-download backstop. |
 | `camera_error_hold_time` | `4s` | Text-only failure screen duration. |
-| `camera_cooldown` | `60s` | Automatic trigger cooldown after alert completion. |
 | `camera_min_free_heap` | `'100000'` | Preflight free-heap threshold in bytes. |
 | `camera_min_largest_block` | `'60000'` | Preflight contiguous-block threshold in bytes. |
 
-The original thresholds are retained, not guarantees of decoder success. One
-picture is decoded at a time. The decoded image is released after the alert;
-some downloader/decoder memory can remain retained by ESPHome. The full-screen
-renderer reuses the small source image, not a second full RGB565 image.
+Each source N=1–4 has:
 
-**Show Camera Snapshot** calls the same alert path with `override_request: true`.
-It bypasses automatic enable/cooldown but still enforces no overlapping alert,
-initialization, image source, and RAM checks. It does not claim active person
-detection for manual snapshots. HA automations may call `button.press` on the
-actual discovered entity ID. No extra HA action-execution permission is needed:
-the device is importing state/attributes, not instructing HA to run an action.
+| Setting | Example | Meaning |
+| --- | --- | --- |
+| `camera_N_enabled` | `'true'` | Include this source, its picture attribute, button, and configured detectors. |
+| `camera_N_entity` | `camera.driveway` | Exact camera entity whose `entity_picture` is downloaded. |
+| `camera_N_source_label` | `DRIVEWAY` | Loading/error footer. Keep to supported uppercase glyphs. |
+| `camera_N_status_label` | `driveway` | Human-readable diagnostic status label. |
+| `camera_N_button_name` | `Show Driveway Snapshot` | Manual/HA-automation override control. |
+| `camera_N_trigger_person` | `'true'` | Subscribe to the person entity and trigger on new detection. |
+| `camera_N_person_entity` | `binary_sensor.driveway_person` | Person detector for this source. Ignored when trigger is false. |
+| `camera_N_trigger_vehicle` | `'true'` | Subscribe to the vehicle entity and trigger on new detection. |
+| `camera_N_vehicle_entity` | `binary_sensor.driveway_vehicle` | Vehicle detector for this source. Ignored when trigger is false. |
+| `camera_N_cooldown_ms` | `'60000'` | Automatic cooldown for this source only, in milliseconds. |
+
+When both person and vehicle are enabled for one source, the rule is **OR**:
+either new detection requests that source's snapshot. A vehicle-only camera does
+not react to person detections. Different sources have independent cooldowns.
+
+Source 1 keeps compatibility aliases from the original one-camera package:
+
+`camera_entity` → `camera_1_entity`,
+`person_entity` → `camera_1_person_entity`,
+`camera_source_label` → `camera_1_source_label`, and
+`camera_status_label` → `camera_1_status_label`.
+
+That means existing Camper local YAML can remain single-camera while Home can
+use the new numbered settings.
+
+Only **one JPEG is decoded at a time**. The camera script uses a bounded queued
+mode so overlapping source requests wait rather than allocate multiple image
+buffers. Repeated events from the same source are rejected by that source's
+cooldown when their queued turn arrives. The full-screen image is still
+alert-only and never joins the metric/clock playlist.
+
+Every enabled source gets a manual snapshot button. Source 1 defaults to
+**Show Camera Snapshot** to preserve the established Camper control. Manual
+requests bypass the automatic Camera Alerts switch and source cooldown, but
+still enforce initialization, source validation, single-buffer sequencing,
+timeout, and RAM guards.
+
+The original RAM thresholds remain conservative checks, not guarantees of
+decoder success. Decoded image memory is released after each alert. Camera
+access tokens are obtained from each source's current `entity_picture`
+attribute, accepted only for the configured HA origin and exact camera proxy
+path, and are not logged by project messages.
+
+The image request is HTTP/HTTPS separate from the native encrypted ESPHome API.
+An HTTP origin is unencrypted on the LAN. HTTPS requires a trusted certificate;
+`verify_ssl: true` remains enabled.
 
 ## Multiple Home Assistant instances
 

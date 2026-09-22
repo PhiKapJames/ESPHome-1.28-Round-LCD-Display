@@ -157,8 +157,9 @@ def test_configs():
         assert isinstance(display_id, Tagged) and display_id.tag == '!extend'
         assert display_id.value == 'main_display'
     print('PASS package order and explicit display extensions')
-    profiles=('esp32-c3','esp32-c3-camera','esp32-s3-quad-psram',
-              'esp32-s3-quad-psram-camera','esp32-c3-one-metric')
+    profiles=('esp32-c3','esp32-c3-camera','esp32-c3-multi-camera',
+              'esp32-s3-quad-psram','esp32-s3-quad-psram-camera',
+              'esp32-c3-one-metric')
     for name in profiles:
         config,env=expand_file(ROOT/'tests'/f'{name}.yaml')
         ids=definition_ids(config)
@@ -173,7 +174,7 @@ def test_configs():
             assert 'continuous' not in graph and 'sensor' not in graph
             assert graph['width']==174 and graph['height']==18
             assert graph['traces'][0]['continuous'] is True
-        camera=name.endswith('-camera')
+        camera=('camera' in name)
         assert ('image' in config)==camera
         assert ('http_request' in config)==camera
         assert ('camera_alert' in ids)==camera
@@ -182,6 +183,19 @@ def test_configs():
         imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
         assert len(imported)==(1 if name.endswith('one-metric') else 6)
         print(f'PASS {name}: includes/substitutions/IDs/graphs/features')
+
+    # Exact multi-camera regression: source 1 person OR vehicle; source 2 vehicle only.
+    multi,_=expand_file(ROOT/'tests/esp32-c3-multi-camera.yaml')
+    multi_ids=set(definition_ids(multi))
+    assert 'camera_person_detected_1' in multi_ids
+    assert 'camera_vehicle_detected_1' in multi_ids
+    assert 'camera_vehicle_detected_2' in multi_ids
+    assert 'camera_person_detected_2' not in multi_ids
+    assert 'camera_picture_path_1' in multi_ids and 'camera_picture_path_2' in multi_ids
+    assert 'show_camera_snapshot_1' in multi_ids and 'show_camera_snapshot_2' in multi_ids
+    assert 'camera_picture_path_3' in multi_ids and 'camera_picture_path_4' in multi_ids
+    print('PASS multi-camera detector routing and disabled-trigger subscriptions')
+
     # Exercise all nonempty enabled-slot combinations without changing firmware.
     for mask in range(1,64):
         override={f'metric_{i+1}_enabled':'true' if mask & (1<<i) else 'false' for i in range(6)}

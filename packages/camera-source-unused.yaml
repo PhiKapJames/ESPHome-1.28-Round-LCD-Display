@@ -1,0 +1,7 @@
+# Disabled camera sources still provide an internal placeholder path so the
+# shared camera engine can compile one fixed four-source table.
+text_sensor:
+- platform: template
+  id: camera_picture_path_${source_num}
+  internal: true
+  update_interval: never
