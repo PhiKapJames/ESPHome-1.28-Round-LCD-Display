@@ -45,6 +45,7 @@ def include_parts(item,here):
     return target,spec.get('vars',{})
 
 EXPR=re.compile(r'\$\{([^{}]+)\}')
+FULL_EXPR=re.compile(r'^\$\{(.*)\}$', re.S)
 JINJA=Environment(undefined=StrictUndefined)
 
 def merge(a,b):
@@ -119,7 +120,14 @@ def expand_file(path,overrides=None):
                 dest,params=include_parts(package,path.parent)
                 incoming=expand(dest,{**env,**render(params,env,path.parent)})
             else:
-                incoming=render(package,env,path.parent)
+                resolved=render(package,env,path.parent)
+                # Conditional package expressions may evaluate to an !include
+                # template. Model ESPHome by expanding that returned include.
+                if isinstance(resolved,Tagged) and resolved.tag=='!include':
+                    dest,params=include_parts(resolved,path.parent)
+                    incoming=expand(dest,{**env,**render(params,env,path.parent)})
+                else:
+                    incoming=resolved
             if not isinstance(incoming,dict): raise AssertionError(f'Package is not a mapping in {path}')
             assembled=merge(assembled,incoming)
         local={k:v for k,v in raw.items() if k not in ('packages','substitutions')}
@@ -184,17 +192,25 @@ def test_configs():
         assert len(imported)==(1 if name.endswith('one-metric') else 6)
         print(f'PASS {name}: includes/substitutions/IDs/graphs/features')
 
-    # Exact multi-camera regression: source 1 person OR vehicle; source 2 vehicle only.
+    # Reusable-camera regression: six instances exceed the former four-source design.
+    # Driveway = person OR vehicle; parking = vehicle only; garage = manual only.
     multi,_=expand_file(ROOT/'tests/esp32-c3-multi-camera.yaml')
     multi_ids=set(definition_ids(multi))
-    assert 'camera_person_detected_1' in multi_ids
-    assert 'camera_vehicle_detected_1' in multi_ids
-    assert 'camera_vehicle_detected_2' in multi_ids
-    assert 'camera_person_detected_2' not in multi_ids
-    assert 'camera_picture_path_1' in multi_ids and 'camera_picture_path_2' in multi_ids
-    assert 'show_camera_snapshot_1' in multi_ids and 'show_camera_snapshot_2' in multi_ids
-    assert 'camera_picture_path_3' in multi_ids and 'camera_picture_path_4' in multi_ids
-    print('PASS multi-camera detector routing and disabled-trigger subscriptions')
+    for source in ('driveway','parking','backyard','garage','side','street'):
+        assert f'camera_picture_path_{source}' in multi_ids
+        assert f'show_camera_snapshot_{source}' in multi_ids
+        assert f'camera_source_request_{source}' in multi_ids
+        assert f'camera_last_auto_{source}' in multi_ids
+    assert 'camera_detector_driveway_1' in multi_ids
+    assert 'camera_detector_driveway_2' in multi_ids
+    assert 'camera_detector_parking_2' in multi_ids
+    assert 'camera_detector_parking_1' not in multi_ids
+    assert 'camera_detector_backyard_1' in multi_ids
+    assert 'camera_detector_backyard_2' not in multi_ids
+    assert 'camera_detector_garage_1' not in multi_ids
+    assert 'camera_detector_garage_2' not in multi_ids
+    assert len([x for x in multi_ids if x.startswith('camera_picture_path_')]) == 6
+    print('PASS six reusable camera instances and independent detector routing')
 
     # Exercise all nonempty enabled-slot combinations without changing firmware.
     for mask in range(1,64):

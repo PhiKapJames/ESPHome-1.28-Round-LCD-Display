@@ -1,11 +1,10 @@
-# COPY LOCALLY; replace placeholders and keep your actual mappings outside this repository.
+# COPY LOCALLY; replace placeholders and keep actual mappings outside this repository.
 substitutions:
   device_name: round-minion-example
   friendly_name: Round Minion Example
   timezone: Etc/UTC
   ha_base_url: http://homeassistant.local:8123
-  camera_entity: camera.example_camera
-  person_entity: binary_sensor.example_person
+
   metric_1_label: Room 1
   metric_1_entity: sensor.example_metric_1
   metric_1_enabled: 'true'
@@ -24,19 +23,35 @@ substitutions:
   metric_6_label: Battery
   metric_6_entity: sensor.example_metric_6
   metric_6_enabled: 'true'
+
 packages:
   round_minion:
     url: https://github.com/PhiKapJames/HaEspRoundMinions
     ref: main  # Pin a tested commit SHA in deployed device files.
     files:
-    - profiles/esp32-c3-camera.yaml
+      - profiles/esp32-c3-camera.yaml
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: example
+          camera_entity: camera.example_camera
+          camera_source_label: CAMERA
+          camera_status_label: camera
+          camera_button_name: Show Camera Snapshot
+          camera_trigger_person: 'true'
+          camera_person_entity: binary_sensor.example_person
+          camera_trigger_vehicle: 'false'
+          camera_vehicle_entity: binary_sensor.example_vehicle
+          camera_cooldown_ms: '60000'
     refresh: 1d
+
 api:
   encryption:
     key: !secret 'api_encryption_key'
+
 ota:
 - platform: esphome
   password: !secret 'ota_password'
+
 wifi:
   ssid: !secret 'wifi_ssid'
   password: !secret 'wifi_password'

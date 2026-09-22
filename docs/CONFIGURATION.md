@@ -53,80 +53,110 @@ Roboto value, 36px Roboto footer, 92px Oswald hour/minute.
 hardware profile. Do not copy the S3/full-buffer choice onto a C3 to silence
 warnings. Actual free contiguous memory matters for camera allocations.
 Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior in
-v0.1.0. Quiet-hours automation is not added automatically. Existing per-device
+v0.3.0. Quiet-hours automation is not added automatically. Existing per-device
 quiet-hours logic can be kept in a local package when migrating other minions.
 
 ## Optional camera feature
 
-Only a `*-camera.yaml` profile includes HTTP/image decoding, camera-source
-subscriptions, status, the global Camera Alerts switch, and manual snapshot
-buttons. Basic profiles compile without those components.
+A `*-camera.yaml` profile adds the **shared camera engine only**: HTTP/JPEG
+download, the single decoded image buffer, full-screen rendering, Camera Alerts
+switch, timeout/RAM guards, and the alert queue. Camera sources are separate
+instances of `packages/camera-source.yaml`.
 
-The camera engine supports **up to four independent sources** while keeping one
-shared downloader/decoded image buffer. A source is a Home Assistant
-`camera.*` entity; it does not need to have a particular lens count. For a
-dual-lens camera, choose whichever lens camera entity you want. For a
-single-lens camera, use its one camera entity directly.
+There is **no hard-coded camera count**. ESPHome remote packages allow the same
+file to be listed repeatedly with different `vars`; each instance contributes
+one HA camera attribute subscription, one manual button, one per-source cooldown,
+and whichever detector subscriptions are enabled. Practical flash/RAM/API entity
+limits still apply, but adding a fifth, sixth, or later camera does not require
+editing this repository.
 
-Shared settings:
+A source works with any HA `camera.*` entity. A one-lens camera needs no special
+handling. For a multi-lens camera, choose the particular lens entity you want
+shown.
+
+Shared engine substitutions:
 
 | Setting | Default | Meaning |
 | --- | --- | --- |
-| `ha_base_url` | `http://homeassistant.local:8123` | HA origin reachable by the device; same HA that provides camera attributes. |
-| `camera_image_width` | `'200'` | Maximum decoded source width; not output-screen width. |
-| `camera_image_height` | `'112'` | Maximum decoded source height. Image is center-cropped and scaled for 240×240. |
-| `camera_hold_time` | `15s` | Display time after decode succeeds. |
-| `camera_download_timeout` | `20s` | Cooperative whole-download backstop. |
-| `camera_error_hold_time` | `4s` | Text-only failure screen duration. |
-| `camera_min_free_heap` | `'100000'` | Preflight free-heap threshold in bytes. |
-| `camera_min_largest_block` | `'60000'` | Preflight contiguous-block threshold in bytes. |
+| `ha_base_url` | `http://homeassistant.local:8123` | HA origin reachable by the device; same HA that supplies camera attributes. |
+| `camera_image_width` | `'200'` | Maximum decoded source width. |
+| `camera_image_height` | `'112'` | Maximum decoded source height; the renderer center-crops to fill 240×240. |
+| `camera_hold_time` | `15s` | Display time after a successful decode. |
+| `camera_download_timeout` | `20s` | Whole-download cooperative backstop. |
+| `camera_error_hold_time` | `4s` | Failure-screen duration. |
+| `camera_queue_expire_ms` | `'60000'` | Drop stale automatic requests that waited this long. |
+| `camera_queue_max_runs` | `'20'` | Maximum active+queued alert operations; this limits backlog, **not camera count**. |
+| `camera_min_free_heap` | `'100000'` | Preflight free-heap threshold. |
+| `camera_min_largest_block` | `'60000'` | Preflight largest-contiguous-block threshold. |
 
-Each source N=1–4 has:
+Each `packages/camera-source.yaml` instance requires these variables:
 
-| Setting | Example | Meaning |
+| Variable | Example | Meaning |
 | --- | --- | --- |
-| `camera_N_enabled` | `'true'` | Include this source, its picture attribute, button, and configured detectors. |
-| `camera_N_entity` | `camera.driveway` | Exact camera entity whose `entity_picture` is downloaded. |
-| `camera_N_source_label` | `DRIVEWAY` | Loading/error footer. Keep to supported uppercase glyphs. |
-| `camera_N_status_label` | `driveway` | Human-readable diagnostic status label. |
-| `camera_N_button_name` | `Show Driveway Snapshot` | Manual/HA-automation override control. |
-| `camera_N_trigger_person` | `'true'` | Subscribe to the person entity and trigger on new detection. |
-| `camera_N_person_entity` | `binary_sensor.driveway_person` | Person detector for this source. Ignored when trigger is false. |
-| `camera_N_trigger_vehicle` | `'true'` | Subscribe to the vehicle entity and trigger on new detection. |
-| `camera_N_vehicle_entity` | `binary_sensor.driveway_vehicle` | Vehicle detector for this source. Ignored when trigger is false. |
-| `camera_N_cooldown_ms` | `'60000'` | Automatic cooldown for this source only, in milliseconds. |
+| `camera_id` | `driveway` | Unique ESPHome-ID-safe source key; use lower-case letters/numbers/underscores. |
+| `camera_entity` | `camera.driveway` | Exact HA camera whose `entity_picture` is requested. |
+| `camera_source_label` | `DRIVEWAY` | Loading/error footer; keep to supported uppercase glyphs. |
+| `camera_status_label` | `driveway` | Human-readable status/log label. |
+| `camera_button_name` | `Show Driveway Snapshot` | HA manual/automation override button. |
+| `camera_trigger_person` | `'true'` | Include a person detector subscription. |
+| `camera_person_entity` | `binary_sensor.driveway_person` | Person entity; supply a valid placeholder even if the trigger is false. |
+| `camera_trigger_vehicle` | `'true'` | Include a vehicle detector subscription. |
+| `camera_vehicle_entity` | `binary_sensor.driveway_vehicle` | Vehicle entity; supply a valid placeholder even if the trigger is false. |
+| `camera_cooldown_ms` | `'60000'` | Automatic cooldown for only this source. |
 
-When both person and vehicle are enabled for one source, the rule is **OR**:
-either new detection requests that source's snapshot. A vehicle-only camera does
-not react to person detections. Different sources have independent cooldowns.
+When person and vehicle are both enabled on one source, they are **OR** triggers.
+A vehicle-only source does not subscribe to its person entity. A manual-only
+source sets both trigger flags false but still gets its snapshot button.
 
-Source 1 keeps compatibility aliases from the original one-camera package:
+Example remote package with two cameras:
 
-`camera_entity` → `camera_1_entity`,
-`person_entity` → `camera_1_person_entity`,
-`camera_source_label` → `camera_1_source_label`, and
-`camera_status_label` → `camera_1_status_label`.
+```yaml
+packages:
+  round_minion:
+    url: https://github.com/PhiKapJames/HaEspRoundMinions
+    ref: <tested-commit-sha>
+    files:
+      - profiles/esp32-c3-camera.yaml
 
-That means existing Camper local YAML can remain single-camera while Home can
-use the new numbered settings.
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: driveway
+          camera_entity: camera.driveway
+          camera_source_label: DRIVEWAY
+          camera_status_label: driveway
+          camera_button_name: Show Driveway Snapshot
+          camera_trigger_person: 'true'
+          camera_person_entity: binary_sensor.driveway_person
+          camera_trigger_vehicle: 'true'
+          camera_vehicle_entity: binary_sensor.driveway_vehicle
+          camera_cooldown_ms: '60000'
 
-Only **one JPEG is decoded at a time**. The camera script uses a bounded queued
-mode so overlapping source requests wait rather than allocate multiple image
-buffers. Repeated events from the same source are rejected by that source's
-cooldown when their queued turn arrives. The full-screen image is still
-alert-only and never joins the metric/clock playlist.
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: parking
+          camera_entity: camera.parking
+          camera_source_label: PARKING
+          camera_status_label: parking
+          camera_button_name: Show Parking Snapshot
+          camera_trigger_person: 'false'
+          camera_person_entity: binary_sensor.parking_person
+          camera_trigger_vehicle: 'true'
+          camera_vehicle_entity: binary_sensor.parking_vehicle
+          camera_cooldown_ms: '60000'
+    refresh: 1d
+```
 
-Every enabled source gets a manual snapshot button. Source 1 defaults to
-**Show Camera Snapshot** to preserve the established Camper control. Manual
-requests bypass the automatic Camera Alerts switch and source cooldown, but
-still enforce initialization, source validation, single-buffer sequencing,
-timeout, and RAM guards.
+Only **one JPEG is decoded at a time**, regardless of how many source instances
+are configured. Source requests enter a bounded shared queue containing strings
+and small parameters, not images. Per-source cooldowns suppress duplicate
+automatic detections before queueing; stale automatic requests expire so a burst
+cannot monopolize the display indefinitely. Manual requests bypass the automatic
+Camera Alerts switch and source cooldown but use the same single-buffer engine.
 
-The original RAM thresholds remain conservative checks, not guarantees of
-decoder success. Decoded image memory is released after each alert. Camera
-access tokens are obtained from each source's current `entity_picture`
-attribute, accepted only for the configured HA origin and exact camera proxy
-path, and are not logged by project messages.
+The original RAM thresholds are conservative checks, not guarantees of decoder
+success. Camera access tokens come from each source's current `entity_picture`,
+are accepted only for the configured HA origin and exact camera proxy path, and
+are removed from the downloader URL after each request.
 
 The image request is HTTP/HTTPS separate from the native encrypted ESPHome API.
 An HTTP origin is unencrypted on the LAN. HTTPS requires a trusted certificate;

@@ -1,20 +1,99 @@
+# Reusable camera source template.
+# Include this same file once per camera with a unique camera_id.
+substitutions:
+  _person_trigger: !include
+    file: camera-trigger.yaml
+    vars:
+      camera_id: ${camera_id}
+      trigger_entity: ${camera_person_entity}
+      trigger_code: '1'
+  _vehicle_trigger: !include
+    file: camera-trigger.yaml
+    vars:
+      camera_id: ${camera_id}
+      trigger_entity: ${camera_vehicle_entity}
+      trigger_code: '2'
+  _trigger_unused: !include
+    file: camera-trigger-unused.yaml
+
+packages:
+  person_trigger: ${ _person_trigger if camera_trigger_person | string | lower == 'true' else _trigger_unused }
+  vehicle_trigger: ${ _vehicle_trigger if camera_trigger_vehicle | string | lower == 'true' else _trigger_unused }
+
 text_sensor:
 - platform: homeassistant
-  id: camera_picture_path_${source_num}
-  entity_id: ${source_camera_entity}
+  id: camera_picture_path_${camera_id}
+  entity_id: ${camera_entity}
   attribute: entity_picture
   internal: true
 
+globals:
+- id: camera_last_auto_${camera_id}
+  type: uint32_t
+  restore_value: false
+  initial_value: '0'
+
+script:
+- id: camera_source_request_${camera_id}
+  mode: single
+  parameters:
+    trigger_code: int
+    override_request: bool
+  then:
+  - if:
+      condition:
+        lambda: |-
+          if (!id(display_initialized))
+            return false;
+
+          if (!override_request && !id(camera_alerts_enabled).state)
+            return false;
+
+          if (!override_request) {
+            const uint32_t now_ms = millis();
+            const uint32_t last_ms = id(camera_last_auto_${camera_id});
+            if (last_ms != 0 &&
+                (uint32_t) (now_ms - last_ms) < ${camera_cooldown_ms})
+              return false;
+          }
+          return true;
+      then:
+      # entity_picture may arrive shortly after the detector state at boot/reconnect.
+      - wait_until:
+          condition:
+            lambda: |-
+              return id(camera_picture_path_${camera_id}).has_state() &&
+                     !id(camera_picture_path_${camera_id}).state.empty() &&
+                     id(camera_picture_path_${camera_id}).state != "unknown" &&
+                     id(camera_picture_path_${camera_id}).state != "unavailable";
+          timeout: 3s
+
+      - lambda: |-
+          if (!override_request)
+            id(camera_last_auto_${camera_id}) = millis();
+
+      - script.execute:
+          id: camera_alert
+          source_entity: "${camera_entity}"
+          source_label: "${camera_source_label}"
+          status_label: "${camera_status_label}"
+          picture_path: !lambda |-
+            if (!id(camera_picture_path_${camera_id}).has_state())
+              return std::string();
+            return id(camera_picture_path_${camera_id}).state;
+          trigger_code: !lambda return trigger_code;
+          override_request: !lambda return override_request;
+          requested_ms: !lambda return static_cast<int32_t>(millis());
+
 button:
 - platform: template
-  id: show_camera_snapshot_${source_num}
-  name: "${source_button_name}"
+  id: show_camera_snapshot_${camera_id}
+  name: "${camera_button_name}"
   icon: mdi:camera
   entity_category: ''
   on_press:
     then:
     - script.execute:
-        id: camera_alert
-        source_index: ${source_index}
+        id: camera_source_request_${camera_id}
         trigger_code: '0'
         override_request: true
