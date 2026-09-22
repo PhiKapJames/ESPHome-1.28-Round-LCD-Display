@@ -1,0 +1,161 @@
+# Reusable numeric/temperature rotation page.
+# Include this file repeatedly with a unique page_id.
+esphome:
+  on_boot:
+  - priority: -100
+    then:
+    - lambda: |-
+        id(rotation_orders).push_back(${page_order});
+        id(rotation_pages).push_back(id(rotation_page_${page_id}));
+        id(rotation_durations).push_back(${page_duration_ms});
+        id(rotation_kinds).push_back(0);
+        id(rotation_camera_entities).push_back(std::string());
+        id(rotation_camera_labels).push_back(std::string());
+        id(rotation_camera_paths).push_back(nullptr);
+
+color:
+- id: rotation_color_${page_id}
+  red: ${page_color_red}
+  green: ${page_color_green}
+  blue: ${page_color_blue}
+
+sensor:
+- platform: homeassistant
+  id: rotation_sensor_${page_id}
+  entity_id: ${page_entity}
+  internal: true
+  state_class: measurement
+  unit_of_measurement: ${page_unit}
+  accuracy_decimals: ${page_decimals}
+
+graph:
+- id: rotation_graph_${page_id}
+  duration: ${page_graph_interval}
+  width: 174
+  height: 18
+  border: false
+  traces:
+  - sensor: rotation_sensor_${page_id}
+    color: rotation_color_${page_id}
+    line_thickness: 3
+    continuous: true
+
+display:
+- id: !extend main_display
+  pages:
+  - id: rotation_page_${page_id}
+    lambda: |-
+      const Color accent = id(rotation_color_${page_id});
+      const Color dim(accent.r / 2, accent.g / 2, accent.b / 2);
+      static constexpr int ARC_POINTS[][2] = {
+        {20,63},{22,59},{25,56},{27,52},{29,49},{32,46},{35,43},{37,40},
+        {40,37},{43,35},{46,32},{49,29},{52,27},{56,25},{59,22},{63,20},
+        {66,18},{70,17},{73,15},{77,13},{81,12},{84,11},
+        {156,11},{159,12},{163,13},{167,15},{170,17},{174,18},{178,20},
+        {181,22},{184,25},{188,27},{191,29},{194,32},{197,35},{200,37},
+        {203,40},{205,43},{208,46},{211,49},{213,52},{215,56},{218,59},{220,63},
+        {220,177},{218,181},{215,184},{213,188},{211,191},{208,194},{205,197},
+        {203,200},{200,203},{197,205},{194,208},{191,211},{188,213},{184,215},
+        {181,218},{178,220},{174,222},{170,223},{167,225},{163,227},{159,228},
+        {156,229},{84,229},{81,228},{77,227},{73,225},{70,223},{66,222},
+        {63,220},{59,218},{56,215},{52,213},{49,211},{46,208},{43,205},
+        {40,203},{37,200},{35,197},{32,194},{29,191},{27,188},{25,184},
+        {22,181},{20,177}
+      };
+
+      auto rounded_box = [&](int x, int y, int width, int height,
+                             int radius, Color color) {
+        if (radius <= 0) {
+          it.filled_rectangle(x, y, width, height, color);
+          return;
+        }
+        it.filled_rectangle(x + radius, y, width - 2 * radius, height, color);
+        it.filled_rectangle(x, y + radius, width, height - 2 * radius, color);
+        it.filled_circle(x + radius, y + radius, radius, color);
+        it.filled_circle(x + width - radius - 1, y + radius, radius, color);
+        it.filled_circle(x + radius, y + height - radius - 1, radius, color);
+        it.filled_circle(x + width - radius - 1,
+                         y + height - radius - 1, radius, color);
+      };
+
+      it.fill(Color::BLACK);
+      it.circle(120, 120, 115, dim);
+      for (const auto &point : ARC_POINTS)
+        it.filled_circle(point[0], point[1], 3, accent);
+
+      it.print(120, 71, id(title_font), accent,
+               TextAlign::BASELINE_CENTER, "${page_label}");
+
+      constexpr int PANEL_STYLE = ${metric_panel_style};
+      static_assert(PANEL_STYLE >= 0 && PANEL_STYLE <= 2,
+                    "metric_panel_style must be 0, 1, or 2");
+      const Color panel_fill(64, 64, 64);
+      const Color value_background =
+          PANEL_STYLE == 0 ? Color::BLACK : panel_fill;
+
+      if (PANEL_STYLE == 1) {
+        rounded_box(8, 83, 225, 73, 16, accent);
+        rounded_box(11, 86, 219, 67, 13, panel_fill);
+      } else if (PANEL_STYLE == 2) {
+        it.filled_rectangle(0, 83, 240, 73, panel_fill);
+        it.filled_rectangle(0, 83, 240, 3, accent);
+        it.filled_rectangle(0, 153, 240, 3, accent);
+      } else {
+        it.filled_rectangle(78, 83, 32, 3, accent);
+        it.filled_rectangle(130, 83, 32, 3, accent);
+        it.filled_circle(120, 84, 3, accent);
+      }
+
+      const float value = id(rotation_sensor_${page_id}).state;
+      char value_text[32];
+      if (std::isfinite(value)) {
+        snprintf(value_text, sizeof(value_text), "%.*f%s",
+                 ${page_decimals}, value, "${page_suffix}");
+        int width, offset, baseline, height;
+        id(temp_font)->measure(value_text, &width, &offset, &baseline, &height);
+        if (width > 220 && ${page_decimals} > 0) {
+          snprintf(value_text, sizeof(value_text), "%.0f%s",
+                   value, "${page_suffix}");
+        }
+      } else {
+        snprintf(value_text, sizeof(value_text), "%s%s",
+                 ${page_decimals} > 0 ? "--.-" : "--", "${page_suffix}");
+      }
+
+      const int value_baseline = 120 + id(temp_font)->get_capheight() / 2;
+      it.print(120, value_baseline, id(temp_font), Color::WHITE,
+               TextAlign::BASELINE_CENTER, value_text, value_background);
+
+      it.graph(33, 156, id(rotation_graph_${page_id}));
+
+      auto now = id(sntp_time).now();
+      char time_text[16];
+      if (now.is_valid()) {
+        int hour12 = now.hour % 12;
+        if (hour12 == 0) hour12 = 12;
+        snprintf(time_text, sizeof(time_text), "%d:%02d %s",
+                 hour12, now.minute, now.hour >= 12 ? "PM" : "AM");
+      } else {
+        snprintf(time_text, sizeof(time_text), "--:--");
+      }
+      it.print(120, 189 + id(time_font)->get_capheight() / 2,
+               id(time_font), Color::WHITE,
+               TextAlign::BASELINE_CENTER, time_text);
+
+      const int count = static_cast<int>(id(rotation_pages).size());
+      const int active = static_cast<int>(id(rotation_visible_index));
+      if (count > 0) {
+        const int step = count <= 13 ? 14 :
+            std::max(2, 168 / std::max(1, count - 1));
+        const int start_x = 120 - (step * (count - 1)) / 2;
+        for (int i = 0; i < count; i++) {
+          const int x = start_x + i * step;
+          if (i == active) {
+            it.filled_circle(x, 221, 7, Color::BLACK);
+            it.filled_ring(x, 221, 6, 5, accent);
+            it.filled_circle(x, 221, 3, Color::WHITE);
+          } else {
+            it.filled_circle(x, 221, 2, Color(64, 64, 85));
+          }
+        }
+      }
