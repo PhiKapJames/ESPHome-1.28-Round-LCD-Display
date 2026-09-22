@@ -159,7 +159,7 @@ def test_configs():
     # These assertions catch the two integration errors found by initial CI.
     for profile in ('esp32-c3', 'esp32-s3-quad-psram'):
         packages = load(ROOT/'profiles'/f'{profile}.yaml')['packages']
-        assert list(packages)[-1] == 'defaults', 'Defaults must resolve before metrics'
+        assert list(packages)[-1] == 'defaults', 'Shared defaults must resolve first'
     for fragment in ('clock-page', 'camera-alerts', 'page-numeric', 'page-battery', 'page-camera'):
         display_id = load(ROOT/'packages'/f'{fragment}.yaml')['display'][0]['id']
         assert isinstance(display_id, Tagged) and display_id.tag == '!extend'
@@ -198,9 +198,8 @@ def test_configs():
         assert references<=set(ids),f'Missing IDs {references-set(ids)} in {name}'
         assert len(config['display'])==1
         imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
-        expected_pages = 1 if name.endswith('one-metric') else 6
-        assert len(imported)==expected_pages
-        assert len(config.get('graph',[]))==expected_pages
+        assert len(imported)==1
+        assert len(config.get('graph',[]))==1
         for graph in config.get('graph',[]):
             assert 'continuous' not in graph and 'sensor' not in graph
             assert graph['width']==174 and graph['height']==18
@@ -256,15 +255,23 @@ def test_configs():
     assert 'rotation_camera_image_camera_front' in template_ids
     print('PASS 10 numeric + battery + camera rotation template stress fixture')
 
-    # Exercise every legacy enabled-slot combination. Zero legacy pages is now
-    # valid because template page instances can provide the rotation instead.
-    for mask in range(0,64):
-        override={f'metric_{i+1}_enabled':'true' if mask & (1<<i) else 'false' for i in range(6)}
-        config,_=expand_file(ROOT/'tests/esp32-c3.yaml',override)
-        imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
-        assert len(imported)==mask.bit_count()
-        assert len(config.get('graph',[]))==mask.bit_count()
-    print('PASS all 64 legacy metric/battery combinations, including zero legacy pages')
+    home_cfg,_=expand_file(ROOT/'tests/esp32-s3-home-migration.yaml')
+    home_ids=set(definition_ids(home_cfg))
+    home_imported=[s for s in home_cfg['sensor'] if s['platform']=='homeassistant']
+    assert len(home_imported)==5
+    for page in ('gazebo','shed','kitchen','master','bunk'):
+        assert f'rotation_page_{page}' in home_ids
+    for source in ('front','garage','driveway','camper'):
+        assert f'camera_alerts_enabled_{source}' in home_ids
+    print('PASS Home S3 shape uses five explicit pages and four per-camera alert controls')
+
+    # The fixed slot implementation is intentionally gone.
+    for retired in ('metrics.yaml','metric-page.yaml','metric-source.yaml',
+                    'metric-unused.yaml','legacy-pages.yaml','page-unused.yaml'):
+        assert not (ROOT/'packages'/retired).exists(), f'Retired compatibility file still present: {retired}'
+    defaults=load(ROOT/'packages'/'defaults.yaml')['substitutions']
+    assert not any(re.match(r'metric_\\d+_', key) for key in defaults)
+    print('PASS no fixed-slot compatibility layer remains')
 
     core_text=(ROOT/'packages'/'core.yaml').read_text(encoding='utf-8')
     assert 'rotation_pages' in core_text
@@ -272,7 +279,7 @@ def test_configs():
     assert 'rotation_enter_callbacks' in core_text
     assert 'rotation_exit_callbacks' in core_text
     assert 'if (count == 0)' in core_text
-    print('PASS dynamic rotation registry and empty-legacy fallback')
+    print('PASS dynamic rotation registry and empty-registry clock fallback')
 
 if __name__=='__main__':
     test_configs()
