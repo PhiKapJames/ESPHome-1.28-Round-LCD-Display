@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.1.0 — source migration candidate.** The package structure has been
+**Version: 0.2.0 — multi-camera source candidate.** The package structure has been
 checked offline. The initial package extraction has not yet been compiled as ESPHome
 firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
 and compilation after publication. Check those results and validate your local
@@ -17,11 +17,16 @@ configuration before installing. See [validation](docs/VALIDATION.md).
 - Large centered readings, rounded panels, location accents, real 12-hour graphs,
   and page-position dots with an active halo.
 - A shared large-font clock between each enabled content page.
-- A horizontal battery silhouette filled from the reported percentage.
-- Optional detection-only camera snapshots, center-cropped to fill the round LCD.
-  Camera pages never join the regular playlist or add a page dot.
-- A **Show Camera Snapshot** Home Assistant button: a manual/automation override.
-  It bypasses the automatic-alert switch/cooldown, not readiness or RAM checks.
+- A horizontal battery silhouette filled from the reported percentage, with
+  red/yellow/cyan/green charge bands and a high-contrast outlined value.
+- Optional detection-only camera snapshots from up to four independently
+  configured camera sources, center-cropped to fill the round LCD. Each source
+  can trigger on person, vehicle, both (OR), or neither/manual-only. A source
+  points to any HA camera entity; single-lens and multi-lens cameras are treated
+  the same. Camera pages never join the regular playlist or add a page dot.
+- A manual/automation snapshot button for every enabled camera source. Source 1
+  remains named **Show Camera Snapshot** by default for backward compatibility.
+  Overrides bypass automatic enable/cooldown, not readiness or RAM checks.
 - Alerts save the current page and its remaining duration, then resume afterward.
 
 This initial package release preserves the established rendering geometry and
@@ -93,7 +98,7 @@ files and `secrets.yaml` must **not** be uploaded to this repository.
 Slots 1–5 accept numeric values with a configurable label, unit suffix, and
 number of decimals. Slot 6 is the battery presentation and expects **0–100%**.
 Disable a slot with `metric_3_enabled: 'false'`. Disabled slots are removed from
-the playlist and page dots and have no Home Assistant subscription. In v0.1.0,
+the playlist and page dots and have no Home Assistant subscription. In v0.2.0,
 the small per-slot graph allocations are still reserved. All slots cannot be
 disabled. The relative order of enabled slots is 1 through 6.
 
@@ -134,7 +139,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-The first version is a source migration candidate (project version `0.1.0`), not
+Version 0.2.0 remains a hardware-validation candidate, not
 a claim of hardware validation. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed
 remote package may use a tested full commit SHA, avoiding an assumed tag or a
