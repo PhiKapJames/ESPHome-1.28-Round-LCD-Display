@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.2.0 — multi-camera source candidate.** The package structure has been
+**Version: 0.3.0 — reusable camera-source candidate.** The package structure has been
 checked offline. The initial package extraction has not yet been compiled as ESPHome
 firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
 and compilation after publication. Check those results and validate your local
@@ -19,13 +19,13 @@ configuration before installing. See [validation](docs/VALIDATION.md).
 - A shared large-font clock between each enabled content page.
 - A horizontal battery silhouette filled from the reported percentage, with
   red/yellow/cyan/green charge bands and a high-contrast outlined value.
-- Optional detection-only camera snapshots from up to four independently
-  configured camera sources, center-cropped to fill the round LCD. Each source
-  can trigger on person, vehicle, both (OR), or neither/manual-only. A source
-  points to any HA camera entity; single-lens and multi-lens cameras are treated
-  the same. Camera pages never join the regular playlist or add a page dot.
-- A manual/automation snapshot button for every enabled camera source. Source 1
-  remains named **Show Camera Snapshot** by default for backward compatibility.
+- Optional detection-only camera snapshots from reusable camera-source package
+  instances. There is no hard-coded camera count: add another instance in the
+  device's private package list. Each source can trigger on person, vehicle,
+  both (OR), or neither/manual-only. Single-lens and multi-lens cameras are
+  treated the same; configure the HA camera entity whose image you want.
+  Camera pages never join the regular playlist or add a page dot.
+- A manual/automation snapshot button for every configured camera source.
   Overrides bypass automatic enable/cooldown, not readiness or RAM checks.
 - Alerts save the current page and its remaining duration, then resume afterward.
 
@@ -47,27 +47,40 @@ not pull YAML from GitHub and do not update merely because this repo changes.
 5. Test every enabled metric, battery fill, clock, snapshot override, detection,
    failed download, and return to the interrupted page.
 
-Load the camera-enabled C3 profile from this repository:
+Load the camera-enabled C3 profile and one or more reusable camera
+sources from the same remote package. ESPHome supports including the same remote
+file repeatedly with different `vars`:
 
 ```yaml
 packages:
   round_minion:
     url: https://github.com/PhiKapJames/HaEspRoundMinions
-    ref: main  # Use a tested commit SHA for a pinned deployment.
+    ref: main  # Pin a tested commit SHA in deployed device files.
     files:
       - profiles/esp32-c3-camera.yaml
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: driveway
+          camera_entity: camera.example_driveway
+          camera_source_label: DRIVEWAY
+          camera_status_label: driveway
+          camera_button_name: Show Driveway Snapshot
+          camera_trigger_person: 'true'
+          camera_person_entity: binary_sensor.example_driveway_person
+          camera_trigger_vehicle: 'true'
+          camera_vehicle_entity: binary_sensor.example_driveway_vehicle
+          camera_cooldown_ms: '60000'
     refresh: 1d
 ```
 
-For a local trial, copy this project directory beside your
-private device YAML and instead use:
+Add another `packages/camera-source.yaml` file entry for every additional
+camera. `camera_id` must be unique in that device and valid in ESPHome IDs
+(use lower-case letters, numbers, and underscores).
 
-```yaml
-packages:
-  round_minion: !include HaEspRoundMinions/profiles/esp32-c3-camera.yaml
-```
-
-Do not use both package forms at once. A public GitHub token is not needed for
+For a local trial, copy this project directory beside your private device YAML.
+Include the hardware/camera profile plus one or more local
+`packages/camera-source.yaml` template instances with `vars`. See the examples
+for the exact pattern. Do not use local and remote forms at once. A public GitHub token is not needed for
 an ESPHome builder to read a public repository. Firmware binaries containing
 real credentials must stay private.
 
@@ -98,7 +111,7 @@ files and `secrets.yaml` must **not** be uploaded to this repository.
 Slots 1–5 accept numeric values with a configurable label, unit suffix, and
 number of decimals. Slot 6 is the battery presentation and expects **0–100%**.
 Disable a slot with `metric_3_enabled: 'false'`. Disabled slots are removed from
-the playlist and page dots and have no Home Assistant subscription. In v0.2.0,
+the playlist and page dots and have no Home Assistant subscription. In v0.3.0,
 the small per-slot graph allocations are still reserved. All slots cannot be
 disabled. The relative order of enabled slots is 1 through 6.
 
@@ -139,7 +152,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.2.0 remains a hardware-validation candidate, not
+Version 0.3.0 remains a hardware-validation candidate, not
 a claim of hardware validation. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed
 remote package may use a tested full commit SHA, avoiding an assumed tag or a
