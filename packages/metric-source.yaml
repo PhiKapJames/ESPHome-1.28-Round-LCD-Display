@@ -1,8 +1,0 @@
-sensor:
-- platform: homeassistant
-  id: ${source_id}
-  entity_id: ${source_entity}
-  internal: true
-  state_class: measurement
-  unit_of_measurement: ${source_unit}
-  accuracy_decimals: ${source_precision}
