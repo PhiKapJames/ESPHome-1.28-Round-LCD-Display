@@ -6,14 +6,26 @@ substitutions:
       source_index: '0'
       source_camera_entity: ${camera_1_entity}
       source_button_name: ${camera_1_button_name}
-      source_trigger_person: ${camera_1_trigger_person}
-      source_person_entity: ${camera_1_person_entity}
-      source_trigger_vehicle: ${camera_1_trigger_vehicle}
-      source_vehicle_entity: ${camera_1_vehicle_entity}
   _camera_1_unused: !include
     file: camera-source-unused.yaml
     vars:
       source_num: '1'
+  _camera_1_person: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_person_detected_1
+      trigger_entity: ${camera_1_person_entity}
+      source_index: '0'
+      trigger_code: '1'
+  _camera_1_vehicle: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_vehicle_detected_1
+      trigger_entity: ${camera_1_vehicle_entity}
+      source_index: '0'
+      trigger_code: '2'
+  _camera_trigger_unused: !include
+    file: camera-trigger-unused.yaml
 
   _camera_2_source: !include
     file: camera-source.yaml
@@ -22,14 +34,24 @@ substitutions:
       source_index: '1'
       source_camera_entity: ${camera_2_entity}
       source_button_name: ${camera_2_button_name}
-      source_trigger_person: ${camera_2_trigger_person}
-      source_person_entity: ${camera_2_person_entity}
-      source_trigger_vehicle: ${camera_2_trigger_vehicle}
-      source_vehicle_entity: ${camera_2_vehicle_entity}
   _camera_2_unused: !include
     file: camera-source-unused.yaml
     vars:
       source_num: '2'
+  _camera_2_person: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_person_detected_2
+      trigger_entity: ${camera_2_person_entity}
+      source_index: '1'
+      trigger_code: '1'
+  _camera_2_vehicle: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_vehicle_detected_2
+      trigger_entity: ${camera_2_vehicle_entity}
+      source_index: '1'
+      trigger_code: '2'
 
   _camera_3_source: !include
     file: camera-source.yaml
@@ -38,14 +60,24 @@ substitutions:
       source_index: '2'
       source_camera_entity: ${camera_3_entity}
       source_button_name: ${camera_3_button_name}
-      source_trigger_person: ${camera_3_trigger_person}
-      source_person_entity: ${camera_3_person_entity}
-      source_trigger_vehicle: ${camera_3_trigger_vehicle}
-      source_vehicle_entity: ${camera_3_vehicle_entity}
   _camera_3_unused: !include
     file: camera-source-unused.yaml
     vars:
       source_num: '3'
+  _camera_3_person: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_person_detected_3
+      trigger_entity: ${camera_3_person_entity}
+      source_index: '2'
+      trigger_code: '1'
+  _camera_3_vehicle: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_vehicle_detected_3
+      trigger_entity: ${camera_3_vehicle_entity}
+      source_index: '2'
+      trigger_code: '2'
 
   _camera_4_source: !include
     file: camera-source.yaml
@@ -54,17 +86,38 @@ substitutions:
       source_index: '3'
       source_camera_entity: ${camera_4_entity}
       source_button_name: ${camera_4_button_name}
-      source_trigger_person: ${camera_4_trigger_person}
-      source_person_entity: ${camera_4_person_entity}
-      source_trigger_vehicle: ${camera_4_trigger_vehicle}
-      source_vehicle_entity: ${camera_4_vehicle_entity}
   _camera_4_unused: !include
     file: camera-source-unused.yaml
     vars:
       source_num: '4'
+  _camera_4_person: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_person_detected_4
+      trigger_entity: ${camera_4_person_entity}
+      source_index: '3'
+      trigger_code: '1'
+  _camera_4_vehicle: !include
+    file: camera-trigger.yaml
+    vars:
+      trigger_id: camera_vehicle_detected_4
+      trigger_entity: ${camera_4_vehicle_entity}
+      source_index: '3'
+      trigger_code: '2'
 
 packages:
   camera_1: ${ _camera_1_source if camera_1_enabled | string | lower == 'true' else _camera_1_unused }
+  camera_1_person: ${ _camera_1_person if camera_1_enabled | string | lower == 'true' and camera_1_trigger_person | string | lower == 'true' else _camera_trigger_unused }
+  camera_1_vehicle: ${ _camera_1_vehicle if camera_1_enabled | string | lower == 'true' and camera_1_trigger_vehicle | string | lower == 'true' else _camera_trigger_unused }
+
   camera_2: ${ _camera_2_source if camera_2_enabled | string | lower == 'true' else _camera_2_unused }
+  camera_2_person: ${ _camera_2_person if camera_2_enabled | string | lower == 'true' and camera_2_trigger_person | string | lower == 'true' else _camera_trigger_unused }
+  camera_2_vehicle: ${ _camera_2_vehicle if camera_2_enabled | string | lower == 'true' and camera_2_trigger_vehicle | string | lower == 'true' else _camera_trigger_unused }
+
   camera_3: ${ _camera_3_source if camera_3_enabled | string | lower == 'true' else _camera_3_unused }
+  camera_3_person: ${ _camera_3_person if camera_3_enabled | string | lower == 'true' and camera_3_trigger_person | string | lower == 'true' else _camera_trigger_unused }
+  camera_3_vehicle: ${ _camera_3_vehicle if camera_3_enabled | string | lower == 'true' and camera_3_trigger_vehicle | string | lower == 'true' else _camera_trigger_unused }
+
   camera_4: ${ _camera_4_source if camera_4_enabled | string | lower == 'true' else _camera_4_unused }
+  camera_4_person: ${ _camera_4_person if camera_4_enabled | string | lower == 'true' and camera_4_trigger_person | string | lower == 'true' else _camera_trigger_unused }
+  camera_4_vehicle: ${ _camera_4_vehicle if camera_4_enabled | string | lower == 'true' and camera_4_trigger_vehicle | string | lower == 'true' else _camera_trigger_unused }
