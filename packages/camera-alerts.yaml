@@ -300,7 +300,7 @@ switch:
   optimistic: true
   restore_mode: RESTORE_DEFAULT_ON
 display:
-- id: main_display
+- id: !extend main_display
   pages:
   - id: page_camera_alert
     lambda: |-

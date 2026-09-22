@@ -27,7 +27,7 @@ def construct_mapping(loader,node,deep=False):
         result[key]=loader.construct_object(vn,deep=deep)
     return result
 Loader.add_constructor('tag:yaml.org,2002:map',construct_mapping)
-for tag in ('!lambda','!secret','!include'):
+for tag in ('!lambda','!secret','!include','!extend'):
     def tagged(loader,node,tag=tag):
         value=(loader.construct_mapping(node,deep=True) if isinstance(node,yaml.MappingNode)
                else loader.construct_scalar(node))
@@ -79,6 +79,8 @@ def render(value,env,here):
             dest,params=include_parts(value,here)
             args=render(params,env,here)
             return render(load(dest),{**env,**args},dest.parent)
+        # This project only extends the existing main_display dictionary.
+        if value.tag=='!extend': return render(value.value,env,here)
         if value.tag=='!lambda': return render(value.value,env,here)
         if value.tag=='!secret': return f'!secret {value.value}'
     if isinstance(value,dict): return {k:render(v,env,here) for k,v in value.items()}
@@ -144,6 +146,17 @@ def all_strings(obj):
         for v in obj: yield from all_strings(v)
 
 def test_configs():
+    # Real ESPHome resolves package definitions in reverse declaration order
+    # and requires explicit !extend for the contributed display fragments.
+    # These assertions catch the two integration errors found by initial CI.
+    for profile in ('esp32-c3', 'esp32-s3-quad-psram'):
+        packages = load(ROOT/'profiles'/f'{profile}.yaml')['packages']
+        assert list(packages)[-1] == 'defaults', 'Defaults must resolve before metrics'
+    for fragment in ('metric-page', 'clock-page', 'camera-alerts'):
+        display_id = load(ROOT/'packages'/f'{fragment}.yaml')['display'][0]['id']
+        assert isinstance(display_id, Tagged) and display_id.tag == '!extend'
+        assert display_id.value == 'main_display'
+    print('PASS package order and explicit display extensions')
     profiles=('esp32-c3','esp32-c3-camera','esp32-s3-quad-psram',
               'esp32-s3-quad-psram-camera','esp32-c3-one-metric')
     for name in profiles:

@@ -1,6 +1,6 @@
 # Original working clock renderer, unchanged.
 display:
-- id: main_display
+- id: !extend main_display
   pages:
   - id: page_clock
     lambda: |-

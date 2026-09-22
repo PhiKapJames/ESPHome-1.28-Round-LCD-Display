@@ -1,6 +1,6 @@
 # Existing geometry is preserved. Labels, suffixes, and enabled slots are supplied locally.
 display:
-- id: main_display
+- id: !extend main_display
   pages:
   - id: page_metric
     lambda: !lambda |-
