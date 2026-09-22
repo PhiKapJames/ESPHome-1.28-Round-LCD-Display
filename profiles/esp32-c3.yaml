@@ -3,14 +3,12 @@ packages:
     file: ../hardware/esp32-c3-gc9a01.yaml
   core: !include
     file: ../packages/core.yaml
-  metrics: !include
-    file: ../packages/metrics.yaml
   theme: !include
     file: ../packages/theme.yaml
-  metric_page: !include
-    file: ../packages/metric-page.yaml
   clock_page: !include
     file: ../packages/clock-page.yaml
+  legacy_pages: !include
+    file: ../packages/legacy-pages.yaml
   # ESPHome resolves package definitions in reverse declaration order.
   # Load defaults before conditional metric packages; local settings still win.
   defaults: !include
