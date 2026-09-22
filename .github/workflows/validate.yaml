@@ -43,4 +43,13 @@ jobs:
         run: esphome config tests/${{ matrix.profile }}.yaml
       - name: Compile synthetic firmware (never install these fixtures)
         run: esphome compile tests/${{ matrix.profile }}.yaml
+      - name: Verify Work S3 Tailscale PSRAM settings
+        if: matrix.profile == 'esp32-s3-work-tailscale'
+        run: |
+          CFG=tests/.esphome/build/ci-work-s3-minion/sdkconfig.ci-work-s3-minion
+          test -f "$CFG"
+          grep -q '^CONFIG_SPIRAM_MODE_QUAD=y "$CFG"
+          ! grep -q '^CONFIG_SPIRAM_MODE_OCT=y "$CFG"
+          grep -q '^CONFIG_ML_H2_BUFFER_SIZE_KB=128 "$CFG"
+          grep -q '^CONFIG_ML_JSON_BUFFER_SIZE_KB=128 "$CFG"
       # Deliberately no artifact upload, device secrets, or OTA deployment.
