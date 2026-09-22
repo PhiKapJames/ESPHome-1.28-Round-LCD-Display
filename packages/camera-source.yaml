@@ -13,10 +13,12 @@ substitutions:
       camera_id: ${camera_id}
       trigger_entity: ${camera_vehicle_entity}
       trigger_code: '2'
+  _trigger_unused: !include
+    file: camera-trigger-unused.yaml
 
 packages:
-  person_trigger: ${ _person_trigger if camera_trigger_person | string | lower == 'true' else {} }
-  vehicle_trigger: ${ _vehicle_trigger if camera_trigger_vehicle | string | lower == 'true' else {} }
+  person_trigger: ${ _person_trigger if camera_trigger_person | string | lower == 'true' else _trigger_unused }
+  vehicle_trigger: ${ _vehicle_trigger if camera_trigger_vehicle | string | lower == 'true' else _trigger_unused }
 
 text_sensor:
 - platform: homeassistant
