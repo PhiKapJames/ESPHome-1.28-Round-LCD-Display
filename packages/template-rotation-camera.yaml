@@ -1,0 +1,71 @@
+# Rotation engine that supports numeric/battery pages plus optional live camera pages.
+# Requires packages/camera-alerts.yaml in the selected profile.
+script:
+- id: display_rotation
+  mode: single
+  then:
+  - while:
+      condition:
+        lambda: return true;
+      then:
+      - if:
+          condition:
+            lambda: return !id(rotation_pages).empty();
+          then:
+          - lambda: |-
+              if (id(rotation_resume_pending) && id(normal_page) != nullptr) {
+                id(rotation_resume_pending) = false;
+                id(active_rotation_kind) = 0;
+                id(main_display).show_page(id(normal_page));
+              } else {
+                id(rotation_resume_pending) = false;
+                const size_t count = id(rotation_pages).size();
+                if (id(rotation_content_index) >= count)
+                  id(rotation_content_index) = 0;
+
+                id(active_rotation_item) = id(rotation_content_index);
+                id(rotation_visible_index) = id(rotation_content_index);
+                id(active_rotation_kind) = id(rotation_kinds)[id(active_rotation_item)];
+                id(normal_remaining_ms) = id(rotation_durations)[id(active_rotation_item)];
+                id(normal_page) = id(rotation_pages)[id(active_rotation_item)];
+                id(normal_is_clock) = false;
+                id(rotation_content_index) =
+                    (id(rotation_content_index) + 1) % count;
+
+                if (id(active_rotation_kind) == 0)
+                  id(main_display).show_page(id(normal_page));
+              }
+
+          - if:
+              condition:
+                lambda: return id(active_rotation_kind) == 1;
+              then:
+              - script.execute:
+                  id: camera_rotation_page
+                  source_entity: !lambda |-
+                    return id(rotation_camera_entities)[id(active_rotation_item)];
+                  source_label: !lambda |-
+                    return id(rotation_camera_labels)[id(active_rotation_item)];
+                  picture_path: !lambda |-
+                    auto *path = id(rotation_camera_paths)[id(active_rotation_item)];
+                    if (path == nullptr || !path->has_state())
+                      return std::string();
+                    return path->state;
+                  duration_ms: !lambda |-
+                    return static_cast<int>(id(normal_remaining_ms));
+              - script.wait: camera_rotation_page
+              else:
+              - component.update: main_display
+              - lambda: id(normal_started_ms) = millis();
+              - delay: !lambda return id(normal_remaining_ms);
+
+          - lambda: |-
+              id(normal_is_clock) = true;
+              id(normal_page) = id(page_clock);
+              id(normal_remaining_ms) = ${clock_page_duration_ms};
+              id(main_display).show_page(id(page_clock));
+          - component.update: main_display
+          - lambda: id(normal_started_ms) = millis();
+          - delay: !lambda return id(normal_remaining_ms);
+          else:
+          - delay: 1s
