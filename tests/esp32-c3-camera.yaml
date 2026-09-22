@@ -5,6 +5,8 @@ substitutions:
 packages:
   round_minion: !include
     file: ../profiles/esp32-c3-camera.yaml
+  explicit_page: !include
+    file: one-numeric-page.yaml
   camera_test: !include
     file: ../packages/camera-source.yaml
     vars:
