@@ -316,13 +316,6 @@ script:
 
       - script.execute: display_rotation
 
-switch:
-- platform: template
-  id: camera_alerts_enabled
-  name: Camera Alerts
-  entity_category: config
-  optimistic: true
-  restore_mode: RESTORE_DEFAULT_ON
 
 display:
 - id: !extend main_display
