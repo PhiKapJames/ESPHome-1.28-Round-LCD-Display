@@ -119,7 +119,14 @@ def expand_file(path,overrides=None):
                 dest,params=include_parts(package,path.parent)
                 incoming=expand(dest,{**env,**render(params,env,path.parent)})
             else:
-                incoming=render(package,env,path.parent)
+                resolved=render(package,env,path.parent)
+                # Conditional package expressions may evaluate to an !include
+                # template. Model ESPHome by expanding that returned include.
+                if isinstance(resolved,Tagged) and resolved.tag=='!include':
+                    dest,params=include_parts(resolved,path.parent)
+                    incoming=expand(dest,{**env,**render(params,env,path.parent)})
+                else:
+                    incoming=resolved
             if not isinstance(incoming,dict): raise AssertionError(f'Package is not a mapping in {path}')
             assembled=merge(assembled,incoming)
         local={k:v for k,v in raw.items() if k not in ('packages','substitutions')}
