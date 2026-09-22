@@ -44,8 +44,9 @@ def include_parts(item,here):
     if not target.is_file(): raise AssertionError(f'Missing include: {target}')
     return target,spec.get('vars',{})
 
-EXPR=re.compile(r'\$\{([^{}]+)\}')
-FULL_EXPR=re.compile(r'^\$\{(.*)\}JINJA=Environment(undefined=StrictUndefined)
+EXPR=re.compile(r'\\$\\{([^{}]+)\\}')
+FULL_EXPR=re.compile(r'^\\$\\{(.*)\\}$', re.S)
+JINJA=Environment(undefined=StrictUndefined)
 
 def merge(a,b):
     if isinstance(a,dict) and isinstance(b,dict):
