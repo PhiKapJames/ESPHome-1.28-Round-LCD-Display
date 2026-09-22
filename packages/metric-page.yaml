@@ -33,14 +33,28 @@ display:
       if (index < 0 || index >= metric_count) index = 0;
 
       const auto &metric = metrics[index];
-      const Color accent = metric.accent;
-      const Color dim(accent.r / 2, accent.g / 2, accent.b / 2);
 
       // Battery identity comes from its sensor, not a fixed playlist slot.
       const bool is_battery = metric.sensor == id(cart_battery);
       const float value = metric.sensor->state;
       const bool value_ok = std::isfinite(value) &&
           (!is_battery || (value >= 0.0f && value <= 100.0f));
+
+      // Battery pages use the charge band as the whole page accent:
+      // red <25, yellow <50, cyan/blue <75, green >=75.
+      Color accent = metric.accent;
+      if (is_battery && value_ok) {
+        if (value < 25.0f) {
+          accent = Color(220, 35, 35);
+        } else if (value < 50.0f) {
+          accent = Color(245, 190, 20);
+        } else if (value < 75.0f) {
+          accent = Color(20, 155, 220);
+        } else {
+          accent = Color(30, 190, 80);
+        }
+      }
+      const Color dim(accent.r / 2, accent.g / 2, accent.b / 2);
 
       // Center visible capital-height content, not the font's line box.
       auto draw_centered = [&](int x, int y, font::Font *f,
@@ -121,9 +135,10 @@ display:
       constexpr int BATTERY_INNER_W = BATTERY_W - 2 * BATTERY_RIM;
       constexpr int BATTERY_INNER_H = BATTERY_H - 2 * BATTERY_RIM;
 
-      // Flat shades chosen to stay distinct in the 8-bit framebuffer.
-      const Color battery_empty(64, 64, 64);
-      const Color battery_charge(109, 36, 170);
+      // Solid shades stay crisp in the 8-bit framebuffer. The charge fill,
+      // outer arcs, title, and active-dot halo all follow the threshold band.
+      const Color battery_empty(48, 48, 48);
+      const Color battery_charge = value_ok ? accent : Color(96, 96, 96);
       const Color battery_outline = value_ok ? accent : Color(109, 109, 85);
       int battery_fill_width = 0;
 
@@ -199,29 +214,20 @@ display:
           120 + id(temp_font)->get_capheight() / 2;
 
       if (is_battery) {
-        // Keep the number WHITE over both portions of the battery.
-        // Separate clips give antialiased edges the correct background
-        // on each side of the charge boundary, should bpp be increased.
-        // Nothing here erases the battery fill behind the number.
-        if (battery_fill_width == 0) {
-          it.print(120, value_baseline, id(temp_font), Color::WHITE,
-                   TextAlign::BASELINE_CENTER, value_text, battery_empty);
-        } else if (battery_fill_width == BATTERY_INNER_W) {
-          it.print(120, value_baseline, id(temp_font), Color::WHITE,
-                   TextAlign::BASELINE_CENTER, value_text, battery_charge);
-        } else {
-          const int split_x = BATTERY_INNER_X + battery_fill_width;
-
-          it.start_clipping(display::Rect(0, 0, split_x, 240));
-          it.print(120, value_baseline, id(temp_font), Color::WHITE,
-                   TextAlign::BASELINE_CENTER, value_text, battery_charge);
-          it.end_clipping();
-
-          it.start_clipping(display::Rect(split_x, 0, 240 - split_x, 240));
-          it.print(120, value_baseline, id(temp_font), Color::WHITE,
-                   TextAlign::BASELINE_CENTER, value_text, battery_empty);
-          it.end_clipping();
+        // High-contrast outlined percentage: a 2px black keyline makes the
+        // white 84px value readable over red/yellow/cyan/green and empty gray.
+        const Color outline(0, 0, 0);
+        const int outline_offsets[][2] = {
+          {-2, 0}, {2, 0}, {0, -2}, {0, 2},
+          {-2, -2}, {-2, 2}, {2, -2}, {2, 2}
+        };
+        for (const auto &offset : outline_offsets) {
+          it.print(120 + offset[0], value_baseline + offset[1],
+                   id(temp_font), outline,
+                   TextAlign::BASELINE_CENTER, value_text);
         }
+        it.print(120, value_baseline, id(temp_font), Color::WHITE,
+                 TextAlign::BASELINE_CENTER, value_text);
       } else {
         it.print(120, value_baseline, id(temp_font), Color::WHITE,
                  TextAlign::BASELINE_CENTER, value_text, value_background);
