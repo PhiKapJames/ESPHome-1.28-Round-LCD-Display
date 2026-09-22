@@ -43,23 +43,23 @@ globals:
 - id: rotation_pages
   type: std::vector<esphome::display::DisplayPage *>
   restore_value: false
-  initial_value: '{}'
+  initial_value: 'std::vector<esphome::display::DisplayPage *>{}'
 - id: rotation_durations
   type: std::vector<uint32_t>
   restore_value: false
-  initial_value: '{}'
+  initial_value: 'std::vector<uint32_t>{}'
 - id: rotation_orders
   type: std::vector<int>
   restore_value: false
-  initial_value: '{}'
+  initial_value: 'std::vector<int>{}'
 - id: rotation_enter_callbacks
   type: std::vector<std::function<void()>>
   restore_value: false
-  initial_value: '{}'
+  initial_value: 'std::vector<std::function<void()>>{}'
 - id: rotation_exit_callbacks
   type: std::vector<std::function<void()>>
   restore_value: false
-  initial_value: '{}'
+  initial_value: 'std::vector<std::function<void()>>{}'
 - id: rotation_registry_sorted
   type: bool
   restore_value: false
