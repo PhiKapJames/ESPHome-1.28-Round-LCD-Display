@@ -1,0 +1,15 @@
+# Defaults for the opt-in template rotation profiles.
+substitutions:
+  device_name: round-minion-flex
+  friendly_name: Round Minion Flex
+  timezone: Etc/UTC
+  clock_page_duration_ms: '8000'
+  metric_panel_style: '1'
+  spi_clk_pin: GPIO1
+  spi_mosi_pin: GPIO2
+  display_cs_pin: GPIO5
+  display_dc_pin: GPIO4
+  display_reset_pin: GPIO9
+  backlight_pin: GPIO6
+  display_rotation_degrees: '0'
+  display_spi_rate: 80MHz
