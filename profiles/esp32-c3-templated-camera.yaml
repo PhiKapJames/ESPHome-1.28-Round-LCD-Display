@@ -1,0 +1,15 @@
+packages:
+  hardware: !include
+    file: ../hardware/esp32-c3-gc9a01.yaml
+  base: !include
+    file: ../packages/template-base.yaml
+  rotation: !include
+    file: ../packages/template-rotation-camera.yaml
+  camera: !include
+    file: ../packages/camera-alerts.yaml
+  theme: !include
+    file: ../packages/theme.yaml
+  clock_page: !include
+    file: ../packages/clock-page.yaml
+  defaults: !include
+    file: ../packages/template-defaults.yaml
