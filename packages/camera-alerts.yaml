@@ -162,6 +162,14 @@ script:
               ? id(normal_remaining_ms) - elapsed : 1;
           id(rotation_resume_pending) = true;
 
+          const int rotation_index = id(active_rotation_index);
+          if (!id(normal_is_clock) &&
+              rotation_index >= 0 &&
+              static_cast<size_t>(rotation_index) < id(rotation_exit_callbacks).size() &&
+              id(rotation_exit_callbacks)[rotation_index]) {
+            id(rotation_exit_callbacks)[rotation_index]();
+          }
+
           id(camera_alert_active) = true;
           id(camera_alert_trigger_code) = trigger_code;
           id(camera_alert_is_override) = override_request;
