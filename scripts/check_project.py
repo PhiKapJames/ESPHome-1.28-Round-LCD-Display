@@ -165,6 +165,24 @@ def test_configs():
         assert isinstance(display_id, Tagged) and display_id.tag == '!extend'
         assert display_id.value == 'main_display'
     print('PASS package order and explicit display extensions')
+
+    # Renderer-performance invariants: no runtime trig on normal metric/clock
+    # pages, no forced once-per-minute redraw, and hardware-specific outline cost.
+    metric_raw=(ROOT/'packages'/'metric-page.yaml').read_text(encoding='utf-8')
+    clock_raw=(ROOT/'packages'/'clock-page.yaml').read_text(encoding='utf-8')
+    core_raw=load(ROOT/'packages'/'core.yaml')
+    assert 'cosf(' not in metric_raw and 'sinf(' not in metric_raw
+    assert 'cosf(' not in clock_raw and 'sinf(' not in clock_raw
+    time_cfg=core_raw['time'][0]
+    assert 'on_time' not in time_cfg
+    c3_hw=load(ROOT/'hardware'/'esp32-c3-gc9a01.yaml')['substitutions']
+    s3_hw=load(ROOT/'hardware'/'esp32-s3-quad-psram-gc9a01.yaml')['substitutions']
+    assert str(c3_hw['battery_outline_quality']) == '1'
+    assert str(s3_hw['battery_outline_quality']) == '2'
+    assert c3_hw['display_buffer_size'] == '50%'
+    assert s3_hw['display_buffer_size'] == '100%'
+    print('PASS renderer performance invariants and hardware quality split')
+
     profiles=('esp32-c3','esp32-c3-camera','esp32-c3-multi-camera',
               'esp32-s3-quad-psram','esp32-s3-quad-psram-camera',
               'esp32-c3-one-metric')

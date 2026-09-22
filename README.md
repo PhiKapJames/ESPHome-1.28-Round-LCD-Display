@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.3.0 — reusable camera-source candidate.** The package structure has been
+**Version: 0.4.0 — renderer performance candidate.** The package structure has been
 checked offline. The initial package extraction has not yet been compiled as ESPHome
 firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
 and compilation after publication. Check those results and validate your local
@@ -29,8 +29,10 @@ configuration before installing. See [validation](docs/VALIDATION.md).
   Overrides bypass automatic enable/cooldown, not readiness or RAM checks.
 - Alerts save the current page and its remaining duration, then resume afterward.
 
-This initial package release preserves the established rendering geometry and
-snapshot behavior. It is not a new visual theme or a performance optimization.
+Version 0.4.0 preserves the established rendering geometry and snapshot behavior
+while reducing avoidable render work: static arc coordinates are precomputed,
+the minute marker uses a lookup table, and the redundant once-per-minute forced
+redraw is removed.
 
 ## Installation
 
@@ -88,9 +90,9 @@ real credentials must stay private.
 
 | File | Hardware and memory | Camera code |
 | --- | --- | --- |
-| `profiles/esp32-c3.yaml` | C3, 160 MHz, no PSRAM; 8-bit / 50% buffer | Omitted |
+| `profiles/esp32-c3.yaml` | C3, 160 MHz, no PSRAM; 8-bit / 50% buffer; lighter 4-direction battery keyline | Omitted |
 | `profiles/esp32-c3-camera.yaml` | Same C3 settings | Included |
-| `profiles/esp32-s3-quad-psram.yaml` | S3, 240 MHz, 4 MB flash, confirmed quad PSRAM at 80 MHz; 16-bit / full buffer | Omitted |
+| `profiles/esp32-s3-quad-psram.yaml` | S3, 240 MHz, 4 MB flash, confirmed quad PSRAM at 80 MHz; 16-bit / full buffer; full 8-direction battery keyline | Omitted |
 | `profiles/esp32-s3-quad-psram-camera.yaml` | Same S3 quad-PSRAM settings | Included |
 
 The S3 profiles are **not** for every S3 module. Confirm flash capacity, PSRAM
@@ -111,7 +113,7 @@ files and `secrets.yaml` must **not** be uploaded to this repository.
 Slots 1–5 accept numeric values with a configurable label, unit suffix, and
 number of decimals. Slot 6 is the battery presentation and expects **0–100%**.
 Disable a slot with `metric_3_enabled: 'false'`. Disabled slots are removed from
-the playlist and page dots and have no Home Assistant subscription. In v0.3.0,
+the playlist and page dots and have no Home Assistant subscription. In v0.4.0,
 the small per-slot graph allocations are still reserved. All slots cannot be
 disabled. The relative order of enabled slots is 1 through 6.
 
@@ -152,7 +154,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.3.0 remains a hardware-validation candidate, not
+Version 0.4.0 remains a hardware-validation candidate, not
 a claim of hardware validation. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed
 remote package may use a tested full commit SHA, avoiding an assumed tag or a
