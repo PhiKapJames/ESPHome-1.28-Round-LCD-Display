@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.4.0 — renderer performance candidate.** The package structure has been
+**Version: 0.5.0 — template rotation candidate.** The package structure has been
 checked offline. The initial package extraction has not yet been compiled as ESPHome
 firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
 and compilation after publication. Check those results and validate your local
@@ -13,7 +13,9 @@ configuration before installing. See [validation](docs/VALIDATION.md).
 
 ## What it displays
 
-- Up to five numeric/temperature pages and one optional battery-percentage page.
+- Legacy profiles keep the established five numeric/temperature pages plus one
+  battery page for compatibility. New template profiles remove that numbered
+  slot limit: repeat numeric, battery, or optional camera page templates as needed.
 - Large centered readings, rounded panels, location accents, real 12-hour graphs,
   and page-position dots with an active halo.
 - A shared large-font clock between each enabled content page.
@@ -25,11 +27,15 @@ configuration before installing. See [validation](docs/VALIDATION.md).
   both (OR), or neither/manual-only. Single-lens and multi-lens cameras are
   treated the same; configure the HA camera entity whose image you want.
   Camera pages never join the regular playlist or add a page dot.
-- A manual/automation snapshot button for every configured camera source.
-  Overrides bypass automatic enable/cooldown, not readiness or RAM checks.
+- A manual/automation snapshot button and an independent **<Camera> Alerts**
+  configuration switch for every camera source. A global Camera Alerts switch
+  remains as the master control. Manual snapshots bypass automatic enable/cooldown,
+  not readiness or RAM checks.
+- A **Last Camera Alert** diagnostic records only the latest automatic event in
+  short form such as `FRONT: Person` or `DRIVEWAY: Vehicle`.
 - Alerts save the current page and its remaining duration, then resume afterward.
 
-Version 0.4.0 preserves the established rendering geometry and snapshot behavior
+Version 0.5.0 preserves the established legacy rendering geometry and snapshot behavior
 while reducing avoidable render work: static arc coordinates are precomputed,
 the minute marker uses a lookup table, and the redundant once-per-minute forced
 redraw is removed.
@@ -94,6 +100,10 @@ real credentials must stay private.
 | `profiles/esp32-c3-camera.yaml` | Same C3 settings | Included |
 | `profiles/esp32-s3-quad-psram.yaml` | S3, 240 MHz, 4 MB flash, confirmed quad PSRAM at 80 MHz; 16-bit / full buffer; full 8-direction battery keyline | Omitted |
 | `profiles/esp32-s3-quad-psram-camera.yaml` | Same S3 quad-PSRAM settings | Included |
+| `profiles/esp32-c3-templated.yaml` | C3 template-driven arbitrary page registry | Omitted |
+| `profiles/esp32-c3-templated-camera.yaml` | C3 template registry + camera alerts/pages | Included |
+| `profiles/esp32-s3-quad-psram-templated.yaml` | S3 template-driven arbitrary page registry | Omitted |
+| `profiles/esp32-s3-quad-psram-templated-camera.yaml` | S3 template registry + camera alerts/pages | Included |
 
 The S3 profiles are **not** for every S3 module. Confirm flash capacity, PSRAM
 presence, mode, pin assignments, and wiring. Do not select the S3 PSRAM profile
@@ -110,17 +120,17 @@ See [configuration reference](docs/CONFIGURATION.md). Site settings can be share
 with a local package such as `!include minion-sites/site.yaml`. These local site
 files and `secrets.yaml` must **not** be uploaded to this repository.
 
-Slots 1–5 accept numeric values with a configurable label, unit suffix, and
-number of decimals. Slot 6 is the battery presentation and expects **0–100%**.
-Disable a slot with `metric_3_enabled: 'false'`. Disabled slots are removed from
-the playlist and page dots and have no Home Assistant subscription. In v0.4.0,
-the small per-slot graph allocations are still reserved. All slots cannot be
-disabled. The relative order of enabled slots is 1 through 6.
+The original numbered `metric_1..metric_6` settings remain supported by the
+legacy profiles so existing deployments do not change unexpectedly.
 
-The configured `unit` is metadata, not unit conversion. Home Assistant must
-supply the values in the intended units. Add a conversion filter locally when
-needed. Adding more than six slots or changing their order is a code change in
-this initial release, not a runtime Home Assistant setting.
+For new builds, the **templated** profiles use repeatable package instances:
+`rotation-numeric-page.yaml`, `rotation-battery-page.yaml`, and optionally
+`rotation-camera-page.yaml`. Each instance supplies its own `page_id`,
+`page_order`, duration, entity, and display settings. Adding a seventh or
+tenth numeric page does not require changing shared source code.
+
+The configured unit is metadata, not unit conversion. Home Assistant must supply
+values in the intended units.
 
 Camera snapshots use the camera entity's `entity_picture` attribute and its
 rotating token. Set `ha_base_url` to the same Home Assistant instance importing
@@ -154,7 +164,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.4.0 remains a hardware-validation candidate, not
+Version 0.5.0 remains a hardware-validation candidate, not
 a claim of hardware validation. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed
 remote package may use a tested full commit SHA, avoiding an assumed tag or a
