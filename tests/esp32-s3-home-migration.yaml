@@ -116,7 +116,7 @@ time:
 binary_sensor:
 - platform: homeassistant
   id: override_light
-  entity_id: switch.example_override_light
+  entity_id: binary_sensor.example_override_light
   internal: true
   on_state:
     then:
