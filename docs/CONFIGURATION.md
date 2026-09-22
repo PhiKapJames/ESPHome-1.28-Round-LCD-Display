@@ -9,32 +9,10 @@ packages deliberately contain no `!secret` lookups.
 
 | Setting | Default | Notes |
 | --- | --- | --- |
-| `device_name` | `round-minion` | Set a unique name; preserve existing names when migrating. |
+| `device_name` | `round-minion` | Set a unique name; preserve it across firmware updates. |
 | `friendly_name` | `Round Minion` | User-facing device name. |
-| `timezone` | `Etc/UTC` | Your timezone; not inferred from the builder's location. |
-| `graph_interval` | `12h` | Graph history. |
-| `clock_page_duration_ms` | `'8000'` | Milliseconds, positive integer string. |
-| `metric_panel_style` | `'1'` | 0 none / 1 rounded panel / 2 horizontal band. Battery always uses its own body. |
-| `metric_N_enabled` | `'true'` | N=1–6 legacy compatibility slots. Use `'true'` or `'false'`. All six may be disabled when template pages are supplied. |
-| `metric_N_label` | `Metric N`, slot 6 `Battery` | Keep short enough for 44px type. No embedded quotes, backslashes, or newlines. |
-| `metric_N_entity` | `sensor.example_metric_N` | Real HA entity of a numeric sensor; ignored for a disabled slot. |
-| `metric_N_duration_ms` | `'8000'` | Positive integer milliseconds for each content page. |
-| `metric_N_unit` | `°F` | N=1–5; metadata, **not conversion**. |
-| `metric_N_suffix` | `°` | N=1–5; text after displayed number. |
-| `metric_N_decimals` | `'1'` | N=1–5; decimals in the number. Slot 6 displays whole percent. |
-
-For example, no battery on a display:
-
-```yaml
-substitutions:
-  metric_6_enabled: 'false'
-```
-
-The 84px value stays centered. Values wider than 220 pixels can lose the decimal
-rather than shrinking the font. Other very long numeric values/suffixes are not
-arbitrarily auto-fit. The current geometry is for temperatures and battery
-percentages, not long text. Font families/sizes remain 44px Roboto title, 84px
-Roboto value, 36px Roboto footer, 92px Oswald hour/minute.
+| `timezone` | `Etc/UTC` | Device timezone. |
+| `clock_page_duration_ms` | `'8000'` | Clock interstitial duration after every content page. |
 
 ## Rotation page templates
 
@@ -43,11 +21,6 @@ maintains an ordered registry populated by page-template instances at boot.
 Each template has a unique `page_id`, integer `page_order`, and
 `page_duration_ms`. The clock is still inserted automatically after every
 normal content page.
-
-The original `metric_1..metric_6` settings remain supported and are implemented
-as a compatibility package. Existing Camper/Home device YAML does not need to
-change. For a template-only configuration, set all six legacy
-`metric_N_enabled` values to `'false'` and instantiate pages directly.
 
 ### Numeric / temperature page
 
@@ -143,9 +116,9 @@ quiet-hours logic can be kept in a local package when migrating other minions.
 
 ## Optional camera feature
 
-A `*-camera.yaml` profile adds the **shared camera engine only**: HTTP/JPEG
-download, the single decoded image buffer, full-screen rendering, Camera Alerts
-switch, timeout/RAM guards, and the alert queue. Camera sources are separate
+A `*-camera.yaml` profile adds the shared camera engine: HTTP/JPEG download,
+the single decoded alert image buffer, full-screen rendering, timeout/RAM guards,
+and the alert queue. Camera sources are separate
 instances of `packages/camera-source.yaml`.
 
 There is **no hard-coded camera count**. ESPHome remote packages allow the same
@@ -193,11 +166,10 @@ When person and vehicle are both enabled on one source, they are **OR** triggers
 A vehicle-only source does not subscribe to its person entity. A manual-only
 source sets both trigger flags false but still gets its snapshot button.
 
-The global **Camera Alerts** switch remains a master control for backward
-compatibility. Every source also exposes its own **<SOURCE> Alerts** switch, so
-automatic alerts can be disabled independently per camera. Manual snapshot
-buttons bypass both automatic-alert switches and cooldowns, but retain the
-readiness/RAM safeguards.
+Every source exposes its own **<SOURCE> Alerts** switch, so automatic alerts are
+enabled or disabled independently per camera. Manual snapshot buttons bypass
+that source's automatic-alert switch and cooldown, but retain the readiness/RAM
+safeguards.
 
 The user-facing diagnostic is **Last Camera Alert**. It remains short, for
 example `FRONT: Person` or `DRIVEWAY: Vehicle`. Manual snapshots do not
@@ -242,12 +214,12 @@ packages:
     refresh: 1d
 ```
 
-Only **one JPEG is decoded at a time**, regardless of how many source instances
-are configured. Source requests enter a bounded shared queue containing strings
-and small parameters, not images. Per-source cooldowns suppress duplicate
+Only **one alert JPEG is decoded at a time**, regardless of how many camera
+sources are configured. Source requests enter a bounded shared queue containing
+strings and small parameters, not images. Per-source cooldowns suppress duplicate
 automatic detections before queueing; stale automatic requests expire so a burst
-cannot monopolize the display indefinitely. Manual requests bypass the automatic
-Camera Alerts switch and source cooldown but use the same single-buffer engine.
+cannot monopolize the display indefinitely. Manual requests bypass the source
+Alerts switch and cooldown but use the same alert engine.
 
 The original RAM thresholds are conservative checks, not guarantees of decoder
 success. Camera access tokens come from each source's current `entity_picture`,
