@@ -1,35 +1,10 @@
-# COPY LOCALLY. Replace placeholders; never commit your real Home Assistant entities,
-# network addresses, or secrets to the public repository.
+# COPY LOCALLY. Add as many camera-source file entries as this device needs.
+# Replace all placeholders and keep real Home Assistant mappings private.
 substitutions:
   device_name: round-minion-multi-camera-example
   friendly_name: Round Minion Multi Camera Example
   timezone: Etc/UTC
   ha_base_url: http://homeassistant.local:8123
-
-  # Camera 1: person OR vehicle. A one-lens or selected multi-lens camera entity works.
-  camera_1_enabled: 'true'
-  camera_1_entity: camera.example_driveway
-  camera_1_source_label: DRIVEWAY
-  camera_1_status_label: driveway
-  camera_1_button_name: Show Driveway Snapshot
-  camera_1_trigger_person: 'true'
-  camera_1_person_entity: binary_sensor.example_driveway_person
-  camera_1_trigger_vehicle: 'true'
-  camera_1_vehicle_entity: binary_sensor.example_driveway_vehicle
-
-  # Camera 2: vehicle only.
-  camera_2_enabled: 'true'
-  camera_2_entity: camera.example_parking
-  camera_2_source_label: PARKING
-  camera_2_status_label: parking
-  camera_2_button_name: Show Parking Snapshot
-  camera_2_trigger_person: 'false'
-  camera_2_trigger_vehicle: 'true'
-  camera_2_vehicle_entity: binary_sensor.example_parking_vehicle
-
-  # Camera 3/4 stay disabled unless this local device needs them.
-  camera_3_enabled: 'false'
-  camera_4_enabled: 'false'
 
   metric_1_label: Room
   metric_1_entity: sensor.example_metric_1
@@ -45,7 +20,77 @@ packages:
     url: https://github.com/PhiKapJames/HaEspRoundMinions
     ref: main
     files:
-    - profiles/esp32-c3-camera.yaml
+      - profiles/esp32-c3-camera.yaml
+
+      # Person OR vehicle
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: driveway
+          camera_entity: camera.example_driveway
+          camera_source_label: DRIVEWAY
+          camera_status_label: driveway
+          camera_button_name: Show Driveway Snapshot
+          camera_trigger_person: 'true'
+          camera_person_entity: binary_sensor.example_driveway_person
+          camera_trigger_vehicle: 'true'
+          camera_vehicle_entity: binary_sensor.example_driveway_vehicle
+          camera_cooldown_ms: '60000'
+
+      # Vehicle only
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: parking
+          camera_entity: camera.example_parking
+          camera_source_label: PARKING
+          camera_status_label: parking
+          camera_button_name: Show Parking Snapshot
+          camera_trigger_person: 'false'
+          camera_person_entity: binary_sensor.example_parking_person
+          camera_trigger_vehicle: 'true'
+          camera_vehicle_entity: binary_sensor.example_parking_vehicle
+          camera_cooldown_ms: '60000'
+
+      # Person only
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: backyard
+          camera_entity: camera.example_backyard
+          camera_source_label: BACKYARD
+          camera_status_label: backyard
+          camera_button_name: Show Backyard Snapshot
+          camera_trigger_person: 'true'
+          camera_person_entity: binary_sensor.example_backyard_person
+          camera_trigger_vehicle: 'false'
+          camera_vehicle_entity: binary_sensor.example_backyard_vehicle
+          camera_cooldown_ms: '60000'
+
+      # Manual only
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: garage
+          camera_entity: camera.example_garage
+          camera_source_label: GARAGE
+          camera_status_label: garage
+          camera_button_name: Show Garage Snapshot
+          camera_trigger_person: 'false'
+          camera_person_entity: binary_sensor.example_garage_person
+          camera_trigger_vehicle: 'false'
+          camera_vehicle_entity: binary_sensor.example_garage_vehicle
+          camera_cooldown_ms: '60000'
+
+      # Fifth source demonstrates that there is no four-camera slot limit.
+      - path: packages/camera-source.yaml
+        vars:
+          camera_id: street
+          camera_entity: camera.example_street
+          camera_source_label: STREET
+          camera_status_label: street
+          camera_button_name: Show Street Snapshot
+          camera_trigger_person: 'false'
+          camera_person_entity: binary_sensor.example_street_person
+          camera_trigger_vehicle: 'true'
+          camera_vehicle_entity: binary_sensor.example_street_vehicle
+          camera_cooldown_ms: '30000'
     refresh: 1d
 
 api:
