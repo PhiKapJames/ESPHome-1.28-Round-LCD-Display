@@ -111,7 +111,7 @@ rotation pages remain clean full-screen images and do not overlay the indicator.
 | `backlight_pin` | `GPIO6` |
 | `display_rotation_degrees` | `'0'` |
 | `display_spi_rate` | `80MHz` |
-| `battery_outline_quality` | hardware profile | `1` = four-direction C3 keyline; `2` = full eight-direction S3 keyline. |
+| `battery_outline_quality` | hardware profile | `1` = four-direction C3/C6 keyline; `2` = full eight-direction S3 keyline. |
 
 `display_color_depth`, `display_buffer_size`, and `battery_outline_quality` are supplied by the selected
 hardware profile.
@@ -120,8 +120,9 @@ For the C6 profile, the public reference pin map is GPIO18 clock, GPIO19 MOSI,
 GPIO20 CS, GPIO21 DC, GPIO22 reset, and GPIO23 backlight. This is deliberately
 separate from the older shared C3/S3 wiring because ESP32-C6 GPIO4/5/8/9/15 are
 strapping pins and GPIO12/13 are native USB Serial/JTAG. Override the C6 pins in
-the private device YAML if the actual PCB uses another map. Do not copy the S3/full-buffer choice onto a C3 or C6 to silence
-warnings. Actual free contiguous memory matters for camera allocations.
+the private device YAML if the actual PCB uses another map.
+
+Do not copy the S3/full-buffer choice onto a C3 or C6 to silence warnings. Actual free contiguous memory matters for camera allocations.
 Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior in
 v0.5.1. Quiet-hours automation is not added automatically. Existing per-device
 quiet-hours logic can be kept in a local package when migrating other minions.
