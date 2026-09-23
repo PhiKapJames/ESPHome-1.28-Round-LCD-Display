@@ -35,7 +35,6 @@ shared-code count limit.
     page_entity: sensor.kitchen_temperature
     page_duration_ms: '4000'
     page_order: '10'
-    page_graph_interval: 12h
     page_unit: °F
     page_suffix: °
     page_decimals: '1'
@@ -49,6 +48,9 @@ shared-code count limit.
 `page_suffix` is the text rendered after the number. Colors are independent
 per page.
 
+Numeric and battery pages do not render history/trend graphs. No graph interval
+or graph-color variables are required in local device YAMLs.
+
 ### Battery page
 
 Include `packages/page-battery.yaml` for each battery percentage page:
@@ -61,7 +63,6 @@ Include `packages/page-battery.yaml` for each battery percentage page:
     page_entity: sensor.main_battery_percent
     page_duration_ms: '4000'
     page_order: '50'
-    page_graph_interval: 12h
 ```
 
 The battery renderer keeps the 0–25 red, 25–50 yellow, 50–75 cyan/blue, and
