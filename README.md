@@ -108,16 +108,19 @@ The S3 profiles are **not** for every S3 module. Confirm flash capacity, PSRAM
 presence, mode, pin assignments, and wiring. Do not select the S3 PSRAM profile
 for a C3/C6 or an S3 without the stated memory.
 
-The C6 profile targets ESP32-C6 silicon with 4 MB flash and no PSRAM, using
-`esp32-c6-devkitc-1`, explicit `variant: esp32c6`, ESP-IDF, and native
-USB Serial/JTAG logging. Its reference GC9A01A map uses GPIO18–GPIO23 so it
+The C6 profile targets the reported ESP32-C6 revision-2 class with 4 MB flash,
+using `esp32-c6-devkitc-1`, explicit `variant: esp32c6`, ESP-IDF, and native
+USB Serial/JTAG logging. Silicon revision is runtime-detected rather than selected
+in YAML; the 40 MHz crystal also needs no project override. No PSRAM is configured
+for this profile. Its reference GC9A01A map uses GPIO18–GPIO23 so it
 does not consume the C6 strapping pins (GPIO4/5/8/9/15), native USB pins
 (GPIO12/13), UART0 pins (GPIO16/17), or flash-reserved GPIO24–GPIO30. Override
 those display pins locally when the physical board is wired differently.
 
 ESP32-C6 also provides Wi-Fi 6, Bluetooth 5 LE, and IEEE 802.15.4 hardware.
 Round Minions only enables the Wi-Fi path; it does not automatically enable
-Bluetooth, Thread, or Zigbee components. Silicon revision, flash-encryption,
+Bluetooth, Thread, or Zigbee components. The current backlight is a plain GPIO
+output, so the C6 single LEDC group / six PWM channels are not consumed by it. Silicon revision, flash-encryption,
 secure-boot, and JTAG eFuse state are detected/provisioned by the hardware and
 are not changed by this repository. Device MAC addresses are intentionally
 never stored here.
