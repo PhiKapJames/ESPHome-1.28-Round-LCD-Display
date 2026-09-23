@@ -157,7 +157,7 @@ def test_configs():
     # Real ESPHome resolves package definitions in reverse declaration order
     # and requires explicit !extend for the contributed display fragments.
     # These assertions catch the two integration errors found by initial CI.
-    for profile in ('esp32-c3', 'esp32-s3-quad-psram'):
+    for profile in ('esp32-c3', 'esp32-c6', 'esp32-s3-quad-psram'):
         packages = load(ROOT/'profiles'/f'{profile}.yaml')['packages']
         assert list(packages)[-1] == 'defaults', 'Shared defaults must resolve first'
     for fragment in ('clock-page', 'camera-alerts', 'page-numeric', 'page-battery', 'page-camera'):
@@ -182,14 +182,22 @@ def test_configs():
     time_cfg=core_raw['time'][0]
     assert 'on_time' not in time_cfg
     c3_hw=load(ROOT/'hardware'/'esp32-c3-gc9a01.yaml')['substitutions']
+    c6_raw=load(ROOT/'hardware'/'esp32-c6-4mb-gc9a01.yaml')
+    c6_hw=c6_raw['substitutions']
     s3_hw=load(ROOT/'hardware'/'esp32-s3-quad-psram-gc9a01.yaml')['substitutions']
     assert str(c3_hw['battery_outline_quality']) == '1'
+    assert str(c6_hw['battery_outline_quality']) == '1'
     assert str(s3_hw['battery_outline_quality']) == '2'
     assert c3_hw['display_buffer_size'] == '50%'
+    assert c6_hw['display_buffer_size'] == '50%'
     assert s3_hw['display_buffer_size'] == '100%'
+    assert c6_raw['esp32']['variant'] == 'esp32c6'
+    assert c6_raw['esp32']['flash_size'] == '4MB'
+    assert 'psram' not in c6_raw
     print('PASS renderer performance invariants and hardware quality split')
 
     profiles=('esp32-c3','esp32-c3-camera','esp32-c3-multi-camera',
+              'esp32-c6','esp32-c6-camera',
               'esp32-s3-quad-psram','esp32-s3-quad-psram-camera',
               'esp32-c3-one-metric')
     for name in profiles:
