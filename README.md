@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.5.1 — ESP32-C6 hardware-profile candidate.** The package structure has been
+**Version: 0.5.2 — graph-free display cleanup.** The package structure has been
 checked offline. The initial package extraction has not yet been compiled as ESPHome
 firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
 and compilation after publication. Check those results and validate your local
@@ -15,8 +15,8 @@ configuration before installing. See [validation](docs/VALIDATION.md).
 
 - Any number of reusable numeric/temperature and battery-percentage rotation
   pages, ordered with `page_order`.
-- Large centered readings, rounded panels, location accents, real 12-hour graphs,
-  and a sliding page-position indicator. Up to nine dots are shown at once;
+- Large centered readings, rounded panels, location accents, and a sliding
+  page-position indicator. Trend/history graphs are intentionally omitted. Up to nine dots are shown at once;
   left/right chevrons indicate additional pages before or after the visible window.
 - A shared large-font clock between each enabled content page.
 - A horizontal battery silhouette filled from the reported percentage, with
@@ -160,7 +160,7 @@ API's encryption does not encrypt the separate HTTP request.
 
 ## Repository maintenance
 
-`packages/` holds the shared scheduler, renderers, graph and camera code.
+`packages/` holds the shared scheduler, renderers, and camera code.
 `hardware/` describes the actual processor/memory profile. `profiles/` combines
 features. `examples/` and `tests/` contain only placeholders or deliberately
 synthetic credentials. `scripts/` provides offline structure and privacy checks.
@@ -177,7 +177,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.5.1 remains a hardware-validation candidate, not
+Version 0.5.2 remains a hardware-validation candidate, not
 a claim of hardware validation. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed
 remote package may use a tested full commit SHA, avoiding an assumed tag or a

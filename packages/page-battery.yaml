@@ -6,10 +6,6 @@ substitutions:
   page_entity: sensor.example_battery
   page_duration_ms: '8000'
   page_order: '100'
-  page_graph_interval: 12h
-  page_graph_red: 60%
-  page_graph_green: 25%
-  page_graph_blue: 100%
 
 esphome:
   on_boot:
@@ -31,24 +27,6 @@ sensor:
   state_class: measurement
   unit_of_measurement: '%'
   accuracy_decimals: 1
-
-color:
-- id: rotation_battery_graph_color_${page_id}
-  red: ${page_graph_red}
-  green: ${page_graph_green}
-  blue: ${page_graph_blue}
-
-graph:
-- id: rotation_battery_graph_${page_id}
-  duration: ${page_graph_interval}
-  width: 174
-  height: 18
-  border: false
-  traces:
-  - sensor: rotation_battery_sensor_${page_id}
-    color: rotation_battery_graph_color_${page_id}
-    line_thickness: 3
-    continuous: true
 
 display:
 - id: !extend main_display
@@ -189,7 +167,6 @@ display:
       it.print(120, value_baseline, id(temp_font), Color::WHITE,
                TextAlign::BASELINE_CENTER, value_text);
 
-      it.graph(33, 156, id(rotation_battery_graph_${page_id}));
 
       auto now = id(sntp_time).now();
       char time_text[16];

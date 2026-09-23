@@ -2,7 +2,7 @@
 
 - YAML parsed with duplicate-key detection.
 - Offline package/include/substitution expansion checked for five fixtures.
-- Component references, graph schemas, and optional camera/PSRAM boundaries checked.
+- Component references and optional camera/PSRAM boundaries checked.
 - All 63 nonempty combinations of six enabled slots exercised in structural tests.
 - Native C++ selection/resumption tests passed for all 63 nonempty slot masks
   using lightweight stand-ins for the display (not an ESPHome firmware build).

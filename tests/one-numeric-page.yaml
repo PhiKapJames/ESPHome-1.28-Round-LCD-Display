@@ -7,7 +7,6 @@ packages:
       page_entity: sensor.example_test_metric
       page_duration_ms: '4000'
       page_order: '10'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
