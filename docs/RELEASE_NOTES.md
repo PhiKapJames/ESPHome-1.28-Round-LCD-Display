@@ -7,7 +7,7 @@ Extract the established GC9A01A display into public-safe ESPHome packages.
 - Preserve metric-panel and battery geometry, clock, active-dot halo, and
   detection-only full-screen snapshots with a manual/automation override.
 - Parameterize labels, units, slot visibility, pin mappings, and page durations.
-- Keep graph `continuous` under `traces`, not at graph level.
+- Numeric and battery pages no longer include trend/history graph components.
 - Include synthetic CI examples, actual ESPHome config/compile workflow, privacy
   checks, and public-safe example configuration.
 
