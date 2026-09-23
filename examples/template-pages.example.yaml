@@ -21,7 +21,6 @@ packages:
           page_entity: sensor.example_kitchen_temperature
           page_duration_ms: '4000'
           page_order: '10'
-          page_graph_interval: 12h
           page_unit: °F
           page_suffix: °
           page_decimals: '1'
@@ -37,7 +36,6 @@ packages:
           page_entity: sensor.example_outside_temperature
           page_duration_ms: '4000'
           page_order: '20'
-          page_graph_interval: 12h
           page_unit: °F
           page_suffix: °
           page_decimals: '1'
@@ -53,8 +51,6 @@ packages:
           page_entity: sensor.example_battery
           page_duration_ms: '4000'
           page_order: '30'
-          page_graph_interval: 12h
-
       # Optional: deliberately place a camera view into normal rotation.
       # This requires a *-camera profile because it reuses camera_http.
       - path: packages/page-camera.yaml
