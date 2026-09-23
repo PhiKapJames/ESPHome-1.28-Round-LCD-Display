@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.1 — 2026-09-23
+
+- Added ESP32-C6 4 MB/no-PSRAM base and camera-enabled profiles.
+- Added an explicit C6 target/variant, native USB Serial/JTAG logging, and a reference GC9A01 pin map that avoids C6 strapping, USB, UART0, and flash-reserved pins.
+- Added synthetic ESPHome validation/compile coverage for C6 base and camera configurations.
+- Kept C6 on the conservative 8-bit/50% framebuffer path; no Bluetooth or IEEE 802.15.4 feature is enabled by default.
+
 ## 0.5.0 — 2026-09-22
 
 - Replaced the fixed six-slot scheduler with an ordered dynamic page registry.

@@ -1,0 +1,31 @@
+# SYNTHETIC CI FIXTURE. Never install on a real device.
+substitutions:
+  device_name: ci-esp32-c6-camera
+  friendly_name: CI Only
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-c6-camera.yaml
+  explicit_page: !include
+    file: one-numeric-page.yaml
+  camera_test: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: test
+      camera_entity: camera.example_camera
+      camera_source_label: TEST
+      camera_status_label: test
+      camera_button_name: Show Test Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_person
+      camera_trigger_vehicle: 'false'
+      camera_vehicle_entity: binary_sensor.example_vehicle
+      camera_cooldown_ms: '60000'
+api:
+  encryption:
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+ota:
+- platform: esphome
+  password: not-a-production-password
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password

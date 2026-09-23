@@ -1,0 +1,12 @@
+packages:
+  hardware: !include
+    file: ../hardware/esp32-c6-4mb-gc9a01.yaml
+  core: !include
+    file: ../packages/core.yaml
+  theme: !include
+    file: ../packages/theme.yaml
+  clock_page: !include
+    file: ../packages/clock-page.yaml
+  # Defaults provide only shared identity/rendering settings; pages are explicit templates.
+  defaults: !include
+    file: ../packages/defaults.yaml

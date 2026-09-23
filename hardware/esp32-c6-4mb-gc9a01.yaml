@@ -1,0 +1,21 @@
+# ESP32-C6 4 MB, no PSRAM. Reference GC9A01 pin map avoids C6 strapping,
+# native USB-JTAG, UART0, and flash-reserved pins. Override locally for different wiring.
+substitutions:
+  display_color_depth: '8'
+  display_buffer_size: 50%
+  battery_outline_quality: '1'
+  spi_clk_pin: GPIO18
+  spi_mosi_pin: GPIO19
+  display_cs_pin: GPIO20
+  display_dc_pin: GPIO21
+  display_reset_pin: GPIO22
+  backlight_pin: GPIO23
+esp32:
+  board: esp32-c6-devkitc-1
+  variant: esp32c6
+  cpu_frequency: 160MHz
+  flash_size: 4MB
+  framework:
+    type: esp-idf
+logger:
+  hardware_uart: USB_SERIAL_JTAG

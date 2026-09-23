@@ -1,0 +1,19 @@
+# SYNTHETIC CI FIXTURE. Never install on a real device; no user settings here.
+substitutions:
+  device_name: ci-esp32-c6
+  friendly_name: CI Only
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-c6.yaml
+  explicit_page: !include
+    file: one-numeric-page.yaml
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
+api:
+  encryption:
+    # Public synthetic bytes 1..32, not a production key.
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+ota:
+- platform: esphome
+  password: not-a-production-password
