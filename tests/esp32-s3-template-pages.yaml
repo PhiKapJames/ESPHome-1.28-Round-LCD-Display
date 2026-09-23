@@ -19,7 +19,6 @@ packages:
       page_entity: sensor.example_template_metric_1
       page_duration_ms: '4000'
       page_order: '10'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -36,7 +35,6 @@ packages:
       page_entity: sensor.example_template_metric_2
       page_duration_ms: '4000'
       page_order: '20'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -53,7 +51,6 @@ packages:
       page_entity: sensor.example_template_metric_3
       page_duration_ms: '4000'
       page_order: '30'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -70,7 +67,6 @@ packages:
       page_entity: sensor.example_template_metric_4
       page_duration_ms: '4000'
       page_order: '40'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -87,7 +83,6 @@ packages:
       page_entity: sensor.example_template_metric_5
       page_duration_ms: '4000'
       page_order: '50'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -104,7 +99,6 @@ packages:
       page_entity: sensor.example_template_metric_6
       page_duration_ms: '4000'
       page_order: '60'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -121,7 +115,6 @@ packages:
       page_entity: sensor.example_template_metric_7
       page_duration_ms: '4000'
       page_order: '70'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -138,7 +131,6 @@ packages:
       page_entity: sensor.example_template_metric_8
       page_duration_ms: '4000'
       page_order: '80'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -155,7 +147,6 @@ packages:
       page_entity: sensor.example_template_metric_9
       page_duration_ms: '4000'
       page_order: '90'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -172,7 +163,6 @@ packages:
       page_entity: sensor.example_template_metric_10
       page_duration_ms: '4000'
       page_order: '100'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -189,8 +179,6 @@ packages:
       page_entity: sensor.example_template_battery
       page_duration_ms: '4000'
       page_order: '110'
-      page_graph_interval: 12h
-
   camera_front: !include
     file: ../packages/page-camera.yaml
     vars:
