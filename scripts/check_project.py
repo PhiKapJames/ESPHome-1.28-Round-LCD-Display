@@ -211,11 +211,7 @@ def test_configs():
         assert len(config['display'])==1
         imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
         assert len(imported)==1
-        assert len(config.get('graph',[]))==1
-        for graph in config.get('graph',[]):
-            assert 'continuous' not in graph and 'sensor' not in graph
-            assert graph['width']==174 and graph['height']==18
-            assert graph['traces'][0]['continuous'] is True
+        assert len(config.get('graph',[]))==0
         camera=('camera' in name)
         assert ('image' in config)==camera
         assert ('http_request' in config)==camera
@@ -223,7 +219,7 @@ def test_configs():
         assert ('psram' in config)==('s3' in name)
         assert [f['size'] for f in config['font'][:5]]==[44,84,36,92,92]
         assert 'rotation_pages' in ids and 'rotation_orders' in ids
-        print(f'PASS {name}: includes/substitutions/IDs/graphs/features')
+        print(f'PASS {name}: includes/substitutions/IDs/features')
 
     # Reusable-camera regression: six instances exceed the former four-source design.
     # Driveway = person OR vehicle; parking = vehicle only; garage = manual only.
@@ -256,7 +252,7 @@ def test_configs():
     template_ids=set(definition_ids(template_cfg))
     imported=[s for s in template_cfg['sensor'] if s['platform']=='homeassistant']
     assert len(imported)==11
-    assert len(template_cfg.get('graph',[]))==11
+    assert len(template_cfg.get('graph',[]))==0
     for i in range(1,11):
         assert f'rotation_page_numeric_{i}' in template_ids
         assert f'rotation_sensor_numeric_{i}' in template_ids
