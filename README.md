@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.5.0 — template rotation candidate.** The package structure has been
+**Version: 0.5.1 — ESP32-C6 hardware-profile candidate.** The package structure has been
 checked offline. The initial package extraction has not yet been compiled as ESPHome
 firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
 and compilation after publication. Check those results and validate your local
@@ -99,13 +99,28 @@ real credentials must stay private.
 | --- | --- | --- |
 | `profiles/esp32-c3.yaml` | C3, 160 MHz, no PSRAM; 8-bit / 50% buffer; lighter 4-direction battery keyline | Omitted |
 | `profiles/esp32-c3-camera.yaml` | Same C3 settings | Included |
+| `profiles/esp32-c6.yaml` | C6, 160 MHz, 4 MB flash, no PSRAM; 8-bit / 50% buffer; native USB logging; C6-safe reference GC9A01 pins | Omitted |
+| `profiles/esp32-c6-camera.yaml` | Same C6 settings | Included |
 | `profiles/esp32-s3-quad-psram.yaml` | S3, 240 MHz, 4 MB flash, confirmed quad PSRAM at 80 MHz; 16-bit / full buffer; full 8-direction battery keyline | Omitted |
 | `profiles/esp32-s3-quad-psram-camera.yaml` | Same S3 quad-PSRAM settings | Included |
 
 The S3 profiles are **not** for every S3 module. Confirm flash capacity, PSRAM
 presence, mode, pin assignments, and wiring. Do not select the S3 PSRAM profile
-for a C3 or an S3 without the stated memory. Pin defaults match the project's
-GC9A01A wiring, not a universal ESP32 pinout.
+for a C3/C6 or an S3 without the stated memory.
+
+The C6 profile targets ESP32-C6 silicon with 4 MB flash and no PSRAM, using
+`esp32-c6-devkitc-1`, explicit `variant: esp32c6`, ESP-IDF, and native
+USB Serial/JTAG logging. Its reference GC9A01A map uses GPIO18–GPIO23 so it
+does not consume the C6 strapping pins (GPIO4/5/8/9/15), native USB pins
+(GPIO12/13), UART0 pins (GPIO16/17), or flash-reserved GPIO24–GPIO30. Override
+those display pins locally when the physical board is wired differently.
+
+ESP32-C6 also provides Wi-Fi 6, Bluetooth 5 LE, and IEEE 802.15.4 hardware.
+Round Minions only enables the Wi-Fi path; it does not automatically enable
+Bluetooth, Thread, or Zigbee components. Silicon revision, flash-encryption,
+secure-boot, and JTAG eFuse state are detected/provisioned by the hardware and
+are not changed by this repository. Device MAC addresses are intentionally
+never stored here.
 
 The default LCD SPI rate is 80 MHz, preserving the established device setting.
 If the display corrupts, override `display_spi_rate: 40MHz` locally. PSRAM speed
@@ -159,7 +174,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.5.0 remains a hardware-validation candidate, not
+Version 0.5.1 remains a hardware-validation candidate, not
 a claim of hardware validation. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed
 remote package may use a tested full commit SHA, avoiding an assumed tag or a
