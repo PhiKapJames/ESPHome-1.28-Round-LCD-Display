@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.5.2 — 2026-09-23
+
+- Removed trend/history lines from all reusable numeric and battery pages.
+- Removed the underlying ESPHome graph components rather than only hiding them.
+- Removed obsolete graph interval/color settings from examples, tests, and configuration documentation.
+- Preserved the existing panels, arcs, primary readings, clock placement, and page-position indicators.
+
 ## 0.5.1 — 2026-09-23
 
 - Added ESP32-C6 4 MB/no-PSRAM base and camera-enabled profiles.
