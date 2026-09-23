@@ -27,6 +27,12 @@ docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.0 \
 
 docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.0 \
   compile tests/esp32-c3-camera.yaml
+
+docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.0 \
+  config tests/esp32-c6-camera.yaml
+
+docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.0 \
+  compile tests/esp32-c6-camera.yaml
 ```
 
 Those tests generate synthetic firmware. **Do not install the test fixture on
@@ -38,3 +44,12 @@ unchanged, all six existing screens retain their geometry, person detection and
 the snapshot override display the full-screen crop, failure paths return to the
 playlist, and RAM recovers after repeated alerts. Test an S3 separately before
 applying the S3 profile to additional devices.
+
+
+## ESP32-C6 profile
+
+CI validates and compiles both the base and camera-enabled ESP32-C6 synthetic
+fixtures. The profile targets 4 MB flash, no PSRAM, ESP-IDF, and native
+USB Serial/JTAG logging. A successful synthetic compile proves configuration and
+toolchain compatibility only; it does not claim a particular C6 board/display
+wiring has been physically validated.
