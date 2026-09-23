@@ -114,10 +114,16 @@ rotation pages remain clean full-screen images and do not overlay the indicator.
 | `battery_outline_quality` | hardware profile | `1` = four-direction C3 keyline; `2` = full eight-direction S3 keyline. |
 
 `display_color_depth`, `display_buffer_size`, and `battery_outline_quality` are supplied by the selected
-hardware profile. Do not copy the S3/full-buffer choice onto a C3 to silence
+hardware profile.
+
+For the C6 profile, the public reference pin map is GPIO18 clock, GPIO19 MOSI,
+GPIO20 CS, GPIO21 DC, GPIO22 reset, and GPIO23 backlight. This is deliberately
+separate from the older shared C3/S3 wiring because ESP32-C6 GPIO4/5/8/9/15 are
+strapping pins and GPIO12/13 are native USB Serial/JTAG. Override the C6 pins in
+the private device YAML if the actual PCB uses another map. Do not copy the S3/full-buffer choice onto a C3 or C6 to silence
 warnings. Actual free contiguous memory matters for camera allocations.
 Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior in
-v0.5.0. Quiet-hours automation is not added automatically. Existing per-device
+v0.5.1. Quiet-hours automation is not added automatically. Existing per-device
 quiet-hours logic can be kept in a local package when migrating other minions.
 
 ## Optional camera feature
@@ -258,7 +264,7 @@ full redraw at every minute boundary was removed because normal pages already
 rotate every few seconds; Home Assistant time synchronization can still request
 a refresh when time first becomes valid.
 
-C3 keeps the 50% framebuffer to preserve camera RAM headroom and uses the
-four-direction battery percentage keyline. S3 quad-PSRAM keeps its 100%
-framebuffer and full eight-direction keyline. This is an intentional
+C3 and the 4 MB/no-PSRAM C6 profile keep the 50% framebuffer to preserve
+camera RAM headroom and use the four-direction battery percentage keyline.
+S3 quad-PSRAM keeps its 100% framebuffer and full eight-direction keyline. This is an intentional
 hardware-performance difference, not a layout/theme difference.
