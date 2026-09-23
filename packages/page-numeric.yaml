@@ -6,7 +6,6 @@ substitutions:
   page_entity: sensor.example_metric
   page_duration_ms: '8000'
   page_order: '100'
-  page_graph_interval: 12h
   page_unit: °F
   page_suffix: °
   page_decimals: '1'
@@ -41,18 +40,6 @@ color:
   red: ${page_color_red}
   green: ${page_color_green}
   blue: ${page_color_blue}
-
-graph:
-- id: rotation_graph_${page_id}
-  duration: ${page_graph_interval}
-  width: 174
-  height: 18
-  border: false
-  traces:
-  - sensor: rotation_sensor_${page_id}
-    color: rotation_color_${page_id}
-    line_thickness: 3
-    continuous: true
 
 display:
 - id: !extend main_display
@@ -152,7 +139,6 @@ display:
       it.print(120, value_baseline, id(temp_font), Color::WHITE,
                TextAlign::BASELINE_CENTER, value_text, value_background);
 
-      it.graph(33, 156, id(rotation_graph_${page_id}));
 
       auto now = id(sntp_time).now();
       char time_text[16];
