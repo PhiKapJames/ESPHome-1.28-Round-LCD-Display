@@ -24,7 +24,6 @@ packages:
       page_entity: sensor.example_gazebo
       page_duration_ms: '4000'
       page_order: '10'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -41,7 +40,6 @@ packages:
       page_entity: sensor.example_shed
       page_duration_ms: '4000'
       page_order: '20'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -58,7 +56,6 @@ packages:
       page_entity: sensor.example_kitchen
       page_duration_ms: '4000'
       page_order: '30'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -75,7 +72,6 @@ packages:
       page_entity: sensor.example_master
       page_duration_ms: '4000'
       page_order: '40'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
@@ -92,7 +88,6 @@ packages:
       page_entity: sensor.example_bunk
       page_duration_ms: '4000'
       page_order: '50'
-      page_graph_interval: 12h
       page_unit: °F
       page_suffix: °
       page_decimals: '1'
