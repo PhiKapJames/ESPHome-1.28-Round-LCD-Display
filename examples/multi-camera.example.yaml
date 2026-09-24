@@ -9,8 +9,8 @@ substitutions:
 
 packages:
   round_minion:
-    url: https://github.com/PhiKapJames/HaEspRoundMinions
-    ref: main
+    url: https://github.com/PhiKapJames/ESPHome-1.28-Round-LCD-Display
+    ref: main  # Development; pin a tested tag or commit SHA on deployed devices.
     files:
       - profiles/esp32-c3-camera.yaml
 
