@@ -24,6 +24,12 @@ font:
 - id: clock_modern_date_font
   file: gfonts://Roboto
   size: 34
+- id: clock_fitness_time_font
+  file: gfonts://Oswald
+  size: 80
+- id: clock_fitness_date_font
+  file: gfonts://Roboto
+  size: 34
 - id: clock_cardinal_font
   file: gfonts://Oswald
   size: 38
