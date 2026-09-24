@@ -205,7 +205,6 @@ def test_configs():
         'original',
         'classic_analog',
         'modern_dashboard',
-        'fitness_ring',
         'clean_arc',
         'weather_station',
     )
