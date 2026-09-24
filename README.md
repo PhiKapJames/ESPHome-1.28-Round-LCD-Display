@@ -5,11 +5,10 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.6.1 — selectable clock faces.** The package structure has been
-checked offline. The initial package extraction has not yet been compiled as ESPHome
-firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
-and compilation after publication. Check those results and validate your local
-configuration before installing. See [validation](docs/VALIDATION.md).
+**Version: 0.6.1 — selectable clock faces.** GitHub Actions validates and
+compiles the synthetic ESPHome profile matrix for repository changes. Validate
+your private device configuration and test one physical device before broad
+rollout. See [validation](docs/VALIDATION.md).
 
 ## What it displays
 
@@ -152,11 +151,62 @@ and LCD SPI speed are separate settings. Never hide timing warnings as a fix.
 
 ## Clock faces
 
-Set `clock_face_style` in the private device YAML to choose the clock renderer.
-The established clock remains `original` and is the default, so existing
-devices do not change appearance until explicitly configured. The other built-in
-styles are `classic_analog`, `modern_dashboard`, `fitness_ring`, and
-`clean_arc`. They require no additional Home Assistant entities.
+The clock page is shared by every hardware profile and appears between normal
+rotation pages. Its appearance is selected per device with the
+`clock_face_style` substitution in the private device YAML.
+
+The established clock remains the default, so existing devices keep their
+current appearance unless a different style is explicitly selected.
+
+| `clock_face_style` | Description |
+| --- | --- |
+| `original` | Established stacked digital face with cyan/blue rings, purple orbit accents, and a moving minute marker. |
+| `classic_analog` | Traditional analog dial with 12/3/6/9 numerals, minute ticks, white hour/minute hands, and a red seconds hand. |
+| `modern_dashboard` | Large digital time with date, AM/PM, colored perimeter markers, and asymmetric smartwatch-style status accents. |
+| `fitness_ring` | Large digital time with a bold outer minute-progress ring and compact date/status details. |
+| `clean_arc` | Minimal centered digital time with cyan/red side arcs, date, AM/PM, and a small minute-progress bar. |
+
+### Selecting a clock face
+
+Add `clock_face_style` to the top-level `substitutions:` block in the private
+device YAML:
+
+```yaml
+substitutions:
+  device_name: camper-minion-1
+  friendly_name: Camper Minion 1
+  timezone: America/New_York
+
+  clock_page_duration_ms: "8000"
+  clock_face_style: modern_dashboard
+```
+
+Do **not** place `clock_face_style` inside the remote `packages:` block or
+inside an individual page template.
+
+To return to the established face:
+
+```yaml
+clock_face_style: original
+```
+
+Changing the clock face is a build-time configuration change. Run ESPHome
+**Validate**, then compile and install the firmware again. It is not currently a
+runtime Home Assistant selector.
+
+The built-in clock faces require no additional Home Assistant weather, battery,
+temperature, or humidity entities. They use the Home Assistant time source
+already provided by the shared package.
+
+If a newly merged package change is not being picked up while testing with
+`ref: main`, remember that the remote package may be cached according to its
+`refresh` setting. A configuration using `refresh: 1d` can keep the previous
+remote package for up to a day. During active testing, `refresh: 0s` can be used
+temporarily to force a remote check on each validation/build; restore the normal
+refresh interval afterward.
+
+An invalid style value renders a visible `CLOCK STYLE / UNKNOWN` diagnostic
+instead of silently falling back to another face.
 
 ## Configuration
 
@@ -206,8 +256,9 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.5.2 remains a hardware-validation candidate, not
-a claim of hardware validation. Check the Actions results for the exact commit
+Version 0.6.1 is validated by the repository's synthetic ESPHome CI matrix but
+is not, by itself, a claim that every hardware/profile combination has been
+physically validated. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed
 remote package may use a tested full commit SHA, avoiding an assumed tag or a
 moving `main` branch. Later tested versions can be tagged through normal GitHub
