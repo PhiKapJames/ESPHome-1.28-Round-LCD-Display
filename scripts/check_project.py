@@ -175,6 +175,8 @@ def test_configs():
     assert 'cosf(' not in metric_raw and 'sinf(' not in metric_raw
     assert 'cosf(' not in battery_raw and 'sinf(' not in battery_raw
     assert 'cosf(' not in clock_raw and 'sinf(' not in clock_raw
+    assert r'\\${' not in clock_raw, 'Escaped ESPHome substitution found in clock renderer'
+    assert '"${clock_face_style}"' in clock_raw
     for page_raw in (metric_raw, battery_raw):
         assert 'MAX_VISIBLE_DOTS = 9' in page_raw
         assert 'more_before' in page_raw and 'more_after' in page_raw
@@ -196,12 +198,53 @@ def test_configs():
     assert 'psram' not in c6_raw
     print('PASS renderer performance invariants and hardware quality split')
 
+    # Clock-style regression coverage. The package must default to the original
+    # face, and every documented private override must resolve into the rendered
+    # lambda rather than remaining escaped or being replaced by the package default.
+    supported_clock_styles = (
+        'original',
+        'classic_analog',
+        'modern_dashboard',
+        'fitness_ring',
+        'clean_arc',
+    )
+    defaults = load(ROOT/'packages'/'defaults.yaml')['substitutions']
+    assert defaults['clock_face_style'] == 'original'
+
+    clock_source = (ROOT/'packages'/'clock-page.yaml').read_text(encoding='utf-8')
+    for style in supported_clock_styles:
+        if style != 'original':
+            assert f'if (clock_style == "{style}")' in clock_source
+
+        cfg, env = expand_file(
+            ROOT/'tests'/'esp32-c3-one-metric.yaml',
+            {'clock_face_style': style},
+        )
+        assert env['clock_face_style'] == style
+        rendered_strings = list(all_strings(cfg))
+        assert any(
+            f'clock_style = "{style}"' in value
+            for value in rendered_strings
+        ), f'Clock style override did not render: {style}'
+        assert not any('\\${clock_face_style}' in value for value in rendered_strings)
+        assert not any('${clock_face_style}' in value for value in rendered_strings)
+
+    default_cfg, default_env = expand_file(ROOT/'tests'/'esp32-c3-one-metric.yaml')
+    assert default_env['clock_face_style'] == 'original'
+    assert any(
+        'clock_style = "original"' in value
+        for value in all_strings(default_cfg)
+    )
+    print('PASS all selectable clock styles, private overrides, and original default')
     profiles=('esp32-c3','esp32-c3-camera','esp32-c3-multi-camera',
               'esp32-c6','esp32-c6-camera',
               'esp32-s3-quad-psram','esp32-s3-quad-psram-camera',
               'esp32-c3-one-metric')
     for name in profiles:
         config,env=expand_file(ROOT/'tests'/f'{name}.yaml')
+        if name == 'esp32-c3':
+            assert env['clock_face_style'] == 'modern_dashboard'
+            assert any('clock_style = "modern_dashboard"' in text for text in all_strings(config))
         ids=definition_ids(config)
         assert len(ids)==len(set(ids)),f'Duplicate component IDs: {name}'
         strings=list(all_strings(config))
