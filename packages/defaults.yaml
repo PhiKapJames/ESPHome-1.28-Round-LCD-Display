@@ -5,6 +5,7 @@ substitutions:
   timezone: Etc/UTC
   clock_page_duration_ms: '8000'
   clock_face_style: original
+  clock_weather_entity: weather.home
   spi_clk_pin: GPIO1
   spi_mosi_pin: GPIO2
   display_cs_pin: GPIO5
