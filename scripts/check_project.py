@@ -175,6 +175,8 @@ def test_configs():
     assert 'cosf(' not in metric_raw and 'sinf(' not in metric_raw
     assert 'cosf(' not in battery_raw and 'sinf(' not in battery_raw
     assert 'cosf(' not in clock_raw and 'sinf(' not in clock_raw
+    assert r'\\${' not in clock_raw, 'Escaped ESPHome substitution found in clock renderer'
+    assert '"${clock_face_style}"' in clock_raw
     for page_raw in (metric_raw, battery_raw):
         assert 'MAX_VISIBLE_DOTS = 9' in page_raw
         assert 'more_before' in page_raw and 'more_after' in page_raw
