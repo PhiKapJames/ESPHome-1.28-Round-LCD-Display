@@ -1,5 +1,5 @@
 # Configurable clock renderer.
-# clock_face_style: original | classic_analog | modern_dashboard | fitness_ring | clean_arc | weather_station
+# clock_face_style: original | classic_analog | modern_dashboard | clean_arc | weather_station
 
 substitutions:
   _clock_weather_source: !include
@@ -200,40 +200,16 @@ display:
           draw_hand(minute_index, 0.68f, white, 3);
           it.filled_circle(120, 120, 7, white);
           it.filled_circle(120, 120, 3, cyan);
-          draw_centered(163, 82, id(clock_tiny_font), white, ampm_text);
+          draw_centered(120, 165, id(clock_small_font), white, ampm_text);
         }
 
         return;
       }
 
       // -------------------------------------------------------------------
-      // MODERN DASHBOARD — large digital time with asymmetric data accents.
+      // MODERN DASHBOARD — smartwatch-style minute ring with clean center.
       // -------------------------------------------------------------------
       if (clock_style == "modern_dashboard") {
-        it.fill(background);
-
-        for (int i = 0; i < 60; i++) {
-          const auto &p = MINUTE_MARKER_POINTS[i];
-          if (i % 10 == 0) {
-            const Color accent =
-                (i == 0 || i == 20 || i == 40) ? cyan :
-                (i == 10 ? green : (i == 30 ? yellow : purple));
-            it.filled_circle(p[0], p[1], 3, accent);
-          } else if (i % 5 == 0) {
-            it.filled_circle(p[0], p[1], 2, gray);
-          }
-        }
-
-        draw_centered(120, 86, id(clock_modern_time_font), white, digital_time);
-        draw_centered(120, 155, id(clock_modern_date_font), cyan, date_text);
-
-        return;
-      }
-
-      // -------------------------------------------------------------------
-      // FITNESS RING — bold smartwatch-style progress ring and digital center.
-      // -------------------------------------------------------------------
-      if (clock_style == "fitness_ring") {
         it.fill(background);
         it.filled_ring(120, 120, 115, 107, dim_gray);
 
@@ -247,10 +223,8 @@ display:
             it.filled_circle(p[0], p[1], 2, gray);
         }
 
-        // Keep the center focused on useful information: a larger time and
-        // larger day/date. No decorative badge or AM/PM line.
-        draw_centered(120, 101, id(clock_fitness_time_font), white, digital_time);
-        draw_centered(120, 163, id(clock_fitness_date_font), white, date_text);
+        draw_centered(120, 101, id(clock_modern_time_font), white, digital_time);
+        draw_centered(120, 163, id(clock_modern_date_font), white, date_text);
 
         return;
       }
@@ -261,8 +235,8 @@ display:
       if (clock_style == "clean_arc") {
         it.fill(background);
 
-        draw_centered(120, 96, id(clock_clean_time_font), white, digital_time);
-        draw_centered(120, 164, id(clock_clean_date_font), gray, date_text);
+        draw_centered(120, 82, id(clock_clean_time_font), white, digital_time);
+        draw_centered(120, 174, id(clock_clean_date_font), gray, date_text);
 
         return;
       }
