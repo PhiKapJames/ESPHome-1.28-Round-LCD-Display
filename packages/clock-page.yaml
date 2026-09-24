@@ -1,5 +1,35 @@
 # Configurable clock renderer.
-# clock_face_style: original | classic_analog | modern_dashboard | fitness_ring | clean_arc
+# clock_face_style: original | classic_analog | modern_dashboard | fitness_ring | clean_arc | weather_station
+
+substitutions:
+  _clock_weather_source: !include
+    file: clock-weather-source.yaml
+    vars:
+      clock_weather_entity: ${clock_weather_entity}
+  _clock_weather_unused: !include
+    file: clock-weather-unused.yaml
+
+packages:
+  weather_source: ${ _clock_weather_source if clock_face_style | string | lower == 'weather_station' else _clock_weather_unused }
+
+globals:
+- id: clock_weather_condition_value
+  type: std::string
+  restore_value: false
+  initial_value: '"unknown"'
+- id: clock_weather_temperature_unit_value
+  type: std::string
+  restore_value: false
+  initial_value: '"°"'
+- id: clock_weather_temperature_value
+  type: float
+  restore_value: false
+  initial_value: 'NAN'
+- id: clock_weather_humidity_value
+  type: float
+  restore_value: false
+  initial_value: 'NAN'
+
 display:
 - id: !extend main_display
   pages:
@@ -233,6 +263,201 @@ display:
 
         draw_centered(120, 96, id(clock_clean_time_font), white, digital_time);
         draw_centered(120, 164, id(clock_clean_date_font), gray, date_text);
+
+        return;
+      }
+
+      // -------------------------------------------------------------------
+      // WEATHER STATION — seven-segment clock with live HA weather data.
+      // -------------------------------------------------------------------
+      if (clock_style == "weather_station") {
+        it.fill(background);
+
+        const Color orange(255, 92, 0);
+        const Color amber(255, 180, 0);
+        const Color weather_white(245, 245, 245);
+        const Color weather_blue(80, 180, 255);
+        const Color weather_gray(150, 150, 160);
+
+        // Thin two-tone inner ring like the reference clock.
+        it.circle(120, 120, 106, orange);
+        for (int i = 20; i <= 38; i++) {
+          int x, y;
+          scaled_point(i, 0.94f, x, y);
+          it.filled_circle(x, y, 1, amber);
+        }
+
+        // Weekday arc. Highlight today in orange.
+        static const char *WEATHER_DAYS[] = {
+          "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"
+        };
+        static constexpr int DAY_X[] = {37, 64, 92, 120, 148, 176, 203};
+        static constexpr int DAY_Y[] = {43, 30, 23, 20, 23, 30, 43};
+
+        int active_day = -1;
+        if (now.is_valid()) {
+          active_day = now.day_of_week == 1 ? 6 : now.day_of_week - 2;
+        }
+
+        for (int i = 0; i < 7; i++) {
+          draw_centered(DAY_X[i], DAY_Y[i],
+                        id(clock_weather_weekday_font),
+                        i == active_day ? orange : weather_white,
+                        WEATHER_DAYS[i]);
+        }
+
+        // Compact calendar date above the main time.
+        char weather_date[12] = "--/--";
+        if (now.is_valid())
+          snprintf(weather_date, sizeof(weather_date), "%02d/%02d",
+                   now.month, now.day_of_month);
+        draw_centered(120, 53, id(clock_weather_date_font),
+                      weather_white, weather_date);
+
+        // Draw true seven-segment numerals instead of approximating them with a font.
+        auto draw_segment_digit = [&](int x, int y, int digit, Color color) {
+          static constexpr uint8_t MASKS[10] = {
+            0x3F, 0x06, 0x5B, 0x4F, 0x66,
+            0x6D, 0x7D, 0x07, 0x7F, 0x6F
+          };
+          if (digit < 0 || digit > 9) return;
+
+          const uint8_t mask = MASKS[digit];
+          constexpr int W = 32;
+          constexpr int H = 58;
+          constexpr int T = 6;
+          constexpr int HALF = H / 2;
+
+          // a
+          if (mask & 0x01) it.filled_rectangle(x + T, y, W - 2*T, T, color);
+          // b
+          if (mask & 0x02) it.filled_rectangle(x + W - T, y + T, T, HALF - T, color);
+          // c
+          if (mask & 0x04) it.filled_rectangle(x + W - T, y + HALF, T, HALF - T, color);
+          // d
+          if (mask & 0x08) it.filled_rectangle(x + T, y + H - T, W - 2*T, T, color);
+          // e
+          if (mask & 0x10) it.filled_rectangle(x, y + HALF, T, HALF - T, color);
+          // f
+          if (mask & 0x20) it.filled_rectangle(x, y + T, T, HALF - T, color);
+          // g
+          if (mask & 0x40) it.filled_rectangle(x + T, y + HALF - T/2,
+                                                W - 2*T, T, color);
+        };
+
+        int h24 = now.is_valid() ? now.hour : 0;
+        int minute = now.is_valid() ? now.minute : 0;
+        draw_segment_digit(29, 72, now.is_valid() ? h24 / 10 : 8, orange);
+        draw_segment_digit(65, 72, now.is_valid() ? h24 % 10 : 8, orange);
+        it.filled_circle(106, 91, 4, orange);
+        it.filled_circle(106, 112, 4, orange);
+        draw_segment_digit(115, 72, now.is_valid() ? minute / 10 : 8, orange);
+        draw_segment_digit(151, 72, now.is_valid() ? minute % 10 : 8, orange);
+
+        // Weather-condition icon derived from the standard weather entity state.
+        const std::string condition = id(clock_weather_condition_value);
+
+        auto draw_sun = [&](int cx, int cy) {
+          it.filled_circle(cx, cy, 8, amber);
+          it.line(cx, cy - 14, cx, cy - 11, amber);
+          it.line(cx, cy + 11, cx, cy + 14, amber);
+          it.line(cx - 14, cy, cx - 11, cy, amber);
+          it.line(cx + 11, cy, cx + 14, cy, amber);
+          it.line(cx - 10, cy - 10, cx - 8, cy - 8, amber);
+          it.line(cx + 8, cy - 8, cx + 10, cy - 10, amber);
+          it.line(cx - 10, cy + 10, cx - 8, cy + 8, amber);
+          it.line(cx + 8, cy + 8, cx + 10, cy + 10, amber);
+        };
+
+        auto draw_cloud = [&](int cx, int cy) {
+          it.filled_circle(cx - 8, cy + 2, 7, weather_white);
+          it.filled_circle(cx, cy - 3, 10, weather_white);
+          it.filled_circle(cx + 9, cy + 2, 7, weather_white);
+          it.filled_rectangle(cx - 14, cy + 2, 28, 8, weather_white);
+        };
+
+        auto draw_rain = [&](int cx, int cy, bool heavy) {
+          const int drop = heavy ? 7 : 5;
+          it.line(cx - 9, cy + 12, cx - 12, cy + 12 + drop, weather_blue);
+          it.line(cx, cy + 12, cx - 3, cy + 12 + drop, weather_blue);
+          it.line(cx + 9, cy + 12, cx + 6, cy + 12 + drop, weather_blue);
+        };
+
+        if (condition == "sunny") {
+          draw_sun(120, 160);
+        } else if (condition == "clear-night") {
+          it.filled_circle(120, 160, 12, weather_white);
+          it.filled_circle(126, 155, 11, background);
+        } else if (condition == "partlycloudy") {
+          draw_sun(111, 153);
+          draw_cloud(123, 163);
+        } else if (condition == "cloudy") {
+          draw_cloud(120, 160);
+        } else if (condition == "rainy" || condition == "pouring") {
+          draw_cloud(120, 153);
+          draw_rain(120, 153, condition == "pouring");
+        } else if (condition == "lightning" ||
+                   condition == "lightning-rainy") {
+          draw_cloud(120, 151);
+          it.line(122, 160, 116, 170, amber);
+          it.line(116, 170, 123, 168, amber);
+          it.line(123, 168, 118, 177, amber);
+          if (condition == "lightning-rainy")
+            draw_rain(120, 151, false);
+        } else if (condition == "snowy" ||
+                   condition == "snowy-rainy") {
+          draw_cloud(120, 151);
+          for (int dx : {-10, 0, 10}) {
+            it.line(120 + dx - 3, 166, 120 + dx + 3, 172, weather_white);
+            it.line(120 + dx + 3, 166, 120 + dx - 3, 172, weather_white);
+          }
+          if (condition == "snowy-rainy")
+            draw_rain(120, 151, false);
+        } else if (condition == "hail") {
+          draw_cloud(120, 151);
+          it.filled_circle(110, 169, 2, weather_white);
+          it.filled_circle(120, 171, 2, weather_white);
+          it.filled_circle(130, 169, 2, weather_white);
+        } else if (condition == "fog") {
+          it.line(104, 153, 136, 153, weather_gray);
+          it.line(99, 160, 132, 160, weather_gray);
+          it.line(108, 167, 141, 167, weather_gray);
+        } else if (condition == "windy" ||
+                   condition == "windy-variant") {
+          it.line(100, 153, 132, 153, weather_white);
+          it.line(108, 160, 141, 160, weather_white);
+          it.line(98, 167, 126, 167, weather_white);
+          if (condition == "windy-variant")
+            it.filled_circle(136, 151, 4, weather_gray);
+        } else if (condition == "exceptional") {
+          it.line(120, 148, 120, 165, amber);
+          it.filled_circle(120, 171, 2, amber);
+        } else {
+          draw_centered(120, 160, id(clock_weather_date_font),
+                        weather_gray, "?");
+        }
+
+        // Current weather metrics from the same weather entity.
+        char weather_temp[20] = "--°";
+        char weather_humidity[16] = "--%";
+
+        const float temp = id(clock_weather_temperature_value);
+        const float humidity = id(clock_weather_humidity_value);
+        const std::string &temp_unit = id(clock_weather_temperature_unit_value);
+
+        if (std::isfinite(temp)) {
+          snprintf(weather_temp, sizeof(weather_temp), "%.0f%s",
+                   temp, temp_unit.empty() ? "°" : temp_unit.c_str());
+        }
+        if (std::isfinite(humidity)) {
+          snprintf(weather_humidity, sizeof(weather_humidity),
+                   "%.0f%%", humidity);
+        }
+
+        draw_centered(55, 207, id(clock_weather_metric_font),
+                      weather_white, weather_temp);
+        draw_centered(185, 207, id(clock_weather_metric_font),
+                      weather_white, weather_humidity);
 
         return;
       }
