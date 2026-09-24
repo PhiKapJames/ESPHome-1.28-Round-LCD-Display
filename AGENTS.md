@@ -102,6 +102,7 @@ commit SHA; `refresh: never` is appropriate for an intentionally pinned ref.
 - Register normal rotation pages through the shared runtime registry.
 - Preserve `page_order` and per-page duration behavior.
 - The clock remains an interstitial page managed by shared code.
+- Preserve `clock_face_style` as the per-device selector. Supported values are `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and `clean_arc`; `original` must remain the backward-compatible default unless explicitly changed.
 - Camera alerts interrupt rotation and are not normal rotation pages unless
   `packages/page-camera.yaml` is explicitly instantiated.
 - Trend lines/sparklines are intentionally removed. Do not reintroduce them
