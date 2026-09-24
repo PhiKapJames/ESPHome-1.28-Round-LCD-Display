@@ -4,6 +4,7 @@ substitutions:
   friendly_name: Round Minion Example
   timezone: Etc/UTC
   clock_page_duration_ms: '8000'
+  clock_face_style: original
 
 packages:
   round_minion:
