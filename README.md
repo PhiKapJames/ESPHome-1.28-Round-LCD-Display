@@ -48,6 +48,27 @@ Requires **ESPHome 2026.9.0 or newer**. The initial CI image is pinned to
 all devices. Packages are downloaded by the builder at build time; devices do
 not pull YAML from GitHub and do not update merely because this repo changes.
 
+### ESPHome package architecture
+
+This repository intentionally uses ESPHome **`packages:`**, not
+**`external_components:`**. `external_components` is for custom ESPHome
+component implementations (Python/C++ component code). This project distributes
+reusable YAML configuration and template instances, so remote packages are the
+appropriate mechanism.
+
+The explicit `files:` entries in a private device YAML are also intentional.
+ESPHome's remote-package format supports loading the same template file multiple
+times with different `vars`. That is how each device creates its own numeric,
+battery, camera-page, and camera-source instances while keeping private Home
+Assistant entity IDs out of this public repository. The selected profile then
+uses relative `!include` files internally for shared hardware, core, theme,
+clock, and optional camera-engine configuration.
+
+For active development, `ref: main` with a reasonable `refresh` interval is
+convenient. For deployed devices, prefer a tested immutable commit SHA or release
+tag; a pinned source can use `refresh: never` to avoid unnecessary update
+checks.
+
 1. Copy [the example](examples/device.example.yaml) into your **local** ESPHome
    configuration directory. Do not enter real settings in the public example.
 2. Set the hardware profile and actual entities in that local file.
@@ -63,7 +84,7 @@ file repeatedly with different `vars`:
 ```yaml
 packages:
   round_minion:
-    url: https://github.com/PhiKapJames/HaEspRoundMinions
+    url: https://github.com/PhiKapJames/ESPHome-1.28-Round-LCD-Display
     ref: main  # Pin a tested commit SHA in deployed device files.
     files:
       - profiles/esp32-c3-camera.yaml
