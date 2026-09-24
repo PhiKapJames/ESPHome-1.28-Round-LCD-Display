@@ -194,17 +194,8 @@ display:
           }
         }
 
-        draw_centered(116, 103, id(clock_digital_font), white, digital_time);
-        draw_centered(120, 157, id(clock_small_font), cyan, date_text);
-        draw_centered(120, 184, id(clock_tiny_font), gray, ampm_text);
-
-        it.filled_circle(54, 153, 8, yellow);
-        it.filled_circle(48, 162, 7, white);
-        it.filled_circle(59, 164, 9, white);
-
-        it.filled_ring(185, 154, 18, 15, green);
-        it.filled_rectangle(179, 148, 12, 12, background);
-        it.filled_rectangle(188, 153, 5, 3, green);
+        draw_centered(120, 86, id(clock_modern_time_font), white, digital_time);
+        draw_centered(120, 155, id(clock_modern_date_font), cyan, date_text);
 
         return;
       }
