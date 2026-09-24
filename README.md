@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.6.0 — selectable clock faces.** The package structure has been
+**Version: 0.6.1 — selectable clock faces.** The package structure has been
 checked offline. The initial package extraction has not yet been compiled as ESPHome
 firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
 and compilation after publication. Check those results and validate your local
