@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.5.2 — graph-free display cleanup.** The package structure has been
+**Version: 0.6.0 — selectable clock faces.** The package structure has been
 checked offline. The initial package extraction has not yet been compiled as ESPHome
 firmware in the preparation environment. The included GitHub Actions workflow runs actual ESPHome validation
 and compilation after publication. Check those results and validate your local
@@ -18,7 +18,7 @@ configuration before installing. See [validation](docs/VALIDATION.md).
 - Large centered readings, rounded panels, location accents, and a sliding
   page-position indicator. Trend/history graphs are intentionally omitted. Up to nine dots are shown at once;
   left/right chevrons indicate additional pages before or after the visible window.
-- A shared large-font clock between each enabled content page.
+- A shared clock between each enabled content page, with selectable `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and `clean_arc` renderers.
 - A horizontal battery silhouette filled from the reported percentage, with
   red/yellow/cyan/green charge bands and a high-contrast outlined value.
 - Optional detection-only camera snapshots from reusable camera-source package
@@ -149,6 +149,14 @@ never stored here.
 The default LCD SPI rate is 80 MHz, preserving the established device setting.
 If the display corrupts, override `display_spi_rate: 40MHz` locally. PSRAM speed
 and LCD SPI speed are separate settings. Never hide timing warnings as a fix.
+
+## Clock faces
+
+Set `clock_face_style` in the private device YAML to choose the clock renderer.
+The established clock remains `original` and is the default, so existing
+devices do not change appearance until explicitly configured. The other built-in
+styles are `classic_analog`, `modern_dashboard`, `fitness_ring`, and
+`clean_arc`. They require no additional Home Assistant entities.
 
 ## Configuration
 
