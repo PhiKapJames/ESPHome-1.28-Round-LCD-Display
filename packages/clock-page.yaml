@@ -144,7 +144,7 @@ display:
       }
 
       // -------------------------------------------------------------------
-      // CLASSIC ANALOG — traditional 12/3/6/9 face with red seconds hand.
+      // CLASSIC ANALOG — traditional 12/3/6/9 face with hour/minute hands.
       // -------------------------------------------------------------------
       if (clock_style == "classic_analog") {
         it.fill(background);
@@ -166,10 +166,8 @@ display:
         if (now.is_valid()) {
           const int minute_index = now.minute % 60;
           const int hour_index = ((now.hour % 12) * 5 + now.minute / 12) % 60;
-          const int second_index = now.second % 60;
-          draw_hand(hour_index, 0.46f, white, 5);
+          draw_hand(hour_index, 0.54f, white, 5);
           draw_hand(minute_index, 0.68f, white, 3);
-          draw_hand(second_index, 0.78f, red, 1);
           it.filled_circle(120, 120, 7, white);
           it.filled_circle(120, 120, 3, cyan);
           draw_centered(163, 82, id(clock_tiny_font), white, ampm_text);
