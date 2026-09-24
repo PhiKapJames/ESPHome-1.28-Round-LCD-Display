@@ -17,7 +17,7 @@ rollout. See [validation](docs/VALIDATION.md).
 - Large centered readings, rounded panels, location accents, and a sliding
   page-position indicator. Trend/history graphs are intentionally omitted. Up to nine dots are shown at once;
   left/right chevrons indicate additional pages before or after the visible window.
-- A shared clock between each enabled content page, with selectable `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and `clean_arc` renderers.
+- A shared clock between each enabled content page, with selectable `original`, `classic_analog`, `modern_dashboard`, `clean_arc`, and `weather_station` renderers.
 - A horizontal battery silhouette filled from the reported percentage, with
   red/yellow/cyan/green charge bands and a high-contrast outlined value.
 - Optional detection-only camera snapshots from reusable camera-source package
@@ -162,9 +162,9 @@ current appearance unless a different style is explicitly selected.
 | --- | --- |
 | `original` | Established stacked digital face with cyan/blue rings, purple orbit accents, and a moving minute marker. |
 | `classic_analog` | Traditional analog dial with 12/3/6/9 numerals, minute ticks, white hour/minute hands, and a red seconds hand. |
-| `modern_dashboard` | Large digital time with date, AM/PM, colored perimeter markers, and asymmetric smartwatch-style status accents. |
-| `fitness_ring` | Large digital time with a bold outer minute-progress ring and compact date/status details. |
-| `clean_arc` | Minimal centered digital time with cyan/red side arcs, date, AM/PM, and a small minute-progress bar. |
+| `modern_dashboard` | Smartwatch-style minute-progress ring with a large digital time and large centered day/date. |
+| `clean_arc` | Very large stripped-back digital time with an enlarged day/date and no decorative status elements. |
+| `weather_station` | Reference-style seven-segment clock with weekday arc, date, live weather condition icon, temperature, and humidity from one Home Assistant `weather.*` entity. |
 
 ### Selecting a clock face
 
