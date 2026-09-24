@@ -20,7 +20,7 @@ font:
   size: 66
 - id: clock_cardinal_font
   file: gfonts://Oswald
-  size: 34
+  size: 38
 - id: clock_small_font
   file: gfonts://Roboto
   size: 24
