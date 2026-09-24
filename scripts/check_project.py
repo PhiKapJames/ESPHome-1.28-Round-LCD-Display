@@ -207,6 +207,7 @@ def test_configs():
         'modern_dashboard',
         'fitness_ring',
         'clean_arc',
+        'weather_station',
     )
     defaults = load(ROOT/'packages'/'defaults.yaml')['substitutions']
     assert defaults['clock_face_style'] == 'original'
@@ -236,6 +237,35 @@ def test_configs():
         for value in all_strings(default_cfg)
     )
     print('PASS all selectable clock styles, private overrides, and original default')
+    weather_cfg, weather_env = expand_file(ROOT/'tests'/'esp32-c3-weather-clock.yaml')
+    weather_ids = set(definition_ids(weather_cfg))
+    assert weather_env['clock_face_style'] == 'weather_station'
+    assert weather_env['clock_weather_entity'] == 'weather.example_home'
+    for weather_id in (
+        'clock_weather_condition_source',
+        'clock_weather_temperature_unit_source',
+        'clock_weather_temperature_source',
+        'clock_weather_humidity_source',
+        'clock_weather_condition_value',
+        'clock_weather_temperature_unit_value',
+        'clock_weather_temperature_value',
+        'clock_weather_humidity_value',
+    ):
+        assert weather_id in weather_ids
+    weather_numeric = [
+        item for item in weather_cfg.get('sensor', [])
+        if item.get('platform') == 'homeassistant'
+    ]
+    weather_text = [
+        item for item in weather_cfg.get('text_sensor', [])
+        if item.get('platform') == 'homeassistant'
+    ]
+    assert any(item.get('attribute') == 'temperature' for item in weather_numeric)
+    assert any(item.get('attribute') == 'humidity' for item in weather_numeric)
+    assert any(item.get('attribute') == 'temperature_unit' for item in weather_text)
+    assert any(item.get('entity_id') == 'weather.example_home' and 'attribute' not in item
+               for item in weather_text)
+    print('PASS weather clock condition/temperature/humidity source wiring')
     profiles=('esp32-c3','esp32-c3-camera','esp32-c3-multi-camera',
               'esp32-c6','esp32-c6-camera',
               'esp32-s3-quad-psram','esp32-s3-quad-psram-camera',
