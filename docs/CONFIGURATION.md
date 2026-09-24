@@ -5,6 +5,18 @@ in your local device/site YAML, outside this repository. `api`, `ota`, and
 `wifi` blocks stay local and reference your existing `!secret` keys. The shared
 packages deliberately contain no `!secret` lookups.
 
+## Package architecture
+
+Use this project through ESPHome's `packages:` feature. It is not an
+`external_components:` repository: there is no custom ESPHome component
+implementation to load. The public repository owns reusable YAML renderers and
+shared profiles; the private device YAML owns the concrete page/camera instances
+and their Home Assistant entity mappings.
+
+Remote package `files:` entries may intentionally reference the same template
+more than once with different `vars`. This is the supported mechanism used by
+the page and camera-source templates below.
+
 ## Identity and rendering
 
 | Setting | Default | Notes |
@@ -195,7 +207,7 @@ Example remote package with two cameras:
 ```yaml
 packages:
   round_minion:
-    url: https://github.com/PhiKapJames/HaEspRoundMinions
+    url: https://github.com/PhiKapJames/ESPHome-1.28-Round-LCD-Display
     ref: <tested-commit-sha>
     files:
       - profiles/esp32-c3-camera.yaml
