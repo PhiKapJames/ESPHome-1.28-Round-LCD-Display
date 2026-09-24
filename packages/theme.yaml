@@ -15,6 +15,18 @@ font:
 - id: clock_minute_font
   file: gfonts://Oswald
   size: 92
+- id: clock_digital_font
+  file: gfonts://Oswald
+  size: 66
+- id: clock_cardinal_font
+  file: gfonts://Oswald
+  size: 34
+- id: clock_small_font
+  file: gfonts://Roboto
+  size: 24
+- id: clock_tiny_font
+  file: gfonts://Roboto
+  size: 18
 color:
 - id: color_clock_ring_outer
   red: 0%

@@ -25,6 +25,33 @@ the page and camera-source templates below.
 | `friendly_name` | `Round Minion` | User-facing device name. |
 | `timezone` | `Etc/UTC` | Device timezone. |
 | `clock_page_duration_ms` | `'8000'` | Clock interstitial duration after every content page. |
+| `clock_face_style` | `original` | Clock renderer: `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, or `clean_arc`. |
+
+## Clock face styles
+
+The clock is still a single shared interstitial page, but its renderer is
+selectable per device with one substitution:
+
+```yaml
+substitutions:
+  clock_face_style: modern_dashboard
+```
+
+Available values:
+
+- `original` — the established nested cyan/blue/purple digital face; this remains the default.
+- `classic_analog` — traditional 12/3/6/9 dial, cyan tick marks, white hour/minute hands, and a red seconds hand.
+- `modern_dashboard` — large digital time, date, colored perimeter markers, and asymmetric status motifs.
+- `fitness_ring` — large digital time with a bold minute-progress outer ring.
+- `clean_arc` — centered digital time with cyan/red side arcs and a compact progress bar.
+
+The additional faces intentionally require no weather, battery, or other Home
+Assistant entities. This keeps clock selection independent of each site's
+available sensors. A later optional-data layer can enrich individual faces
+without changing the base selector.
+
+An unknown value displays a visible `CLOCK STYLE / UNKNOWN` diagnostic on the
+device so configuration mistakes are obvious.
 
 ## Rotation page templates
 

@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 — 2026-09-24
+
+- Added selectable clock faces through the `clock_face_style` substitution.
+- Preserved the established nested-ring clock as the default `original` style.
+- Added `classic_analog`, `modern_dashboard`, `fitness_ring`, and `clean_arc` styles inspired by round smartwatch/instrument layouts.
+- Added shared clock fonts needed by the new renderers; no private entities are required.
+- Invalid clock style names render an on-screen diagnostic instead of silently selecting a different face.
+
 ## 0.5.2 — 2026-09-23
 
 - Removed trend/history lines from all reusable numeric and battery pages.

@@ -5,7 +5,7 @@ from pathlib import Path
 import ipaddress, re, sys
 ROOT=Path(__file__).resolve().parents[1]
 IGNORE={'.git','.esphome','.pio','.venv','__pycache__'}
-ALLOWED_TOP={'README.md','LICENSE','CHANGELOG.md','.gitignore','.github','docs','examples','hardware',
+ALLOWED_TOP={'README.md','LICENSE','CHANGELOG.md','AGENTS.md','.gitignore','.github','docs','examples','hardware',
              'packages','profiles','scripts','tests'}
 errors=[]
 for path in sorted(ROOT.rglob('*')):
