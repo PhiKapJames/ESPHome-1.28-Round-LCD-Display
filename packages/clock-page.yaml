@@ -1,37 +1,49 @@
-# Original working clock renderer, unchanged.
+# Configurable clock renderer.
+# clock_face_style: original | classic_analog | modern_dashboard | fitness_ring | clean_arc
 display:
 - id: !extend main_display
   pages:
   - id: page_clock
     lambda: |-
       auto now = id(sntp_time).now();
+
       char hour_text[4] = "--";
       char minute_text[4] = "--";
+      char digital_time[12] = "--:--";
+      char date_text[20] = "--- --";
+      char ampm_text[4] = "--";
 
       if (now.is_valid()) {
         int hour12 = now.hour % 12;
         if (hour12 == 0) hour12 = 12;
         snprintf(hour_text, sizeof(hour_text), "%02d", hour12);
         snprintf(minute_text, sizeof(minute_text), "%02d", now.minute);
+        snprintf(digital_time, sizeof(digital_time), "%d:%02d", hour12, now.minute);
+        snprintf(ampm_text, sizeof(ampm_text), "%s", now.hour >= 12 ? "PM" : "AM");
+
+        static const char *WEEKDAYS[] = {
+          "", "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"
+        };
+        const int dow = now.day_of_week >= 1 && now.day_of_week <= 7
+                            ? now.day_of_week
+                            : 0;
+        snprintf(date_text, sizeof(date_text), "%s %02d",
+                 WEEKDAYS[dow], now.day_of_month);
       }
 
       const Color background = Color::BLACK;
       const Color cyan = id(color_clock_ring_outer);
       const Color blue = id(color_clock_ring_inner);
       const Color purple = id(color_clock_accent);
+      const Color white = Color::WHITE;
+      const Color gray(92, 92, 105);
+      const Color dim_gray(48, 48, 58);
+      const Color red(245, 45, 45);
+      const Color green(20, 230, 90);
+      const Color yellow(255, 190, 20);
 
-      // Static ornament points are precomputed. This preserves the exact
-      // previous geometry while avoiding repeated trigonometry on each pass.
-      static constexpr int CLOCK_ORBIT_POINTS[][2] = {
-        {33,59},{35,56},{38,53},{40,50},{42,48},{45,45},{48,42},
-        {50,40},{53,38},{56,35},{59,33},{62,31},{65,29},{69,27},
-        {72,26},{75,24},{79,22},{82,21},{85,20},{89,19},{93,18},
-        {207,181},{205,184},{202,187},{200,190},{198,192},{195,195},
-        {192,198},{190,200},{187,202},{184,205},{181,207},{178,209},
-        {175,211},{171,213},{168,214},{165,216},{161,218},{158,219},
-        {155,220},{151,221},{147,222}
-      };
-
+      // 60 points around the face, starting at 12 o'clock.
+      // Shared by minute markers and analog hand geometry.
       static constexpr int MINUTE_MARKER_POINTS[][2] = {
         {120,7},{132,8},{143,9},{155,13},{166,17},{177,22},{186,29},
         {196,36},{204,44},{211,54},{218,64},{223,74},{227,85},{231,97},
@@ -44,65 +56,228 @@ display:
         {44,36},{54,29},{63,22},{74,17},{85,13},{97,9},{108,8}
       };
 
-      it.fill(background);
-
-      // Restore the original nested-ring clock, with stronger line weights.
-      it.filled_ring(120, 120, 115, 112, cyan);
-      it.circle(120, 120, 96, blue);
-      it.circle(120, 120, 95, blue);
-      it.circle(120, 120, 78, blue);
-
-      // Two purple orbital accents.
-      for (const auto &point : CLOCK_ORBIT_POINTS) {
-        it.filled_circle(point[0], point[1], 2, purple);
-      }
-
-      // Four larger nodes, echoing the original clock.
-      it.filled_circle(42, 120, 6, purple);
-      it.filled_circle(198, 120, 6, purple);
-      it.filled_circle(120, 16, 4, cyan);
-      it.filled_circle(120, 224, 4, cyan);
-
-      // Place digits using capital height and baselines.
-      // Their font line boxes may overlap; the visible digits must not.
-      auto draw_clock_field = [&](font::Font *f, const char *text,
-                                  int center_y, bool upper) {
-        const int cap = f->get_capheight();
-        int baseline = center_y + cap / 2;
-
-        // Reserve a real, empty band around the center divider.
-        if (upper && baseline > 110) baseline = 110;
-        if (!upper && baseline - cap < 130) baseline = 130 + cap;
-
-        int width, offset, measured_baseline, height;
-        f->measure(text, &width, &offset, &measured_baseline, &height);
-
-        // Knock out only the small area behind these digits.
-        // Nested rings remain visible around them, not through them.
-        it.filled_rectangle(120 - width / 2 - 5, baseline - cap - 4,
-                            width + 10, cap + 9, background);
-
-        it.print(122, baseline + 2, f, blue,
-                 TextAlign::BASELINE_CENTER, text);
-        it.print(120, baseline, f, Color::WHITE,
-                 TextAlign::BASELINE_CENTER, text);
+      auto draw_centered = [&](int x, int center_y, font::Font *f,
+                               Color color, const char *text) {
+        const int baseline = center_y + f->get_capheight() / 2;
+        it.print(x, baseline, f, color, TextAlign::BASELINE_CENTER, text);
       };
 
-      draw_clock_field(id(clock_hour_font), hour_text, 70, true);
-      draw_clock_field(id(clock_minute_font), minute_text, 170, false);
+      auto scaled_point = [&](int index, float scale, int &x, int &y) {
+        const auto &p = MINUTE_MARKER_POINTS[index % 60];
+        x = 120 + static_cast<int>((p[0] - 120) * scale);
+        y = 120 + static_cast<int>((p[1] - 120) * scale);
+      };
 
-      // Original-style center divider, three nodes, and a center hub.
-      it.filled_rectangle(77, 119, 86, 3, purple);
-      it.filled_circle(77, 120, 3, purple);
-      it.filled_circle(163, 120, 3, purple);
-      it.filled_circle(108, 120, 3, cyan);
-      it.filled_circle(120, 120, 5, cyan);
-      it.filled_circle(132, 120, 3, cyan);
-      it.filled_circle(120, 120, 2, purple);
+      auto draw_hand = [&](int index, float scale, Color color, int width) {
+        int x, y;
+        scaled_point(index, scale, x, y);
+        for (int offset = -(width / 2); offset <= width / 2; offset++) {
+          it.line(120 + offset, 120, x + offset, y, color);
+          if (offset != 0)
+            it.line(120, 120 + offset, x, y + offset, color);
+        }
+      };
 
-      // A minute-position marker moves around the outer ring using a 60-point
-      // lookup table, so clock rendering performs no runtime trig.
-      if (now.is_valid()) {
-        const auto &marker = MINUTE_MARKER_POINTS[now.minute % 60];
-        it.filled_circle(marker[0], marker[1], 4, Color::WHITE);
+      const std::string clock_style = "\${clock_face_style}";
+
+      // -------------------------------------------------------------------
+      // ORIGINAL — established nested-ring face, preserved as the default.
+      // -------------------------------------------------------------------
+      if (clock_style == "original") {
+        static constexpr int CLOCK_ORBIT_POINTS[][2] = {
+          {33,59},{35,56},{38,53},{40,50},{42,48},{45,45},{48,42},
+          {50,40},{53,38},{56,35},{59,33},{62,31},{65,29},{69,27},
+          {72,26},{75,24},{79,22},{82,21},{85,20},{89,19},{93,18},
+          {207,181},{205,184},{202,187},{200,190},{198,192},{195,195},
+          {192,198},{190,200},{187,202},{184,205},{181,207},{178,209},
+          {175,211},{171,213},{168,214},{165,216},{161,218},{158,219},
+          {155,220},{151,221},{147,222}
+        };
+
+        it.fill(background);
+        it.filled_ring(120, 120, 115, 112, cyan);
+        it.circle(120, 120, 96, blue);
+        it.circle(120, 120, 95, blue);
+        it.circle(120, 120, 78, blue);
+
+        for (const auto &point : CLOCK_ORBIT_POINTS)
+          it.filled_circle(point[0], point[1], 2, purple);
+
+        it.filled_circle(42, 120, 6, purple);
+        it.filled_circle(198, 120, 6, purple);
+        it.filled_circle(120, 16, 4, cyan);
+        it.filled_circle(120, 224, 4, cyan);
+
+        auto draw_clock_field = [&](font::Font *f, const char *text,
+                                    int center_y, bool upper) {
+          const int cap = f->get_capheight();
+          int baseline = center_y + cap / 2;
+          if (upper && baseline > 110) baseline = 110;
+          if (!upper && baseline - cap < 130) baseline = 130 + cap;
+
+          int width, offset, measured_baseline, height;
+          f->measure(text, &width, &offset, &measured_baseline, &height);
+          it.filled_rectangle(120 - width / 2 - 5, baseline - cap - 4,
+                              width + 10, cap + 9, background);
+          it.print(122, baseline + 2, f, blue,
+                   TextAlign::BASELINE_CENTER, text);
+          it.print(120, baseline, f, white,
+                   TextAlign::BASELINE_CENTER, text);
+        };
+
+        draw_clock_field(id(clock_hour_font), hour_text, 70, true);
+        draw_clock_field(id(clock_minute_font), minute_text, 170, false);
+
+        it.filled_rectangle(77, 119, 86, 3, purple);
+        it.filled_circle(77, 120, 3, purple);
+        it.filled_circle(163, 120, 3, purple);
+        it.filled_circle(108, 120, 3, cyan);
+        it.filled_circle(120, 120, 5, cyan);
+        it.filled_circle(132, 120, 3, cyan);
+        it.filled_circle(120, 120, 2, purple);
+
+        if (now.is_valid()) {
+          const auto &marker = MINUTE_MARKER_POINTS[now.minute % 60];
+          it.filled_circle(marker[0], marker[1], 4, white);
+        }
+        return;
       }
+
+      // -------------------------------------------------------------------
+      // CLASSIC ANALOG — traditional 12/3/6/9 face with red seconds hand.
+      // -------------------------------------------------------------------
+      if (clock_style == "classic_analog") {
+        it.fill(background);
+        it.circle(120, 120, 116, dim_gray);
+
+        for (int i = 0; i < 60; i++) {
+          const auto &p = MINUTE_MARKER_POINTS[i];
+          if (i % 5 == 0)
+            it.filled_circle(p[0], p[1], 3, cyan);
+          else
+            it.filled_circle(p[0], p[1], 1, gray);
+        }
+
+        draw_centered(120, 30, id(clock_cardinal_font), white, "12");
+        draw_centered(207, 120, id(clock_cardinal_font), white, "3");
+        draw_centered(120, 210, id(clock_cardinal_font), white, "6");
+        draw_centered(33, 120, id(clock_cardinal_font), white, "9");
+
+        if (now.is_valid()) {
+          const int minute_index = now.minute % 60;
+          const int hour_index = ((now.hour % 12) * 5 + now.minute / 12) % 60;
+          const int second_index = now.second % 60;
+          draw_hand(hour_index, 0.46f, white, 5);
+          draw_hand(minute_index, 0.68f, white, 3);
+          draw_hand(second_index, 0.78f, red, 1);
+          it.filled_circle(120, 120, 7, white);
+          it.filled_circle(120, 120, 3, cyan);
+          draw_centered(163, 82, id(clock_tiny_font), white, ampm_text);
+        }
+
+        return;
+      }
+
+      // -------------------------------------------------------------------
+      // MODERN DASHBOARD — large digital time with asymmetric data accents.
+      // -------------------------------------------------------------------
+      if (clock_style == "modern_dashboard") {
+        it.fill(background);
+
+        for (int i = 0; i < 60; i++) {
+          const auto &p = MINUTE_MARKER_POINTS[i];
+          if (i % 10 == 0) {
+            const Color accent =
+                (i == 0 || i == 20 || i == 40) ? cyan :
+                (i == 10 ? green : (i == 30 ? yellow : purple));
+            it.filled_circle(p[0], p[1], 3, accent);
+          } else if (i % 5 == 0) {
+            it.filled_circle(p[0], p[1], 2, gray);
+          }
+        }
+
+        draw_centered(116, 103, id(clock_digital_font), white, digital_time);
+        draw_centered(120, 157, id(clock_small_font), cyan, date_text);
+        draw_centered(120, 184, id(clock_tiny_font), gray, ampm_text);
+
+        it.filled_circle(54, 153, 8, yellow);
+        it.filled_circle(48, 162, 7, white);
+        it.filled_circle(59, 164, 9, white);
+
+        it.filled_ring(185, 154, 18, 15, green);
+        it.filled_rectangle(179, 148, 12, 12, background);
+        it.filled_rectangle(188, 153, 5, 3, green);
+
+        return;
+      }
+
+      // -------------------------------------------------------------------
+      // FITNESS RING — bold smartwatch-style progress ring and digital center.
+      // -------------------------------------------------------------------
+      if (clock_style == "fitness_ring") {
+        it.fill(background);
+        it.filled_ring(120, 120, 115, 107, dim_gray);
+
+        const int progress = now.is_valid() ? now.minute : 0;
+        for (int i = 0; i < 60; i++) {
+          const auto &p = MINUTE_MARKER_POINTS[i];
+          const bool active = i <= progress;
+          if (active)
+            it.filled_circle(p[0], p[1], i % 5 == 0 ? 5 : 3, purple);
+          else if (i % 5 == 0)
+            it.filled_circle(p[0], p[1], 2, gray);
+        }
+
+        draw_centered(120, 103, id(clock_digital_font), white, digital_time);
+        draw_centered(120, 153, id(clock_small_font), white, date_text);
+        draw_centered(120, 182, id(clock_tiny_font), purple, ampm_text);
+
+        it.filled_ring(120, 210, 15, 12, purple);
+        it.filled_circle(120, 210, 4, white);
+
+        return;
+      }
+
+      // -------------------------------------------------------------------
+      // CLEAN ARC — large center time with paired vertical dashboard arcs.
+      // -------------------------------------------------------------------
+      if (clock_style == "clean_arc") {
+        it.fill(background);
+
+        static constexpr int LEFT_ARC[] = {
+          42,43,44,45,46,47,48,49,50,51,52,53,54,55,56,57
+        };
+        static constexpr int RIGHT_ARC[] = {
+          12,13,14,15,16,17,18,19,20,21,22,23,24,25,26,27
+        };
+
+        for (const int i : LEFT_ARC) {
+          const auto &p = MINUTE_MARKER_POINTS[i];
+          it.filled_circle(p[0], p[1], 3, cyan);
+        }
+        for (const int i : RIGHT_ARC) {
+          const auto &p = MINUTE_MARKER_POINTS[i];
+          it.filled_circle(p[0], p[1], 3, red);
+        }
+
+        it.circle(120, 120, 93, dim_gray);
+        draw_centered(120, 108, id(clock_digital_font), white, digital_time);
+        draw_centered(120, 157, id(clock_small_font), gray, date_text);
+        draw_centered(120, 187, id(clock_tiny_font), cyan, ampm_text);
+
+        it.filled_rectangle(93, 35, 54, 4, dim_gray);
+        if (now.is_valid()) {
+          const int filled = static_cast<int>(54.0f * (now.minute / 59.0f));
+          if (filled > 0)
+            it.filled_rectangle(93, 35, filled, 4, green);
+        }
+
+        return;
+      }
+
+      // Unknown value: display a visible diagnostic instead of silently
+      // selecting another design.
+      it.fill(background);
+      draw_centered(120, 92, id(clock_small_font), red, "CLOCK STYLE");
+      draw_centered(120, 126, id(clock_small_font), white, "UNKNOWN");
+      draw_centered(120, 164, id(clock_tiny_font), gray, "\${clock_face_style}");
