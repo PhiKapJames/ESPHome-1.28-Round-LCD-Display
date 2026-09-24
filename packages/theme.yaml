@@ -18,6 +18,12 @@ font:
 - id: clock_digital_font
   file: gfonts://Oswald
   size: 66
+- id: clock_modern_time_font
+  file: gfonts://Oswald
+  size: 78
+- id: clock_modern_date_font
+  file: gfonts://Roboto
+  size: 34
 - id: clock_cardinal_font
   file: gfonts://Oswald
   size: 38
