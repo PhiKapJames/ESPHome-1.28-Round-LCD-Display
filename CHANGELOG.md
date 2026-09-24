@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 — 2026-09-24
+
+- Fixed the clock renderer so `clock_face_style` is actually expanded by ESPHome instead of being escaped as a literal.
+- Added a structural regression check that rejects escaped ESPHome substitutions in the clock renderer.
+- No private YAML setting name changed; existing `clock_face_style` values remain valid.
+
 ## 0.6.0 — 2026-09-24
 
 - Added selectable clock faces through the `clock_face_style` substitution.
