@@ -20,22 +20,16 @@ font:
   size: 66
 - id: clock_modern_time_font
   file: gfonts://Oswald
-  size: 78
-- id: clock_modern_date_font
-  file: gfonts://Roboto
-  size: 34
-- id: clock_fitness_time_font
-  file: gfonts://Oswald
   size: 80
-- id: clock_fitness_date_font
+- id: clock_modern_date_font
   file: gfonts://Roboto
   size: 34
 - id: clock_clean_time_font
   file: gfonts://Oswald
-  size: 82
+  size: 96
 - id: clock_clean_date_font
   file: gfonts://Roboto
-  size: 36
+  size: 42
 - id: clock_weather_weekday_font
   file: gfonts://Roboto
   size: 13
