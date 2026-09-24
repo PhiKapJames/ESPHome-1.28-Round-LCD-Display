@@ -78,7 +78,7 @@ display:
         }
       };
 
-      const std::string clock_style = "\${clock_face_style}";
+      const std::string clock_style = "${clock_face_style}";
 
       // -------------------------------------------------------------------
       // ORIGINAL — established nested-ring face, preserved as the default.
@@ -280,4 +280,4 @@ display:
       it.fill(background);
       draw_centered(120, 92, id(clock_small_font), red, "CLOCK STYLE");
       draw_centered(120, 126, id(clock_small_font), white, "UNKNOWN");
-      draw_centered(120, 164, id(clock_tiny_font), gray, "\${clock_face_style}");
+      draw_centered(120, 164, id(clock_tiny_font), gray, "${clock_face_style}");
