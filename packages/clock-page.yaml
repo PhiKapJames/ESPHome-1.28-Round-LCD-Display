@@ -217,12 +217,10 @@ display:
             it.filled_circle(p[0], p[1], 2, gray);
         }
 
-        draw_centered(120, 103, id(clock_digital_font), white, digital_time);
-        draw_centered(120, 153, id(clock_small_font), white, date_text);
-        draw_centered(120, 182, id(clock_tiny_font), purple, ampm_text);
-
-        it.filled_ring(120, 210, 15, 12, purple);
-        it.filled_circle(120, 210, 4, white);
+        // Keep the center focused on useful information: a larger time and
+        // larger day/date. No decorative badge or AM/PM line.
+        draw_centered(120, 101, id(clock_fitness_time_font), white, digital_time);
+        draw_centered(120, 163, id(clock_fitness_date_font), white, date_text);
 
         return;
       }
