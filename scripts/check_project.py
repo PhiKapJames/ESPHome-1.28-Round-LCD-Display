@@ -204,6 +204,9 @@ def test_configs():
               'esp32-c3-one-metric')
     for name in profiles:
         config,env=expand_file(ROOT/'tests'/f'{name}.yaml')
+        if name == 'esp32-c3':
+            assert env['clock_face_style'] == 'modern_dashboard'
+            assert any('clock_style = "modern_dashboard"' in text for text in all_strings(config))
         ids=definition_ids(config)
         assert len(ids)==len(set(ids)),f'Duplicate component IDs: {name}'
         strings=list(all_strings(config))
