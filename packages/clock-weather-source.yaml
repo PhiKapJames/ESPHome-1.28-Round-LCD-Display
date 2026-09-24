@@ -1,0 +1,44 @@
+# Optional Home Assistant weather source for the weather_station clock face.
+# A standard weather.* entity supplies condition as its state plus temperature,
+# temperature_unit, and humidity attributes.
+
+text_sensor:
+- platform: homeassistant
+  id: clock_weather_condition_source
+  entity_id: ${clock_weather_entity}
+  internal: true
+  on_value:
+    then:
+    - lambda: |-
+        id(clock_weather_condition_value) = x;
+
+- platform: homeassistant
+  id: clock_weather_temperature_unit_source
+  entity_id: ${clock_weather_entity}
+  attribute: temperature_unit
+  internal: true
+  on_value:
+    then:
+    - lambda: |-
+        id(clock_weather_temperature_unit_value) = x;
+
+sensor:
+- platform: homeassistant
+  id: clock_weather_temperature_source
+  entity_id: ${clock_weather_entity}
+  attribute: temperature
+  internal: true
+  on_value:
+    then:
+    - lambda: |-
+        id(clock_weather_temperature_value) = x;
+
+- platform: homeassistant
+  id: clock_weather_humidity_source
+  entity_id: ${clock_weather_entity}
+  attribute: humidity
+  internal: true
+  on_value:
+    then:
+    - lambda: |-
+        id(clock_weather_humidity_value) = x;
