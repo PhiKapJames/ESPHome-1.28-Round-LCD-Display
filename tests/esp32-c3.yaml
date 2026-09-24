@@ -2,6 +2,7 @@
 substitutions:
   device_name: ci-esp32-c3
   friendly_name: CI Only
+  clock_face_style: modern_dashboard
 packages:
   round_minion: !include
     file: ../profiles/esp32-c3.yaml
