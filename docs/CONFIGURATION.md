@@ -25,7 +25,7 @@ the page and camera-source templates below.
 | `friendly_name` | `Round Minion` | User-facing device name. |
 | `timezone` | `Etc/UTC` | Device timezone. |
 | `clock_page_duration_ms` | `'8000'` | Clock interstitial duration after every content page. |
-| `clock_face_style` | `original` | Clock renderer: `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, or `clean_arc`. |
+| `clock_face_style` | `original` | Clock renderer: `original`, `classic_analog`, `modern_dashboard`, `clean_arc`, or `weather_station`. |
 
 ## Clock face styles
 
@@ -41,9 +41,9 @@ Available values:
 
 - `original` — the established nested cyan/blue/purple digital face; this remains the default.
 - `classic_analog` — traditional 12/3/6/9 dial, cyan tick marks, white hour/minute hands, and a red seconds hand.
-- `modern_dashboard` — large digital time, date, colored perimeter markers, and asymmetric status motifs.
-- `fitness_ring` — large digital time with a bold minute-progress outer ring.
-- `clean_arc` — centered digital time with cyan/red side arcs and a compact progress bar.
+- `modern_dashboard` — large digital time/date inside a smartwatch-style minute-progress ring.
+- `clean_arc` — oversized minimal digital time and enlarged day/date.
+- `weather_station` — seven-segment time, weekday/date, live weather icon, temperature, and humidity from `clock_weather_entity`.
 
 The additional faces intentionally require no weather, battery, or other Home
 Assistant entities. This keeps clock selection independent of each site's
