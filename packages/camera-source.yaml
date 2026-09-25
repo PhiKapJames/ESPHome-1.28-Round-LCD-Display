@@ -5,12 +5,14 @@ substitutions:
     file: camera-trigger.yaml
     vars:
       camera_id: ${camera_id}
+      camera_entity: ${camera_entity}
       trigger_entity: ${camera_person_entity}
       trigger_code: '1'
   _vehicle_trigger: !include
     file: camera-trigger.yaml
     vars:
       camera_id: ${camera_id}
+      camera_entity: ${camera_entity}
       trigger_entity: ${camera_vehicle_entity}
       trigger_code: '2'
   _trigger_unused: !include
@@ -32,6 +34,10 @@ globals:
   type: uint32_t
   restore_value: false
   initial_value: '0'
+- id: camera_detection_mask_${camera_id}
+  type: int
+  restore_value: false
+  initial_value: '0'
 
 script:
 - id: camera_source_request_${camera_id}
@@ -49,6 +55,13 @@ script:
 
           if (!override_request &&
               !id(camera_alerts_enabled_${camera_id}).state)
+            return false;
+
+          // Detector state changes for the camera already on screen are
+          // handled by camera_detection_state; do not queue a duplicate alert.
+          if (!override_request &&
+              id(camera_alert_active) &&
+              id(camera_active_entity) == "${camera_entity}")
             return false;
 
           if (!override_request) {
@@ -85,6 +98,8 @@ script:
             return id(camera_picture_path_${camera_id}).state;
           trigger_code: !lambda return trigger_code;
           override_request: !lambda return override_request;
+          detection_mask: !lambda |-
+            return override_request ? 0 : id(camera_detection_mask_${camera_id});
           requested_ms: !lambda return static_cast<int32_t>(millis());
 
 switch:

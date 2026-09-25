@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.4 — 2026-09-25
+
+- Added per-camera detector state tracking for automatic person/vehicle alerts.
+- Automatic alerts now remain visible for at least `camera_min_hold_time` (default `7s`), continue while any enabled detector for that camera is ON, then remain visible until every enabled detector has stayed OFF for `camera_clear_delay` (default `2s`).
+- Detector reactivation during the clear delay cancels the pending exit and restarts the clear delay after the next OFF transition.
+- Person + vehicle sources use combined OR lifetime semantics: either active detector keeps the alert visible.
+- Manual snapshot requests retain the existing fixed `camera_hold_time` behavior.
+- Display OFF still cancels alerts immediately and releases camera resources.
+
 ## 0.6.3 — 2026-09-25
 
 - Made the shared `LCD Backlight` switch the authoritative display-enabled gate, independent of whether Home Assistant or a local schedule changes it.
