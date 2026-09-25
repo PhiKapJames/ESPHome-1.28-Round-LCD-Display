@@ -7,7 +7,23 @@ binary_sensor:
   trigger_on_initial_state: false
   on_press:
     then:
+    - lambda: |-
+        id(camera_detection_mask_${camera_id}) |=
+            (1 << (${trigger_code} - 1));
+    - script.execute:
+        id: camera_detection_state
+        source_entity: "${camera_entity}"
+        detection_mask: !lambda return id(camera_detection_mask_${camera_id});
     - script.execute:
         id: camera_source_request_${camera_id}
         trigger_code: ${trigger_code}
         override_request: false
+  on_release:
+    then:
+    - lambda: |-
+        id(camera_detection_mask_${camera_id}) &=
+            ~(1 << (${trigger_code} - 1));
+    - script.execute:
+        id: camera_detection_state
+        source_entity: "${camera_entity}"
+        detection_mask: !lambda return id(camera_detection_mask_${camera_id});

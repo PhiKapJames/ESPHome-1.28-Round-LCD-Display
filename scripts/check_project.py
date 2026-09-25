@@ -278,6 +278,7 @@ def test_configs():
         assert f'show_camera_snapshot_{source}' in multi_ids
         assert f'camera_source_request_{source}' in multi_ids
         assert f'camera_last_auto_{source}' in multi_ids
+        assert f'camera_detection_mask_{source}' in multi_ids
         assert f'camera_alerts_enabled_{source}' in multi_ids
     assert 'camera_detector_driveway_1' in multi_ids
     assert 'camera_detector_driveway_2' in multi_ids
@@ -297,7 +298,14 @@ def test_configs():
     assert 'id(display_suspend_callbacks).push_back' in camera_alert_raw
     assert 'Suspended: display off' in camera_alert_raw
     assert '!id(lcd_backlight_switch).state' in camera_alert_raw
+    assert 'camera_min_hold_time: 7s' in camera_alert_raw
+    assert 'camera_clear_delay: 2s' in camera_alert_raw
+    assert 'id: camera_clear_timer' in camera_alert_raw
+    assert 'id: camera_detection_state' in camera_alert_raw
+    assert 'camera_detection_clear_ready' in camera_alert_raw
+    assert 'id(camera_active_detection_mask)' in camera_alert_raw
     print('PASS optional ping-pong camera refresh defaults off and preserves last good frame')
+    print('PASS automatic camera alerts follow detector state with minimum hold and clear delay')
     print('PASS camera alerts stop and release resources when the display switch is off')
 
     assert 'last_camera_alert' in multi_ids
@@ -358,8 +366,19 @@ def test_configs():
 
     camera_source_raw=(ROOT/'packages'/'camera-source.yaml').read_text(encoding='utf-8')
     assert '!id(lcd_backlight_switch).state' in camera_source_raw
+    assert 'camera_detection_mask_${camera_id}' in camera_source_raw
+    assert 'detection_mask: !lambda' in camera_source_raw
+    assert 'do not queue a duplicate alert' in camera_source_raw
+
+    camera_trigger_raw=(ROOT/'packages'/'camera-trigger.yaml').read_text(encoding='utf-8')
+    assert 'on_press:' in camera_trigger_raw
+    assert 'on_release:' in camera_trigger_raw
+    assert 'camera_detection_state' in camera_trigger_raw
+    assert '|=' in camera_trigger_raw and '&=' in camera_trigger_raw
     print('PASS dynamic rotation registry and empty-registry clock fallback')
     print('PASS LCD Backlight is the shared gate for rotation and camera requests')
+    print('PASS camera detector press/release events maintain per-source active masks')
+    print('PASS active-camera detector changes do not queue duplicate alerts')
 
 if __name__=='__main__':
     test_configs()

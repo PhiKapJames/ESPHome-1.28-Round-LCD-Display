@@ -4,6 +4,8 @@ substitutions:
   camera_image_width: '200'
   camera_image_height: '112'
   camera_hold_time: 15s
+  camera_min_hold_time: 7s
+  camera_clear_delay: 2s
   camera_refresh_interval_ms: '0'
   camera_download_timeout: 20s
   camera_error_hold_time: 4s
@@ -27,6 +29,7 @@ esphome:
         // downloads/refreshes without making the base profile depend on camera IDs.
         id(display_suspend_callbacks).push_back([](){
           id(camera_refresh_loop).stop();
+          id(camera_clear_timer).stop();
           id(camera_alert).stop();
           id(camera_snapshot).release();
           id(camera_snapshot_next).release();
@@ -35,6 +38,8 @@ esphome:
           id(camera_alert_phase) = 0;
           id(camera_snapshot_active_slot) = 0;
           id(camera_snapshot_pending_slot) = 0;
+          id(camera_active_detection_mask) = 0;
+          id(camera_detection_clear_ready) = false;
           id(camera_snapshot_base_url).clear();
 
           const std::string placeholder =
@@ -297,8 +302,56 @@ globals:
   type: std::string
   restore_value: false
   initial_value: '""'
+- id: camera_active_detection_mask
+  type: int
+  restore_value: false
+  initial_value: '0'
+- id: camera_detection_clear_ready
+  type: bool
+  restore_value: false
+  initial_value: 'false'
 
 script:
+- id: camera_clear_timer
+  # A detector must remain continuously clear for camera_clear_delay.
+  # Any new person/vehicle detection stops this script and resets readiness.
+  mode: restart
+  then:
+  - delay: ${camera_clear_delay}
+  - lambda: |-
+      if (id(camera_alert_active) &&
+          !id(camera_alert_is_override) &&
+          id(camera_active_detection_mask) == 0) {
+        id(camera_detection_clear_ready) = true;
+      }
+
+- id: camera_detection_state
+  # Detector press/release events update the currently displayed camera only.
+  mode: restart
+  parameters:
+    source_entity: string
+    detection_mask: int
+  then:
+  - if:
+      condition:
+        lambda: |-
+          return id(camera_alert_active) &&
+                 !id(camera_alert_is_override) &&
+                 id(camera_active_entity) == source_entity;
+      then:
+      - lambda: |-
+          id(camera_active_detection_mask) = detection_mask;
+          if (detection_mask != 0)
+            id(camera_detection_clear_ready) = false;
+      - if:
+          condition:
+            lambda: return detection_mask == 0;
+          then:
+          - script.execute: camera_clear_timer
+          else:
+          - script.stop: camera_clear_timer
+
+
 - id: camera_refresh_loop
   # Optional ping-pong refresh. A value of 0 keeps the established single-frame behavior.
   mode: restart
@@ -399,6 +452,7 @@ script:
     picture_path: string
     trigger_code: int
     override_request: bool
+    detection_mask: int
     requested_ms: int
   then:
   - if:
@@ -442,6 +496,9 @@ script:
           id(camera_alert_phase) = 1;
           id(camera_snapshot_active_slot) = 0;
           id(camera_snapshot_pending_slot) = 0;
+          id(camera_active_detection_mask) =
+              override_request ? 0 : detection_mask;
+          id(camera_detection_clear_ready) = false;
           id(camera_snapshot_base_url).clear();
           id(camera_active_entity) = source_entity;
           id(camera_active_source_label) = source_label;
@@ -457,6 +514,15 @@ script:
           id(camera_alert_status).publish_state("Preparing " + status_label + " snapshot");
           ESP_LOGI("camera_alert", "%s for %s; pausing normal display",
                    reason, status_label.c_str());
+
+      - script.stop: camera_clear_timer
+      - if:
+          condition:
+            lambda: |-
+              return !override_request &&
+                     id(camera_active_detection_mask) == 0;
+          then:
+          - script.execute: camera_clear_timer
 
       - script.stop: display_rotation
       - script.stop: camera_refresh_loop
@@ -578,7 +644,22 @@ script:
             lambda: return id(camera_snapshot_active_slot) != 0;
           then:
           - script.execute: camera_refresh_loop
-          - delay: ${camera_hold_time}
+          - if:
+              condition:
+                lambda: return override_request;
+              then:
+              # Manual snapshots retain the established fixed hold duration.
+              - delay: ${camera_hold_time}
+              else:
+              # Automatic alerts show for at least the configured minimum,
+              # then remain visible until all enabled detectors have been
+              # continuously clear for camera_clear_delay.
+              - delay: ${camera_min_hold_time}
+              - wait_until:
+                  condition:
+                    lambda: |-
+                      return !id(camera_alert_active) ||
+                             id(camera_detection_clear_ready);
           else:
           - delay: ${camera_error_hold_time}
 
@@ -591,6 +672,7 @@ script:
             id(camera_alert_status).publish_state("Idle: last snapshot succeeded");
 
       - script.stop: camera_refresh_loop
+      - script.stop: camera_clear_timer
       - online_image.release: camera_snapshot
       - online_image.release: camera_snapshot_next
 
@@ -602,6 +684,8 @@ script:
           id(camera_snapshot_next).set_url(placeholder);
           id(camera_snapshot_base_url).clear();
           id(camera_snapshot_active_slot) = 0;
+          id(camera_active_detection_mask) = 0;
+          id(camera_detection_clear_ready) = false;
 
           // If another camera request is queued, this timestamp prevents it from
           // subtracting the time spent on the previous alert from the normal page.
