@@ -163,9 +163,18 @@ strapping pins and GPIO12/13 are native USB Serial/JTAG. Override the C6 pins in
 the private device YAML if the actual PCB uses another map.
 
 Do not copy the S3/full-buffer choice onto a C3 or C6 to silence warnings. Actual free contiguous memory matters for camera allocations.
-Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior in
-v0.5.1. Quiet-hours automation is not added automatically. Existing per-device
-quiet-hours logic can be kept in a local package when migrating other minions.
+Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior.
+The `LCD Backlight` switch is also the shared display-enabled gate. When it is
+OFF, normal page rotation stops, no display redraws are requested, camera alert
+requests are ignored, active alert refresh/download state is released, and an
+optional normal-rotation camera page cleans up its image. Home Assistant entity
+subscriptions, Wi-Fi, time, and other non-display services remain active.
+
+Turning `LCD Backlight` ON starts a clean normal rotation from the first
+configured content page. The shared code does not decide *why* the switch is
+turned on or off: schedules and Home Assistant automations can both control the
+same switch. Quiet-hours automation is not added automatically; existing
+per-device schedules can remain local.
 
 ## Optional camera feature
 

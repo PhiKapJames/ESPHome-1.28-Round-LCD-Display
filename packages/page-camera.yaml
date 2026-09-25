@@ -69,14 +69,16 @@ image:
         } else {
           id(rotation_camera_phase_${page_id}) = 3;
         }
-        if (id(main_display).get_active_page() == id(rotation_page_${page_id}))
+        if (id(lcd_backlight_switch).state &&
+            id(main_display).get_active_page() == id(rotation_page_${page_id}))
           id(main_display).update();
   on_error:
     then:
     - lambda: |-
         if (id(rotation_camera_phase_${page_id}) == 2)
           id(rotation_camera_phase_${page_id}) = 4;
-        if (id(main_display).get_active_page() == id(rotation_page_${page_id}))
+        if (id(lcd_backlight_switch).state &&
+            id(main_display).get_active_page() == id(rotation_page_${page_id}))
           id(main_display).update();
 
 script:
@@ -85,6 +87,11 @@ script:
   then:
   - online_image.release: rotation_camera_image_${page_id}
   - lambda: |-
+      if (!id(lcd_backlight_switch).state) {
+        id(rotation_camera_phase_${page_id}) = 0;
+        return;
+      }
+
       id(rotation_camera_phase_${page_id}) = 1;
 
       if (!id(rotation_camera_picture_${page_id}).has_state()) {

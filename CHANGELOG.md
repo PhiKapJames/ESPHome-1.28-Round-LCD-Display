@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.3 — 2026-09-25
+
+- Made the shared `LCD Backlight` switch the authoritative display-enabled gate, independent of whether Home Assistant or a local schedule changes it.
+- Stopped page rotation and display redraw activity while the backlight switch is OFF; turning it ON starts a clean normal rotation.
+- Added an extensible display-suspend callback path so optional feature packages can release resources without making the base profile depend on them.
+- Camera alerts and manual snapshot requests are ignored while the display is OFF.
+- Turning the display OFF during an active camera alert stops the alert/refresh scripts and releases both decoded image slots.
+- Optional normal-rotation camera pages now avoid redraws/download startup while the display is OFF.
+- Wi-Fi, Home Assistant subscriptions, time, Tailscale/other networking, and diagnostics remain active; this is display suspension, not deep sleep.
+
 ## 0.6.2 — 2026-09-25
 
 - Added optional periodic alert-camera refresh through `camera_refresh_interval_ms`; the default `'0'` preserves existing single-snapshot behavior.

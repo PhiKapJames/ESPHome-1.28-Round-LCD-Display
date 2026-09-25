@@ -43,7 +43,8 @@ script:
   - if:
       condition:
         lambda: |-
-          if (!id(display_initialized))
+          if (!id(display_initialized) ||
+              !id(lcd_backlight_switch).state)
             return false;
 
           if (!override_request &&
