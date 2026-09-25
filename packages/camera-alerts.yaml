@@ -672,6 +672,7 @@ script:
             id(camera_alert_status).publish_state("Idle: last snapshot succeeded");
 
       - script.stop: camera_refresh_loop
+      - script.stop: camera_clear_timer
       - online_image.release: camera_snapshot
       - online_image.release: camera_snapshot_next
 
