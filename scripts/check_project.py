@@ -294,7 +294,11 @@ def test_configs():
     assert "camera_refresh_interval_ms: '0'" in camera_alert_raw
     assert 'camera_snapshot_next' in camera_alert_raw
     assert 'Camera refresh timed out; keeping last good frame' in camera_alert_raw
+    assert 'id(display_suspend_callbacks).push_back' in camera_alert_raw
+    assert 'Suspended: display off' in camera_alert_raw
+    assert '!id(lcd_backlight_switch).state' in camera_alert_raw
     print('PASS optional ping-pong camera refresh defaults off and preserves last good frame')
+    print('PASS camera alerts stop and release resources when the display switch is off')
 
     assert 'last_camera_alert' in multi_ids
     last_alert=next(x for x in multi['text_sensor'] if x.get('id')=='last_camera_alert')
@@ -317,6 +321,7 @@ def test_configs():
     assert 'rotation_camera_image_camera_front' in template_ids
     camera_page_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
     assert 'MAX_VISIBLE_DOTS' not in camera_page_raw
+    assert camera_page_raw.count('id(lcd_backlight_switch).state') >= 3
     print('PASS 10 numeric + battery + camera rotation template stress fixture')
     print('PASS sliding nine-dot indicator with overflow chevrons; camera page stays clean')
 
@@ -344,7 +349,17 @@ def test_configs():
     assert 'rotation_enter_callbacks' in core_text
     assert 'rotation_exit_callbacks' in core_text
     assert 'if (count == 0)' in core_text
+    assert 'id: suspend_display' in core_text
+    assert 'id: resume_display' in core_text
+    assert 'display_suspend_callbacks' in core_text
+    assert 'lambda: return id(lcd_backlight_switch).state;' in core_text
+    assert 'on_turn_off:' in core_text and 'script.execute: suspend_display' in core_text
+    assert 'on_turn_on:' in core_text and 'script.execute: resume_display' in core_text
+
+    camera_source_raw=(ROOT/'packages'/'camera-source.yaml').read_text(encoding='utf-8')
+    assert '!id(lcd_backlight_switch).state' in camera_source_raw
     print('PASS dynamic rotation registry and empty-registry clock fallback')
+    print('PASS LCD Backlight is the shared gate for rotation and camera requests')
 
 if __name__=='__main__':
     test_configs()

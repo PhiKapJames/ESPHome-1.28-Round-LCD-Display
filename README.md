@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.6.2 — optional refreshed camera alerts.** GitHub Actions validates and
+**Version: 0.6.3 — display suspension follows the LCD Backlight switch.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
@@ -35,6 +35,9 @@ rollout. See [validation](docs/VALIDATION.md).
   configured camera source.
   Overrides bypass automatic enable/cooldown, not readiness or RAM checks.
 - Alerts save the current page and its remaining duration, then resume afterward.
+- The `LCD Backlight` switch is the shared display-enabled gate: when OFF,
+  rotation/redraws stop and camera requests are ignored/released while Wi-Fi,
+  Home Assistant, time, and other non-display services remain connected.
 
 Version 0.5.0 replaces the fixed six-slot scheduler with one ordered runtime
 page registry. Pages are explicit template instances: `page-numeric.yaml`,
@@ -260,7 +263,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.6.2 is validated by the repository's synthetic ESPHome CI matrix but
+Version 0.6.3 is validated by the repository's synthetic ESPHome CI matrix but
 is not, by itself, a claim that every hardware/profile combination has been
 physically validated. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed

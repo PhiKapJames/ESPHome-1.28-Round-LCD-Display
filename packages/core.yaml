@@ -11,10 +11,14 @@ esphome:
     - delay: 1s
     - lambda: !lambda |-
         id(display_initialized) = true;
-    - script.execute: display_rotation
+    - if:
+        condition:
+          lambda: return id(lcd_backlight_switch).state;
+        then:
+        - script.execute: display_rotation
   project:
     name: phikapjames.round-minions
-    version: 0.6.2
+    version: 0.6.3
 
 logger:
   level: INFO
@@ -96,8 +100,67 @@ globals:
   type: bool
   restore_value: false
   initial_value: 'false'
+- id: display_suspend_callbacks
+  type: std::vector<std::function<void()>>
+  restore_value: false
+  initial_value: 'std::vector<std::function<void()>>{}'
 
 script:
+- id: suspend_display
+  mode: restart
+  then:
+  - script.stop: display_rotation
+  - lambda: |-
+      // Exit the active normal content page once so page-specific resources
+      // (for example an optional camera rotation page) can clean themselves up.
+      // Camera alerts already ran the normal page's exit callback before taking
+      // over the display, so do not call it a second time during an alert.
+      if (!id(camera_alert_active) && !id(normal_is_clock)) {
+        const int index = id(active_rotation_index);
+        if (index >= 0 &&
+            static_cast<size_t>(index) < id(rotation_exit_callbacks).size() &&
+            id(rotation_exit_callbacks)[index]) {
+          id(rotation_exit_callbacks)[index]();
+        }
+      }
+
+      // Feature packages can register additional cleanup without making the
+      // base profile depend on those optional components.
+      for (auto &callback : id(display_suspend_callbacks)) {
+        if (callback)
+          callback();
+      }
+
+      // Resume from a clean rotation when the display is explicitly enabled.
+      id(rotation_resume_pending) = false;
+      id(rotation_content_index) = 0;
+      id(active_rotation_index) = -1;
+      id(normal_page) = nullptr;
+      id(normal_is_clock) = false;
+      id(normal_remaining_ms) = 1;
+      id(normal_started_ms) = millis();
+
+- id: resume_display
+  mode: restart
+  then:
+  - if:
+      condition:
+        lambda: |-
+          return id(display_initialized) &&
+                 id(lcd_backlight_switch).state;
+      then:
+      - script.stop: display_rotation
+      - lambda: |-
+          id(rotation_resume_pending) = false;
+          id(rotation_content_index) = 0;
+          id(active_rotation_index) = -1;
+          id(normal_page) = nullptr;
+          id(normal_is_clock) = false;
+          id(normal_remaining_ms) = 1;
+          id(normal_started_ms) = millis();
+      - script.execute: display_rotation
+
+
 - id: refresh_visible_time
   mode: single
   then:
@@ -114,7 +177,7 @@ script:
   then:
   - while:
       condition:
-        lambda: return true;
+        lambda: return id(lcd_backlight_switch).state;
       then:
       - lambda: !lambda |-
           if (!id(rotation_registry_sorted)) {
@@ -228,6 +291,10 @@ switch:
   id: lcd_backlight_switch
   output: lcd_backlight
   restore_mode: ALWAYS_ON
+  on_turn_off:
+  - script.execute: suspend_display
+  on_turn_on:
+  - script.execute: resume_display
 
 sensor:
 - platform: template

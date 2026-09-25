@@ -21,6 +21,29 @@ esphome:
         id(camera_alert_status).publish_state("Idle");
         id(last_camera_alert).publish_state("None");
 
+        // The backlight switch is the single display-enabled gate. Register
+        // camera-specific cleanup with the base display suspend path so a
+        // schedule or Home Assistant turning the screen off immediately stops
+        // downloads/refreshes without making the base profile depend on camera IDs.
+        id(display_suspend_callbacks).push_back([](){
+          id(camera_refresh_loop).stop();
+          id(camera_alert).stop();
+          id(camera_snapshot).release();
+          id(camera_snapshot_next).release();
+
+          id(camera_alert_active) = false;
+          id(camera_alert_phase) = 0;
+          id(camera_snapshot_active_slot) = 0;
+          id(camera_snapshot_pending_slot) = 0;
+          id(camera_snapshot_base_url).clear();
+
+          const std::string placeholder =
+              "${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder";
+          id(camera_snapshot).set_url(placeholder);
+          id(camera_snapshot_next).set_url(placeholder);
+          id(camera_alert_status).publish_state("Suspended: display off");
+        });
+
 logger:
   logs:
     # entity_picture contains a rotating access token. Keep URL-bearing logs muted.
@@ -55,7 +78,9 @@ image:
   on_download_finished:
     then:
     - lambda: |-
-        if (!id(camera_alert_active) || id(camera_snapshot_pending_slot) != 1)
+        if (!id(camera_alert_active) ||
+            !id(lcd_backlight_switch).state ||
+            id(camera_snapshot_pending_slot) != 1)
           return;
 
         const bool first_frame = id(camera_snapshot_active_slot) == 0;
@@ -100,7 +125,11 @@ image:
                    id(camera_snapshot_active_slot) == 1;
         then:
         - online_image.release: camera_snapshot_next
-    - component.update: main_display
+    - if:
+        condition:
+          lambda: return id(lcd_backlight_switch).state;
+        then:
+        - component.update: main_display
   on_error:
     then:
     - lambda: |-
@@ -120,7 +149,11 @@ image:
           ESP_LOGW("camera_alert",
                    "Camera refresh failed; keeping last good frame");
         }
-    - component.update: main_display
+    - if:
+        condition:
+          lambda: return id(lcd_backlight_switch).state;
+        then:
+        - component.update: main_display
 
 - platform: online_image
   id: camera_snapshot_next
@@ -138,7 +171,9 @@ image:
   on_download_finished:
     then:
     - lambda: |-
-        if (!id(camera_alert_active) || id(camera_snapshot_pending_slot) != 2)
+        if (!id(camera_alert_active) ||
+            !id(lcd_backlight_switch).state ||
+            id(camera_snapshot_pending_slot) != 2)
           return;
 
         const bool first_frame = id(camera_snapshot_active_slot) == 0;
@@ -183,7 +218,11 @@ image:
                    id(camera_snapshot_active_slot) == 2;
         then:
         - online_image.release: camera_snapshot
-    - component.update: main_display
+    - if:
+        condition:
+          lambda: return id(lcd_backlight_switch).state;
+        then:
+        - component.update: main_display
   on_error:
     then:
     - lambda: |-
@@ -203,7 +242,11 @@ image:
           ESP_LOGW("camera_alert",
                    "Camera refresh failed; keeping last good frame");
         }
-    - component.update: main_display
+    - if:
+        condition:
+          lambda: return id(lcd_backlight_switch).state;
+        then:
+        - component.update: main_display
 
 text_sensor:
 - platform: template
@@ -264,6 +307,7 @@ script:
       condition:
         lambda: |-
           return id(camera_alert_active) &&
+                 id(lcd_backlight_switch).state &&
                  ${camera_refresh_interval_ms} > 0 &&
                  id(camera_snapshot_active_slot) != 0;
       then:
@@ -272,6 +316,7 @@ script:
           condition:
             lambda: |-
               return id(camera_alert_active) &&
+                     id(lcd_backlight_switch).state &&
                      ${camera_refresh_interval_ms} > 0 &&
                      id(camera_snapshot_active_slot) != 0 &&
                      id(camera_snapshot_pending_slot) == 0;
@@ -336,7 +381,11 @@ script:
                       "Showing " + id(camera_active_status_label) + " last snapshot");
                   ESP_LOGW("camera_alert",
                            "Camera refresh timed out; keeping last good frame");
-              - component.update: main_display
+              - if:
+                  condition:
+                    lambda: return id(lcd_backlight_switch).state;
+                  then:
+                  - component.update: main_display
 
 - id: camera_alert
   # The queue is bounded to protect RAM, but camera source count is not hard-coded.
@@ -355,7 +404,9 @@ script:
   - if:
       condition:
         lambda: |-
-          if (!id(display_initialized) || id(camera_alert_active))
+          if (!id(display_initialized) ||
+              !id(lcd_backlight_switch).state ||
+              id(camera_alert_active))
             return false;
 
           if (!override_request) {
@@ -412,7 +463,11 @@ script:
       - online_image.release: camera_snapshot
       - online_image.release: camera_snapshot_next
       - display.page.show: page_camera_alert
-      - component.update: main_display
+      - if:
+          condition:
+            lambda: return id(lcd_backlight_switch).state;
+          then:
+          - component.update: main_display
 
       - lambda: |-
           std::string path = picture_path;
@@ -508,7 +563,15 @@ script:
                   id(camera_alert_status).publish_state("Failed: download timeout");
                   ESP_LOGW("camera_alert", "Snapshot timed out");
 
-      - component.update: main_display
+      - if:
+
+          condition:
+
+            lambda: return id(lcd_backlight_switch).state;
+
+          then:
+
+          - component.update: main_display
 
       - if:
           condition:
