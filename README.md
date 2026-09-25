@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.6.1 — selectable clock faces.** GitHub Actions validates and
+**Version: 0.6.2 — optional refreshed camera alerts.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
@@ -27,6 +27,8 @@ rollout. See [validation](docs/VALIDATION.md).
   treated the same; configure the HA camera entity whose image you want.
   Alert snapshots never join the regular playlist unless a separate
   `page-camera.yaml` rotation-page template is explicitly configured.
+  Optional periodic refresh can request successive stills during an alert while
+  keeping the last good frame visible if a refresh fails.
 - An optional normal-rotation camera-page template for deliberately putting a
   camera view into the playlist.
 - A manual/automation snapshot button and independent Alerts switch for every
@@ -226,8 +228,10 @@ Home Assistant must supply values in the intended units.
 
 Camera snapshots use the camera entity's `entity_picture` attribute and its
 rotating token. Set `ha_base_url` to the same Home Assistant instance importing
-that attribute. Each accepted trigger requests a still; it is not a live stream
-or necessarily the exact frame that caused detection. Only the expected camera
+that attribute. By default each accepted trigger requests one still. Setting
+`camera_refresh_interval_ms` above zero requests successive stills serially
+during the alert window; it is still not a live stream and a still is not
+necessarily the exact frame that caused detection. Only the expected camera
 proxy path and configured origin are accepted. Token-bearing URLs are not logged
 by the project's own logs, and potentially URL-bearing component logs are muted.
 Do not enable verbose logging and publish it without redaction.
@@ -256,7 +260,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.6.1 is validated by the repository's synthetic ESPHome CI matrix but
+Version 0.6.2 is validated by the repository's synthetic ESPHome CI matrix but
 is not, by itself, a claim that every hardware/profile combination has been
 physically validated. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed

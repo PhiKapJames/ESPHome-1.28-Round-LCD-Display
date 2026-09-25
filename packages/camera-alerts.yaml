@@ -4,6 +4,7 @@ substitutions:
   camera_image_width: '200'
   camera_image_height: '112'
   camera_hold_time: 15s
+  camera_refresh_interval_ms: '0'
   camera_download_timeout: 20s
   camera_error_hold_time: 4s
   camera_queue_expire_ms: '60000'
@@ -41,7 +42,7 @@ image:
 - platform: online_image
   id: camera_snapshot
   http_request_id: camera_http
-  # Placeholder only. A queued source request replaces this before download.
+  # Primary ping-pong slot. A queued source request replaces this URL before download.
   url: ${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder
   format: JPEG
   type: RGB565
@@ -54,35 +55,155 @@ image:
   on_download_finished:
     then:
     - lambda: |-
-        if (!id(camera_alert_active) || id(camera_alert_phase) != 2)
+        if (!id(camera_alert_active) || id(camera_snapshot_pending_slot) != 1)
           return;
 
+        const bool first_frame = id(camera_snapshot_active_slot) == 0;
         const int width = id(camera_snapshot).get_width();
         const int height = id(camera_snapshot).get_height();
         if (cached || width <= 0 || height <= 0 ||
             width > ${camera_image_width} ||
             height > ${camera_image_height}) {
-          id(camera_alert_phase) = 4;
-          id(camera_alert_status).publish_state("Failed: no fresh image");
-          ESP_LOGW("camera_alert", "No valid fresh snapshot was received");
+          id(camera_snapshot_pending_slot) = 0;
+          if (first_frame) {
+            id(camera_alert_phase) = 4;
+            id(camera_alert_status).publish_state("Failed: no fresh image");
+          } else {
+            id(camera_alert_phase) = 3;
+            id(camera_alert_status).publish_state(
+                "Showing " + id(camera_active_status_label) + " last snapshot");
+          }
+          ESP_LOGW("camera_alert",
+                   first_frame ? "No valid fresh snapshot was received" :
+                                 "Camera refresh returned no fresh image; keeping last frame");
           return;
         }
 
+        id(camera_snapshot_active_slot) = 1;
+        id(camera_snapshot_pending_slot) = 0;
         id(camera_alert_phase) = 3;
         id(camera_alert_status).publish_state(
             "Showing " + id(camera_active_status_label) + " snapshot");
-        ESP_LOGI("camera_alert", "%s ready: %dx%d; free heap=%u, largest=%u",
-                 id(camera_active_status_label).c_str(), width, height,
-                 (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
-                 (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+        if (first_frame) {
+          ESP_LOGI("camera_alert", "%s ready: %dx%d; free heap=%u, largest=%u",
+                   id(camera_active_status_label).c_str(), width, height,
+                   (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
+                   (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+        } else {
+          ESP_LOGD("camera_alert", "%s refreshed: %dx%d",
+                   id(camera_active_status_label).c_str(), width, height);
+        }
+    - if:
+        condition:
+          lambda: |-
+            return id(camera_alert_active) &&
+                   id(camera_snapshot_active_slot) == 1;
+        then:
+        - online_image.release: camera_snapshot_next
+    - component.update: main_display
   on_error:
     then:
     - lambda: |-
-        if (!id(camera_alert_active) || id(camera_alert_phase) != 2)
+        if (!id(camera_alert_active) || id(camera_snapshot_pending_slot) != 1)
           return;
-        id(camera_alert_phase) = 4;
-        id(camera_alert_status).publish_state("Failed: HTTP/auth/JPEG/memory");
-        ESP_LOGW("camera_alert", "Snapshot failed; check HA address, camera, and free RAM");
+        const bool first_frame = id(camera_snapshot_active_slot) == 0;
+        id(camera_snapshot_pending_slot) = 0;
+        if (first_frame) {
+          id(camera_alert_phase) = 4;
+          id(camera_alert_status).publish_state("Failed: HTTP/auth/JPEG/memory");
+          ESP_LOGW("camera_alert",
+                   "Snapshot failed; check HA address, camera, and free RAM");
+        } else {
+          id(camera_alert_phase) = 3;
+          id(camera_alert_status).publish_state(
+              "Showing " + id(camera_active_status_label) + " last snapshot");
+          ESP_LOGW("camera_alert",
+                   "Camera refresh failed; keeping last good frame");
+        }
+    - component.update: main_display
+
+- platform: online_image
+  id: camera_snapshot_next
+  http_request_id: camera_http
+  # Secondary ping-pong slot used only when periodic refresh is enabled.
+  url: ${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder
+  format: JPEG
+  type: RGB565
+  transparency: opaque
+  resize: ${camera_image_width}x${camera_image_height}
+  update_interval: never
+  buffer_size: 4096
+  request_headers:
+    Cache-Control: no-cache
+  on_download_finished:
+    then:
+    - lambda: |-
+        if (!id(camera_alert_active) || id(camera_snapshot_pending_slot) != 2)
+          return;
+
+        const bool first_frame = id(camera_snapshot_active_slot) == 0;
+        const int width = id(camera_snapshot_next).get_width();
+        const int height = id(camera_snapshot_next).get_height();
+        if (cached || width <= 0 || height <= 0 ||
+            width > ${camera_image_width} ||
+            height > ${camera_image_height}) {
+          id(camera_snapshot_pending_slot) = 0;
+          if (first_frame) {
+            id(camera_alert_phase) = 4;
+            id(camera_alert_status).publish_state("Failed: no fresh image");
+          } else {
+            id(camera_alert_phase) = 3;
+            id(camera_alert_status).publish_state(
+                "Showing " + id(camera_active_status_label) + " last snapshot");
+          }
+          ESP_LOGW("camera_alert",
+                   first_frame ? "No valid fresh snapshot was received" :
+                                 "Camera refresh returned no fresh image; keeping last frame");
+          return;
+        }
+
+        id(camera_snapshot_active_slot) = 2;
+        id(camera_snapshot_pending_slot) = 0;
+        id(camera_alert_phase) = 3;
+        id(camera_alert_status).publish_state(
+            "Showing " + id(camera_active_status_label) + " snapshot");
+        if (first_frame) {
+          ESP_LOGI("camera_alert", "%s ready: %dx%d; free heap=%u, largest=%u",
+                   id(camera_active_status_label).c_str(), width, height,
+                   (unsigned) heap_caps_get_free_size(MALLOC_CAP_8BIT),
+                   (unsigned) heap_caps_get_largest_free_block(MALLOC_CAP_8BIT));
+        } else {
+          ESP_LOGD("camera_alert", "%s refreshed: %dx%d",
+                   id(camera_active_status_label).c_str(), width, height);
+        }
+    - if:
+        condition:
+          lambda: |-
+            return id(camera_alert_active) &&
+                   id(camera_snapshot_active_slot) == 2;
+        then:
+        - online_image.release: camera_snapshot
+    - component.update: main_display
+  on_error:
+    then:
+    - lambda: |-
+        if (!id(camera_alert_active) || id(camera_snapshot_pending_slot) != 2)
+          return;
+        const bool first_frame = id(camera_snapshot_active_slot) == 0;
+        id(camera_snapshot_pending_slot) = 0;
+        if (first_frame) {
+          id(camera_alert_phase) = 4;
+          id(camera_alert_status).publish_state("Failed: HTTP/auth/JPEG/memory");
+          ESP_LOGW("camera_alert",
+                   "Snapshot failed; check HA address, camera, and free RAM");
+        } else {
+          id(camera_alert_phase) = 3;
+          id(camera_alert_status).publish_state(
+              "Showing " + id(camera_active_status_label) + " last snapshot");
+          ESP_LOGW("camera_alert",
+                   "Camera refresh failed; keeping last good frame");
+        }
+    - component.update: main_display
 
 text_sensor:
 - platform: template
@@ -121,11 +242,105 @@ globals:
   type: std::string
   restore_value: false
   initial_value: '""'
+- id: camera_snapshot_active_slot
+  type: int
+  restore_value: false
+  initial_value: '0'
+- id: camera_snapshot_pending_slot
+  type: int
+  restore_value: false
+  initial_value: '0'
+- id: camera_snapshot_base_url
+  type: std::string
+  restore_value: false
+  initial_value: '""'
 
 script:
+- id: camera_refresh_loop
+  # Optional ping-pong refresh. A value of 0 keeps the established single-frame behavior.
+  mode: restart
+  then:
+  - while:
+      condition:
+        lambda: |-
+          return id(camera_alert_active) &&
+                 ${camera_refresh_interval_ms} > 0 &&
+                 id(camera_snapshot_active_slot) != 0;
+      then:
+      - delay: !lambda return ${camera_refresh_interval_ms};
+      - if:
+          condition:
+            lambda: |-
+              return id(camera_alert_active) &&
+                     ${camera_refresh_interval_ms} > 0 &&
+                     id(camera_snapshot_active_slot) != 0 &&
+                     id(camera_snapshot_pending_slot) == 0;
+          then:
+          - if:
+              condition:
+                lambda: return id(camera_snapshot_active_slot) == 1;
+              then:
+              - online_image.release: camera_snapshot_next
+              else:
+              - online_image.release: camera_snapshot
+
+          - lambda: |-
+              const int next_slot =
+                  id(camera_snapshot_active_slot) == 1 ? 2 : 1;
+              const std::string url =
+                  id(camera_snapshot_base_url) +
+                  "&_esphome=" + std::to_string(millis());
+
+              id(camera_snapshot_pending_slot) = next_slot;
+              id(camera_alert_phase) = 2;
+              id(camera_alert_status).publish_state(
+                  "Refreshing " + id(camera_active_status_label) + " snapshot");
+
+              if (next_slot == 1)
+                id(camera_snapshot).set_url(url);
+              else
+                id(camera_snapshot_next).set_url(url);
+
+          - if:
+              condition:
+                lambda: return id(camera_snapshot_pending_slot) == 1;
+              then:
+              - component.update: camera_snapshot
+              else:
+              - component.update: camera_snapshot_next
+
+          - wait_until:
+              condition:
+                lambda: |-
+                  return !id(camera_alert_active) ||
+                         id(camera_snapshot_pending_slot) == 0;
+              timeout: ${camera_download_timeout}
+
+          - if:
+              condition:
+                lambda: |-
+                  return id(camera_alert_active) &&
+                         id(camera_snapshot_pending_slot) != 0;
+              then:
+              - if:
+                  condition:
+                    lambda: return id(camera_snapshot_pending_slot) == 1;
+                  then:
+                  - online_image.release: camera_snapshot
+                  else:
+                  - online_image.release: camera_snapshot_next
+              - lambda: |-
+                  id(camera_snapshot_pending_slot) = 0;
+                  id(camera_alert_phase) = 3;
+                  id(camera_alert_status).publish_state(
+                      "Showing " + id(camera_active_status_label) + " last snapshot");
+                  ESP_LOGW("camera_alert",
+                           "Camera refresh timed out; keeping last good frame");
+              - component.update: main_display
+
 - id: camera_alert
   # The queue is bounded to protect RAM, but camera source count is not hard-coded.
-  # Each queued run contains only small strings/integers; JPEG decoding remains singular.
+  # Refreshes remain serial: at most one JPEG is downloading/decoding at a time.
   mode: queued
   max_runs: ${camera_queue_max_runs}
   parameters:
@@ -174,6 +389,9 @@ script:
           id(camera_alert_trigger_code) = trigger_code;
           id(camera_alert_is_override) = override_request;
           id(camera_alert_phase) = 1;
+          id(camera_snapshot_active_slot) = 0;
+          id(camera_snapshot_pending_slot) = 0;
+          id(camera_snapshot_base_url).clear();
           id(camera_active_entity) = source_entity;
           id(camera_active_source_label) = source_label;
           id(camera_active_status_label) = status_label;
@@ -190,7 +408,9 @@ script:
                    reason, status_label.c_str());
 
       - script.stop: display_rotation
+      - script.stop: camera_refresh_loop
       - online_image.release: camera_snapshot
+      - online_image.release: camera_snapshot_next
       - display.page.show: page_camera_alert
       - component.update: main_display
 
@@ -229,10 +449,10 @@ script:
           }
 
           bool token_ok = !token.empty() && token.size() <= 128;
-          for (char c : token) {
-            if (!((c >= '0' && c <= '9') ||
-                  (c >= 'a' && c <= 'f') ||
-                  (c >= 'A' && c <= 'F')))
+          for (char ch : token) {
+            if (!((ch >= '0' && ch <= '9') ||
+                  (ch >= 'a' && ch <= 'f') ||
+                  (ch >= 'A' && ch <= 'F')))
               token_ok = false;
           }
           if (!token_ok) {
@@ -257,61 +477,68 @@ script:
             return;
           }
 
-          const std::string url = base + expected + "?token=" + token +
-              "&width=${camera_image_width}&height=${camera_image_height}" +
-              "&_esphome=" + std::to_string(millis());
-          id(camera_snapshot).set_url(url);
+          id(camera_snapshot_base_url) =
+              base + expected + "?token=" + token +
+              "&width=${camera_image_width}&height=${camera_image_height}";
+          id(camera_snapshot).set_url(
+              id(camera_snapshot_base_url) +
+              "&_esphome=" + std::to_string(millis()));
+          id(camera_snapshot_pending_slot) = 1;
           id(camera_alert_phase) = 2;
           id(camera_alert_status).publish_state(
               "Downloading " + status_label + " snapshot");
 
       - if:
           condition:
-            lambda: return id(camera_alert_phase) == 2;
+            lambda: return id(camera_snapshot_pending_slot) == 1;
           then:
           - component.update: camera_snapshot
           - wait_until:
               condition:
-                lambda: return id(camera_alert_phase) != 2;
+                lambda: return id(camera_snapshot_pending_slot) == 0;
               timeout: ${camera_download_timeout}
           - if:
               condition:
-                lambda: return id(camera_alert_phase) == 2;
+                lambda: return id(camera_snapshot_pending_slot) == 1;
               then:
+              - online_image.release: camera_snapshot
               - lambda: |-
+                  id(camera_snapshot_pending_slot) = 0;
                   id(camera_alert_phase) = 5;
                   id(camera_alert_status).publish_state("Failed: download timeout");
                   ESP_LOGW("camera_alert", "Snapshot timed out");
-
-      - if:
-          condition:
-            lambda: return id(camera_alert_phase) != 3;
-          then:
-          - online_image.release: camera_snapshot
 
       - component.update: main_display
 
       - if:
           condition:
-            lambda: return id(camera_alert_phase) == 3;
+            lambda: return id(camera_snapshot_active_slot) != 0;
           then:
+          - script.execute: camera_refresh_loop
           - delay: ${camera_hold_time}
           else:
           - delay: ${camera_error_hold_time}
 
       - lambda: |-
-          const bool success = id(camera_alert_phase) == 3;
+          const bool success = id(camera_snapshot_active_slot) != 0;
           id(camera_alert_active) = false;
+          id(camera_snapshot_pending_slot) = 0;
           id(camera_alert_phase) = 0;
           if (success)
             id(camera_alert_status).publish_state("Idle: last snapshot succeeded");
 
+      - script.stop: camera_refresh_loop
       - online_image.release: camera_snapshot
+      - online_image.release: camera_snapshot_next
 
       - lambda: |-
           // Do not retain a token-bearing URL after the request completes.
-          id(camera_snapshot).set_url(
-              "${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder");
+          const std::string placeholder =
+              "${ha_base_url}/api/camera_proxy/camera.round_minion_placeholder";
+          id(camera_snapshot).set_url(placeholder);
+          id(camera_snapshot_next).set_url(placeholder);
+          id(camera_snapshot_base_url).clear();
+          id(camera_snapshot_active_slot) = 0;
 
           // If another camera request is queued, this timestamp prevents it from
           // subtracting the time spent on the previous alert from the normal page.
@@ -324,7 +551,6 @@ script:
 
       - script.execute: display_rotation
 
-
 display:
 - id: !extend main_display
   pages:
@@ -332,10 +558,15 @@ display:
     lambda: |-
       it.fill(Color::BLACK);
 
-      const int source_width = id(camera_snapshot).get_width();
-      const int source_height = id(camera_snapshot).get_height();
+      const int active_slot = id(camera_snapshot_active_slot);
+      const int source_width =
+          active_slot == 2 ? id(camera_snapshot_next).get_width()
+                           : id(camera_snapshot).get_width();
+      const int source_height =
+          active_slot == 2 ? id(camera_snapshot_next).get_height()
+                           : id(camera_snapshot).get_height();
 
-      if (id(camera_alert_active) && id(camera_alert_phase) == 3 &&
+      if (id(camera_alert_active) && active_slot != 0 &&
           source_width > 0 && source_height > 0) {
         constexpr int SCREEN_SIZE = 240;
         const int crop_size =
@@ -362,7 +593,9 @@ display:
               next_x++;
 
             const Color pixel =
-                id(camera_snapshot).get_pixel(crop_x + sx, crop_y + sy);
+                active_slot == 2
+                    ? id(camera_snapshot_next).get_pixel(crop_x + sx, crop_y + sy)
+                    : id(camera_snapshot).get_pixel(crop_x + sx, crop_y + sy);
             it.filled_rectangle(x, y, next_x - x, next_y - y, pixel);
             x = next_x;
           }
