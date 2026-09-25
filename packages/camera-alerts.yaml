@@ -526,7 +526,6 @@ script:
 
       - script.stop: display_rotation
       - script.stop: camera_refresh_loop
-      - script.stop: camera_clear_timer
       - online_image.release: camera_snapshot
       - online_image.release: camera_snapshot_next
       - display.page.show: page_camera_alert
