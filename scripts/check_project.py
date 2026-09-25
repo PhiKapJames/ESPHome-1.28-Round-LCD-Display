@@ -259,6 +259,11 @@ def test_configs():
         assert ('image' in config)==camera
         assert ('http_request' in config)==camera
         assert ('camera_alert' in ids)==camera
+        if camera:
+            image_ids=[x.get('id') for x in config.get('image',[]) if isinstance(x,dict)]
+            assert image_ids.count('camera_snapshot')==1
+            assert image_ids.count('camera_snapshot_next')==1
+            assert 'camera_refresh_loop' in ids
         assert ('psram' in config)==('s3' in name)
         assert [f['size'] for f in config['font'][:5]]==[44,84,36,92,92]
         assert 'rotation_pages' in ids and 'rotation_orders' in ids
@@ -284,6 +289,12 @@ def test_configs():
     assert 'camera_detector_garage_2' not in multi_ids
     assert len([x for x in multi_ids if x.startswith('camera_picture_path_')]) == 6
     print('PASS six reusable camera instances and independent detector routing')
+
+    camera_alert_raw=(ROOT/'packages'/'camera-alerts.yaml').read_text(encoding='utf-8')
+    assert "camera_refresh_interval_ms: '0'" in camera_alert_raw
+    assert 'camera_snapshot_next' in camera_alert_raw
+    assert 'Camera refresh timed out; keeping last good frame' in camera_alert_raw
+    print('PASS optional ping-pong camera refresh defaults off and preserves last good frame')
 
     assert 'last_camera_alert' in multi_ids
     last_alert=next(x for x in multi['text_sensor'] if x.get('id')=='last_camera_alert')

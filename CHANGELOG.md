@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.2 — 2026-09-25
+
+- Added optional periodic alert-camera refresh through `camera_refresh_interval_ms`; the default `'0'` preserves existing single-snapshot behavior.
+- Added ping-pong decoded-image slots so the current good frame remains visible while the next still downloads.
+- Kept JPEG requests strictly serial with no overlapping downloads.
+- Refresh errors and timeouts now keep the last good frame on screen instead of replacing it with an error screen.
+- Intended 1 Hz usage on PSRAM-equipped S3 devices can be enabled privately with `camera_refresh_interval_ms: '1000'`.
+
 ## 0.6.1 — 2026-09-24
 
 - Fixed the clock renderer so `clock_face_style` is actually expanded by ESPHome instead of being escaped as a literal.

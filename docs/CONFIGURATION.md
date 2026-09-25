@@ -170,9 +170,11 @@ quiet-hours logic can be kept in a local package when migrating other minions.
 ## Optional camera feature
 
 A `*-camera.yaml` profile adds the shared camera engine: HTTP/JPEG download,
-the single decoded alert image buffer, full-screen rendering, timeout/RAM guards,
-and the alert queue. Camera sources are separate
-instances of `packages/camera-source.yaml`.
+full-screen rendering, timeout/RAM guards, and the alert queue. The engine uses
+two decoded-image slots when optional periodic refresh is enabled so the current
+good frame can remain visible while the next frame downloads. Only one JPEG is
+downloaded/decoded at a time. Camera sources are separate instances of
+`packages/camera-source.yaml`.
 
 There is **no hard-coded camera count**. ESPHome remote packages allow the same
 file to be listed repeatedly with different `vars`; each instance contributes
@@ -193,12 +195,20 @@ Shared engine substitutions:
 | `camera_image_width` | `'200'` | Maximum decoded source width. |
 | `camera_image_height` | `'112'` | Maximum decoded source height; the renderer center-crops to fill 240×240. |
 | `camera_hold_time` | `15s` | Display time after a successful decode. |
+| `camera_refresh_interval_ms` | `'0'` | Optional alert-image refresh interval in milliseconds; `0` keeps the established single-snapshot behavior. A value such as `'1000'` requests a new still about once per second, never overlapping downloads. |
 | `camera_download_timeout` | `20s` | Whole-download cooperative backstop. |
 | `camera_error_hold_time` | `4s` | Failure-screen duration. |
 | `camera_queue_expire_ms` | `'60000'` | Drop stale automatic requests that waited this long. |
 | `camera_queue_max_runs` | `'20'` | Maximum active+queued alert operations; this limits backlog, **not camera count**. |
 | `camera_min_free_heap` | `'100000'` | Preflight free-heap threshold. |
 | `camera_min_largest_block` | `'60000'` | Preflight largest-contiguous-block threshold. |
+
+When `camera_refresh_interval_ms` is greater than zero, the alert renderer uses
+a ping-pong pair of image slots. The last successfully decoded frame remains on
+screen while the inactive slot downloads the next JPEG. A failed or timed-out
+refresh keeps the last good frame visible and the loop continues until
+`camera_hold_time` expires. This is intended primarily for PSRAM-equipped S3
+devices; leave the default `'0'` on memory-constrained devices unless tested.
 
 Each `packages/camera-source.yaml` instance requires these variables:
 
