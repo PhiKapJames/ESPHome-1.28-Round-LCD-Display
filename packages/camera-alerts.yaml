@@ -533,6 +533,13 @@ script:
           - script.execute: camera_clear_timer
 
       - script.stop: display_rotation
+      - script.stop: profiled_display_update
+      - lambda: |-
+          // A normal-page update is deferred onto main_display so its blocking
+          // time is attributed to the display component. Cancel that pending
+          // work before camera takeover so it cannot redraw a stale page.
+          id(main_display).cancel_defer("round_minion_profile_update");
+          id(display_profile_update_done) = true;
       - script.stop: camera_refresh_loop
       - online_image.release: camera_snapshot
       - online_image.release: camera_snapshot_next
