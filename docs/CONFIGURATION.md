@@ -2,8 +2,9 @@
 
 All settings below are `substitutions` unless stated otherwise. Real values go
 in your local device/site YAML, outside this repository. `api`, `ota`, and
-`wifi` blocks stay local and reference your existing `!secret` keys. The shared
-packages deliberately contain no `!secret` lookups.
+`wifi` blocks stay local and contain or reference the device's private
+authentication/network settings. The shared packages deliberately contain no
+`!secret` lookups.
 
 ## Package architecture
 
@@ -141,22 +142,24 @@ rotation pages remain clean full-screen images and do not overlay the indicator.
 
 ## Hardware overrides
 
-| Setting | Default |
-| --- | --- |
-| `spi_clk_pin` | `GPIO1` |
-| `spi_mosi_pin` | `GPIO2` |
-| `display_cs_pin` | `GPIO5` |
-| `display_dc_pin` | `GPIO4` |
-| `display_reset_pin` | `GPIO9` |
-| `backlight_pin` | `GPIO6` |
-| `backlight_restore_mode` | `ALWAYS_ON` |
-| `display_rotation_degrees` | `'0'` |
-| `display_spi_rate` | `80MHz` |
-| `display_profile_warn_ms` | `'50'` | Page-aware profiler warning threshold for normal rotation updates. Updates at or below the threshold log only at DEBUG. |
-| `battery_outline_quality` | hardware profile | `1` = four-direction C3/C6 keyline; `2` = full eight-direction S3 keyline. |
+| Setting | Default | Notes |
+| --- | --- | --- |
+| `spi_clk_pin` | `GPIO1` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `spi_mosi_pin` | `GPIO2` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `display_cs_pin` | `GPIO5` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `display_dc_pin` | `GPIO4` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `display_reset_pin` | `GPIO9` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `backlight_pin` | `GPIO6` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `backlight_restore_mode` | `ALWAYS_ON` | Override to `ALWAYS_OFF` for devices that must boot dark until a private schedule decides otherwise. |
+| `display_rotation_degrees` | `'0'` | LCD rotation in degrees. |
+| `display_spi_rate` | `80MHz` | Lower locally, for example to `40MHz`, only if the physical display is unstable. |
+| `display_profile_warn_ms` | `'50'` | Page-aware profiler threshold for normal rotation updates; at-or-below-threshold results are DEBUG-only. |
+| `battery_outline_quality` | hardware profile | `1` = four-direction C3/C6 keyline; `2` = optimized S3 bold-underlay keyline. |
 
-`display_color_depth`, `display_buffer_size`, and `battery_outline_quality` are supplied by the selected
-hardware profile.
+`display_color_depth`, `display_buffer_size`, and `battery_outline_quality`
+are supplied by the selected hardware profile. The C3/C6 profiles use 8-bit
+color with a 50% framebuffer; the S3 quad-PSRAM profile uses 16-bit color with
+a 100% framebuffer.
 
 For the C6 profile, the public reference pin map is GPIO18 clock, GPIO19 MOSI,
 GPIO20 CS, GPIO21 DC, GPIO22 reset, and GPIO23 backlight. This is deliberately
@@ -387,5 +390,7 @@ duration and emits a warning such as:
 The default profiler threshold is `display_profile_warn_ms: '50'`. Faster
 updates are logged at DEBUG only. Numeric, battery, and optional rotation-camera
 templates register their `page_label`; the shared clock reports as `clock`.
-This measures the whole display update and does not currently split framebuffer
-render time from SPI transfer time.
+The profiler covers normal rotation updates and measures the whole display
+update; it does not currently split framebuffer render time from SPI transfer
+time. Camera-alert pages use the camera engine's own update/status path rather
+than the normal-rotation profiler.

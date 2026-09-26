@@ -1,5 +1,20 @@
 # Changelog
 
+## Unreleased
+
+- Audited all repository Markdown against the current 0.6.9 packages, hardware
+  profiles, and CI workflow.
+- Corrected S3 battery-keyline wording to match the optimized bold-underlay
+  renderer introduced in 0.6.8.
+- Fixed the hardware-override table shape and documented the normal-rotation
+  display profiler threshold and scope consistently.
+- Expanded validation documentation with the exact 10-profile matrix and current
+  physical-test checklist.
+- Reworked release notes so the current 0.6.9 source state is primary while the
+  original v0.1.0 migration-candidate note is retained as historical context.
+- Standardized API/OTA wording around private authentication/credentials rather
+  than assuming password-based OTA.
+
 ## 0.6.9 — 2026-09-26
 
 - Added page-aware profiling for normal rotation display updates.

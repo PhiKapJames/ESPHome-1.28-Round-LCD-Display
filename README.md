@@ -2,8 +2,8 @@
 
 Reusable ESPHome packages for 240 × 240 GC9A01A round displays connected to
 Home Assistant. Keep shared display code here; keep actual device names,
-entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
-passwords in local ESPHome configuration files.
+entity mappings, Home Assistant origins, Wi-Fi credentials, and API/OTA
+credentials in local ESPHome configuration files.
 
 **Version: 0.6.9 — page-aware display profiling.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
@@ -43,11 +43,11 @@ rollout. See [validation](docs/VALIDATION.md).
   rotation/redraws stop and camera requests are ignored/released while Wi-Fi,
   Home Assistant, time, and other non-display services remain connected.
 
-Version 0.5.0 replaces the fixed six-slot scheduler with one ordered runtime
-page registry. Pages are explicit template instances: `page-numeric.yaml`,
-`page-battery.yaml`, and optionally `page-camera.yaml`. There is no fixed
-numeric/battery page count in shared code; practical hardware resources are the
-limit.
+The current architecture, introduced in version 0.5.0, uses one ordered runtime
+page registry instead of the former fixed six-slot scheduler. Pages are explicit
+template instances: `page-numeric.yaml`, `page-battery.yaml`, and optionally
+`page-camera.yaml`. There is no fixed numeric/battery page count in shared code;
+practical hardware resources are the limit.
 
 ## Installation
 
@@ -86,7 +86,7 @@ checks.
 1. Copy [the example](examples/device.example.yaml) into your **local** ESPHome
    configuration directory. Do not enter real settings in the public example.
 2. Set the hardware profile and actual entities in that local file.
-3. Preserve the existing device `name` and API/OTA credentials during migration.
+3. Preserve the existing device `name` and existing API/OTA authentication during migration.
 4. Run ESPHome **Validate**, then compile and install on one device first.
 5. Test every enabled metric, battery fill, clock, snapshot override, detection,
    failed download, and return to the interrupted page.
@@ -136,7 +136,7 @@ real credentials must stay private.
 | `profiles/esp32-c3-camera.yaml` | Same C3 settings | Included |
 | `profiles/esp32-c6.yaml` | C6, 160 MHz, 4 MB flash, no PSRAM; 8-bit / 50% buffer; native USB logging; C6-safe reference GC9A01 pins | Omitted |
 | `profiles/esp32-c6-camera.yaml` | Same C6 settings | Included |
-| `profiles/esp32-s3-quad-psram.yaml` | S3, 240 MHz, 4 MB flash, confirmed quad PSRAM at 80 MHz; 16-bit / full buffer; full 8-direction battery keyline | Omitted |
+| `profiles/esp32-s3-quad-psram.yaml` | S3, 240 MHz, 4 MB flash, confirmed quad PSRAM at 80 MHz; 16-bit / full buffer; optimized high-quality bold-underlay battery keyline | Omitted |
 | `profiles/esp32-s3-quad-psram-camera.yaml` | Same S3 quad-PSRAM settings | Included |
 
 The S3 profiles are **not** for every S3 module. Confirm flash capacity, PSRAM
@@ -172,9 +172,12 @@ behind its large digits.
 Version 0.6.9 adds a page-aware profiler for normal rotation. Slow updates log
 the page label and total render+flush time under `round_minion.display`, while
 the physical update is deferred onto the MIPI display component so ESPHome's
-stock blocking warning no longer blames `display_rotation`. The default
-page-aware warning threshold is 50 ms and can be changed with
-`display_profile_warn_ms`. Never hide timing warnings as a fix.
+stock blocking warning no longer blames `display_rotation`. Numeric, battery,
+and explicit rotation-camera pages use their configured `page_label`; the shared
+clock reports as `clock`. The default page-aware warning threshold is 50 ms and
+can be changed with `display_profile_warn_ms`. This profiler covers normal
+rotation updates; camera-alert rendering continues to use the camera engine's
+own status/logging path. Never hide timing warnings as a fix.
 
 ## Clock faces
 
