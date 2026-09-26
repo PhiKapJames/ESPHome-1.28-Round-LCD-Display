@@ -69,6 +69,13 @@ def scalar_defaults(path):
     raw=load(path); env={}
     for p in raw.get('packages',{}).values():
         if isinstance(p,Tagged) and p.tag=='!include':
+            spec=p.value
+            include_file=spec if isinstance(spec,str) else spec.get('file','')
+            # Dynamic include filenames depend on the package instance's vars,
+            # which are not available during this preliminary defaults walk.
+            # They are resolved later by expand() with the correct context.
+            if isinstance(include_file,str) and '${' in include_file:
+                continue
             dest,_=include_parts(p,Path(path).parent)
             env.update(scalar_defaults(dest))
     env.update({k:v for k,v in raw.get('substitutions',{}).items() if not isinstance(v,Tagged)})
@@ -117,7 +124,18 @@ def expand_file(path,overrides=None):
         assembled={}
         for package in raw.get('packages',{}).values():
             if isinstance(package,Tagged):
-                dest,params=include_parts(package,path.parent)
+                # ESPHome supports substitution expressions in !include
+                # filenames. Resolve that filename in the package instance's
+                # current vars before locating the selected file.
+                resolved_package=package
+                if package.tag=='!include':
+                    spec=deepcopy(package.value)
+                    if isinstance(spec,str):
+                        spec=render(spec,env,path.parent)
+                    else:
+                        spec['file']=render(spec['file'],env,path.parent)
+                    resolved_package=Tagged('!include',spec)
+                dest,params=include_parts(resolved_package,path.parent)
                 incoming=expand(dest,{**env,**render(params,env,path.parent)})
             else:
                 resolved=render(package,env,path.parent)
@@ -396,6 +414,10 @@ def test_configs():
     assert 'camera_detection_mask_${camera_id}' in camera_source_raw
     assert 'detection_mask: !lambda' in camera_source_raw
     assert 'do not queue a duplicate alert' in camera_source_raw
+    assert '_person_trigger' not in camera_source_raw
+    assert '_vehicle_trigger' not in camera_source_raw
+    assert 'file: ${ "camera-trigger.yaml" if camera_trigger_person' in camera_source_raw
+    assert 'file: ${ "camera-trigger.yaml" if camera_trigger_vehicle' in camera_source_raw
 
     camera_trigger_raw=(ROOT/'packages'/'camera-trigger.yaml').read_text(encoding='utf-8')
     assert 'on_press:' in camera_trigger_raw

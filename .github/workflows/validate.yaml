@@ -41,7 +41,17 @@ jobs:
           python scripts/check_public.py
           python scripts/check_project.py
       - name: ESPHome configuration validation (synthetic values only)
-        run: esphome config tests/${{ matrix.profile }}.yaml
+        run: |
+          config_log="$(mktemp)"
+          if ! esphome config tests/${{ matrix.profile }}.yaml >"$config_log" 2>&1; then
+            cat "$config_log"
+            exit 1
+          fi
+          cat "$config_log"
+          if grep -Fq "Could not resolve substitution variable" "$config_log"; then
+            echo "ERROR: unresolved substitution warning detected"
+            exit 1
+          fi
       - name: Compile synthetic firmware (never install these fixtures)
         run: esphome compile tests/${{ matrix.profile }}.yaml
       # Deliberately no artifact upload, device secrets, or OTA deployment.

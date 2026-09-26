@@ -1,26 +1,26 @@
 # Reusable camera source template.
 # Include this same file once per camera with a unique camera_id.
-substitutions:
-  _person_trigger: !include
-    file: camera-trigger.yaml
+#
+# Select the detector package directly in the !include filename. Keeping the
+# conditional here avoids constructing nested IncludeFile substitutions before
+# this camera instance's vars are in scope, which otherwise produces spurious
+# "Could not resolve substitution variable" warnings in ESPHome 2026.9.
+packages:
+  person_trigger: !include
+    file: ${ "camera-trigger.yaml" if camera_trigger_person | string | lower == "true" else "camera-trigger-unused.yaml" }
     vars:
       camera_id: ${camera_id}
       camera_entity: ${camera_entity}
       trigger_entity: ${camera_person_entity}
       trigger_code: '1'
-  _vehicle_trigger: !include
-    file: camera-trigger.yaml
+
+  vehicle_trigger: !include
+    file: ${ "camera-trigger.yaml" if camera_trigger_vehicle | string | lower == "true" else "camera-trigger-unused.yaml" }
     vars:
       camera_id: ${camera_id}
       camera_entity: ${camera_entity}
       trigger_entity: ${camera_vehicle_entity}
       trigger_code: '2'
-  _trigger_unused: !include
-    file: camera-trigger-unused.yaml
-
-packages:
-  person_trigger: ${ _person_trigger if camera_trigger_person | string | lower == 'true' else _trigger_unused }
-  vehicle_trigger: ${ _vehicle_trigger if camera_trigger_vehicle | string | lower == 'true' else _trigger_unused }
 
 text_sensor:
 - platform: homeassistant
