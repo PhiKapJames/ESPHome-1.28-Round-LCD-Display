@@ -159,7 +159,7 @@ esphome:
     - script.execute: update_backlight
 
 time:
-- id: !extend sntp_time
+- id: !extend ha_time
   on_time_sync:
     then:
     - script.execute: update_backlight
@@ -183,7 +183,7 @@ script:
   mode: restart
   then:
   - lambda: |-
-      auto now = id(sntp_time).now();
+      auto now = id(ha_time).now();
       const bool time_ok = now.is_valid();
       bool in_quiet = false;
 

@@ -352,6 +352,11 @@ def test_configs():
     print('PASS 10 numeric + battery + camera rotation template stress fixture')
     print('PASS sliding nine-dot indicator with overflow chevrons; camera page stays clean')
 
+    home_fixture_raw=(ROOT/'tests'/'esp32-s3-home-migration.yaml').read_text(encoding='utf-8')
+    assert 'sntp_time' not in home_fixture_raw
+    assert '!extend ha_time' in home_fixture_raw
+    assert 'id(ha_time).now()' in home_fixture_raw
+
     home_cfg,_=expand_file(ROOT/'tests/esp32-s3-home-migration.yaml')
     home_ids=set(definition_ids(home_cfg))
     home_imported=[s for s in home_cfg['sensor'] if s['platform']=='homeassistant']
