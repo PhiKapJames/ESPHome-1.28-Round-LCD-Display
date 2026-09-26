@@ -182,7 +182,13 @@ def test_configs():
         assert 'more_before' in page_raw and 'more_after' in page_raw
         assert 'it.line(' in page_raw
     time_cfg=core_raw['time'][0]
+    assert time_cfg['platform'] == 'homeassistant'
+    assert time_cfg['id'] == 'ha_time'
     assert 'on_time' not in time_cfg
+    assert 'sntp_time' not in (ROOT/'packages'/'core.yaml').read_text(encoding='utf-8')
+    assert 'sntp_time' not in metric_raw
+    assert 'sntp_time' not in battery_raw
+    assert 'sntp_time' not in clock_raw
     c3_hw=load(ROOT/'hardware'/'esp32-c3-gc9a01.yaml')['substitutions']
     c6_raw=load(ROOT/'hardware'/'esp32-c6-4mb-gc9a01.yaml')
     c6_hw=c6_raw['substitutions']
@@ -210,6 +216,7 @@ def test_configs():
     )
     defaults = load(ROOT/'packages'/'defaults.yaml')['substitutions']
     assert defaults['clock_face_style'] == 'original'
+    assert defaults['backlight_restore_mode'] == 'ALWAYS_ON'
 
     clock_source = (ROOT/'packages'/'clock-page.yaml').read_text(encoding='utf-8')
     for style in supported_clock_styles:
@@ -236,6 +243,18 @@ def test_configs():
         for value in all_strings(default_cfg)
     )
     print('PASS all selectable clock styles, private overrides, and original default')
+    backlight_cfg, backlight_env = expand_file(
+        ROOT/'tests'/'esp32-c3-one-metric.yaml',
+        {'backlight_restore_mode': 'ALWAYS_OFF'},
+    )
+    assert backlight_env['backlight_restore_mode'] == 'ALWAYS_OFF'
+    backlight_switch = next(
+        item for item in backlight_cfg['switch']
+        if item.get('id') == 'lcd_backlight_switch'
+    )
+    assert backlight_switch['restore_mode'] == 'ALWAYS_OFF'
+    print('PASS configurable backlight restore mode with ALWAYS_ON default')
+
     profiles=('esp32-c3','esp32-c3-camera','esp32-c3-multi-camera',
               'esp32-c6','esp32-c6-camera',
               'esp32-s3-quad-psram','esp32-s3-quad-psram-camera',
@@ -363,6 +382,9 @@ def test_configs():
     assert 'lambda: return id(lcd_backlight_switch).state;' in core_text
     assert 'on_turn_off:' in core_text and 'script.execute: suspend_display' in core_text
     assert 'on_turn_on:' in core_text and 'script.execute: resume_display' in core_text
+    assert 'restore_mode: ${backlight_restore_mode}' in core_text
+    assert '<esp_heap_caps.h>' in core_text
+    assert 'Public ESP-IDF heap-capability API' in core_text
 
     camera_source_raw=(ROOT/'packages'/'camera-source.yaml').read_text(encoding='utf-8')
     assert '!id(lcd_backlight_switch).state' in camera_source_raw

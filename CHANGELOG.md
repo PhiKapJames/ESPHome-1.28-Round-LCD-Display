@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.6.5 — 2026-09-26
+
+- Renamed the shared Home Assistant time component ID from the misleading `sntp_time` to `ha_time`; the time platform remains Home Assistant.
+- Added `backlight_restore_mode` with the existing `ALWAYS_ON` default, allowing scheduled devices to opt into `ALWAYS_OFF` privately.
+- Documented the intentional direct use of the public ESP-IDF heap-capability API for camera RAM guards and heap diagnostics.
+- Clarified that ESPHome 2026.9.0 requires Python 3.12+ for native installs and that the pinned Docker image avoids host-Python coupling.
+- Updated validation documentation to describe the current 10-profile GitHub Actions config/compile matrix instead of retired six-slot-era checks.
+- Added regression coverage for the Home Assistant time ID and backlight restore-mode override.
+
 ## 0.6.4 — 2026-09-25
 
 - Added per-camera detector state tracking for automatic person/vehicle alerts.

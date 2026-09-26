@@ -3,6 +3,7 @@ esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
   min_version: 2026.9.0
+  # Public ESP-IDF heap-capability API used by camera RAM guards and diagnostics.
   includes:
   - <esp_heap_caps.h>
   on_boot:
@@ -18,7 +19,7 @@ esphome:
         - script.execute: display_rotation
   project:
     name: phikapjames.round-minions
-    version: 0.6.4
+    version: 0.6.5
 
 logger:
   level: INFO
@@ -29,7 +30,7 @@ spi:
 
 time:
 - platform: homeassistant
-  id: sntp_time
+  id: ha_time
   timezone: ${timezone}
   on_time_sync:
     then:
@@ -290,7 +291,7 @@ switch:
   name: LCD Backlight
   id: lcd_backlight_switch
   output: lcd_backlight
-  restore_mode: ALWAYS_ON
+  restore_mode: ${backlight_restore_mode}
   on_turn_off:
   - script.execute: suspend_display
   on_turn_on:

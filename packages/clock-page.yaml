@@ -5,7 +5,7 @@ display:
   pages:
   - id: page_clock
     lambda: |-
-      auto now = id(sntp_time).now();
+      auto now = id(ha_time).now();
 
       char hour_text[4] = "--";
       char minute_text[4] = "--";

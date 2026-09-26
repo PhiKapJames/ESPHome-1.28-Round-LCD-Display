@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.6.4 — detector-following camera alert lifetime.** GitHub Actions validates and
+**Version: 0.6.5 — maintenance and configuration clarity.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
@@ -49,10 +49,16 @@ limit.
 
 ## Installation
 
-Requires **ESPHome 2026.9.0 or newer**. The initial CI image is pinned to
-`ghcr.io/esphome/esphome:2026.9.0`. Newer builders should be tested before updating
-all devices. Packages are downloaded by the builder at build time; devices do
-not pull YAML from GitHub and do not update merely because this repo changes.
+Requires **ESPHome 2026.9.0 or newer**. The CI image is pinned to
+`ghcr.io/esphome/esphome:2026.9.0`. ESPHome 2026.9.0 requires Python 3.12+
+when installed natively; using the official ESPHome container avoids depending
+on the host Python version. Newer ESPHome builders should be tested before
+updating all devices.
+
+For local validation/compile commands using the same pinned Docker image as CI,
+see [validation](docs/VALIDATION.md). Packages are downloaded by the builder at
+build time; devices do not pull YAML from GitHub and do not update merely
+because this repo changes.
 
 ### ESPHome package architecture
 
@@ -269,7 +275,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.6.4 is validated by the repository's synthetic ESPHome CI matrix but
+Version 0.6.5 is validated by the repository's synthetic ESPHome CI matrix but
 is not, by itself, a claim that every hardware/profile combination has been
 physically validated. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed

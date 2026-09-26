@@ -1,23 +1,28 @@
-# Validation status at source preparation
+# Validation
 
-- YAML parsed with duplicate-key detection.
-- Offline package/include/substitution expansion checked for five fixtures.
-- Component references and optional camera/PSRAM boundaries checked.
-- All 63 nonempty combinations of six enabled slots exercised in structural tests.
-- Native C++ selection/resumption tests passed for all 63 nonempty slot masks
-  using lightweight stand-ins for the display (not an ESPHome firmware build).
-- The empty playlist is rejected by a C++ static assertion.
-- Renderer and private-mapping regression checks performed separately from public fixtures.
-- Source privacy scan completed before publication.
-- **ESPHome configuration validation/firmware compilation has NOT run here.**
-  Check the GitHub Actions result for the exact commit; the offline checks below
-  are not a successful firmware build result.
-- **No physical device has been flashed with these packages.**
+The repository uses two complementary validation layers:
 
-`python scripts/check_project.py` is an independent structural test, not ESPHome's
-own package resolver or schema validator. It must not be described as a compiler.
-The workflow in `.github/workflows/validate.yaml` runs the real commands after
-publication, with only synthetic configurations and no secrets from a deployment.
+- `scripts/check_public.py` checks the public source for privacy/safety invariants.
+- `scripts/check_project.py` performs offline structural package, substitution,
+  renderer, camera-routing, backlight-gating, and regression checks.
+- `.github/workflows/validate.yaml` runs the real ESPHome toolchain on every
+  pull request and push to `main`.
+- The Actions matrix currently covers 10 synthetic configurations across ESP32-C3,
+  ESP32-C6, and ESP32-S3, including base, camera, multi-camera, migration, and
+  template-page fixtures.
+- Every matrix job runs both `esphome config` and `esphome compile` using
+  `ghcr.io/esphome/esphome:2026.9.0`.
+- The synthetic fixtures contain no deployment secrets and are never installed
+  by CI.
+
+The offline Python checks are intentionally **not** described as a compiler and
+do not replace ESPHome validation. Likewise, this document does not claim that
+an arbitrary commit is green: check the GitHub Actions result for the exact
+commit or pull request you plan to deploy.
+
+ESPHome 2026.9.0 requires Python 3.12+ for a native Python installation. The
+official Docker image is the recommended way to reproduce CI without depending
+on the host Python version.
 
 To run the same real build locally with Docker, from the repository root:
 

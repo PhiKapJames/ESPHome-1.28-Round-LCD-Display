@@ -149,6 +149,7 @@ rotation pages remain clean full-screen images and do not overlay the indicator.
 | `display_dc_pin` | `GPIO4` |
 | `display_reset_pin` | `GPIO9` |
 | `backlight_pin` | `GPIO6` |
+| `backlight_restore_mode` | `ALWAYS_ON` |
 | `display_rotation_degrees` | `'0'` |
 | `display_spi_rate` | `80MHz` |
 | `battery_outline_quality` | hardware profile | `1` = four-direction C3/C6 keyline; `2` = full eight-direction S3 keyline. |
@@ -163,7 +164,10 @@ strapping pins and GPIO12/13 are native USB Serial/JTAG. Override the C6 pins in
 the private device YAML if the actual PCB uses another map.
 
 Do not copy the S3/full-buffer choice onto a C3 or C6 to silence warnings. Actual free contiguous memory matters for camera allocations.
-Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior.
+Backlight is a manual/HA output switch. Its default restore behavior is
+`ALWAYS_ON`, controlled by the `backlight_restore_mode` substitution. Devices
+with strict schedules can override it locally, for example
+`backlight_restore_mode: ALWAYS_OFF`, without changing the shared default.
 The `LCD Backlight` switch is also the shared display-enabled gate. When it is
 OFF, normal page rotation stops, no display redraws are requested, camera alert
 requests are ignored, active alert refresh/download state is released, and an
@@ -175,6 +179,11 @@ configured content page. The shared code does not decide *why* the switch is
 turned on or off: schedules and Home Assistant automations can both control the
 same switch. Quiet-hours automation is not added automatically; existing
 per-device schedules can remain local.
+
+The shared display clock uses ESPHome's **Home Assistant time** platform with
+the internal ID `ha_time`; it is not SNTP. Device-specific schedules that must
+continue before or without a Home Assistant connection may add a separate SNTP
+time source in the private device YAML.
 
 ## Optional camera feature
 

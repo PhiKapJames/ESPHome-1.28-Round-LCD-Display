@@ -11,5 +11,6 @@ substitutions:
   display_dc_pin: GPIO4
   display_reset_pin: GPIO9
   backlight_pin: GPIO6
+  backlight_restore_mode: ALWAYS_ON
   display_rotation_degrees: '0'
   display_spi_rate: 80MHz
