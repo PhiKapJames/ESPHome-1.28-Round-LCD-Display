@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.6 — 2026-09-26
+
+- Reworked optional camera detector package selection to use ESPHome's supported conditional `!include` filename pattern.
+- Removed the intermediate `_person_trigger` / `_vehicle_trigger` IncludeFile substitutions that produced spurious unresolved-variable warnings during config parsing and remote builds.
+- Preserved existing behavior: disabled detector types still create no Home Assistant subscription, and enabled detectors retain the same press/release lifetime tracking.
+- Added structural coverage for dynamic package include filenames.
+- GitHub Actions now fails the config-validation step if ESPHome reports `Could not resolve substitution variable`, preventing this warning class from silently returning.
+
 ## 0.6.5 — 2026-09-26
 
 - Renamed the shared Home Assistant time component ID from the misleading `sntp_time` to `ha_time`; the time platform remains Home Assistant.

@@ -12,6 +12,8 @@ The repository uses two complementary validation layers:
   template-page fixtures.
 - Every matrix job runs both `esphome config` and `esphome compile` using
   `ghcr.io/esphome/esphome:2026.9.0`.
+- The config step also rejects `Could not resolve substitution variable` warnings,
+  because those warnings can otherwise coexist with a successful firmware build.
 - The synthetic fixtures contain no deployment secrets and are never installed
   by CI.
 
