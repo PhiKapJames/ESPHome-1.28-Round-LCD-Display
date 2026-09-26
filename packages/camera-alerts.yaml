@@ -6,6 +6,7 @@ substitutions:
   camera_hold_time: 15s
   camera_min_hold_time: 7s
   camera_clear_delay: 2s
+  camera_max_hold_ms: '30000'
   camera_refresh_interval_ms: '0'
   camera_download_timeout: 20s
   camera_error_hold_time: 4s
@@ -40,6 +41,7 @@ esphome:
           id(camera_snapshot_pending_slot) = 0;
           id(camera_active_detection_mask) = 0;
           id(camera_detection_clear_ready) = false;
+          id(camera_hold_started_ms) = 0;
           id(camera_snapshot_base_url).clear();
 
           const std::string placeholder =
@@ -310,6 +312,10 @@ globals:
   type: bool
   restore_value: false
   initial_value: 'false'
+- id: camera_hold_started_ms
+  type: uint32_t
+  restore_value: false
+  initial_value: '0'
 
 script:
 - id: camera_clear_timer
@@ -453,6 +459,7 @@ script:
     trigger_code: int
     override_request: bool
     detection_mask: int
+    max_hold_ms: int
     requested_ms: int
   then:
   - if:
@@ -499,6 +506,7 @@ script:
           id(camera_active_detection_mask) =
               override_request ? 0 : detection_mask;
           id(camera_detection_clear_ready) = false;
+          id(camera_hold_started_ms) = 0;
           id(camera_snapshot_base_url).clear();
           id(camera_active_entity) = source_entity;
           id(camera_active_source_label) = source_label;
@@ -653,13 +661,47 @@ script:
               else:
               # Automatic alerts show for at least the configured minimum,
               # then remain visible until all enabled detectors have been
-              # continuously clear for camera_clear_delay.
+              # continuously clear for camera_clear_delay, subject to the
+              # effective per-source maximum. A max_hold_ms of 0 disables
+              # the hard cap for that source.
+              - lambda: id(camera_hold_started_ms) = millis();
               - delay: ${camera_min_hold_time}
-              - wait_until:
+              - if:
                   condition:
-                    lambda: |-
-                      return !id(camera_alert_active) ||
-                             id(camera_detection_clear_ready);
+                    lambda: return max_hold_ms > 0;
+                  then:
+                  - wait_until:
+                      condition:
+                        lambda: |-
+                          return !id(camera_alert_active) ||
+                                 id(camera_detection_clear_ready);
+                      timeout: !lambda |-
+                        const uint32_t elapsed =
+                            millis() - id(camera_hold_started_ms);
+                        const uint32_t limit =
+                            static_cast<uint32_t>(max_hold_ms);
+                        return elapsed >= limit ? 1 : limit - elapsed;
+                  - if:
+                      condition:
+                        lambda: |-
+                          if (!id(camera_alert_active) ||
+                              id(camera_detection_clear_ready))
+                            return false;
+                          return (uint32_t) (millis() -
+                                  id(camera_hold_started_ms)) >=
+                                 static_cast<uint32_t>(max_hold_ms);
+                      then:
+                      - lambda: |-
+                          ESP_LOGI("camera_alert",
+                                   "Maximum alert hold reached for %s (%d ms)",
+                                   id(camera_active_status_label).c_str(),
+                                   max_hold_ms);
+                  else:
+                  - wait_until:
+                      condition:
+                        lambda: |-
+                          return !id(camera_alert_active) ||
+                                 id(camera_detection_clear_ready);
           else:
           - delay: ${camera_error_hold_time}
 
@@ -686,6 +728,7 @@ script:
           id(camera_snapshot_active_slot) = 0;
           id(camera_active_detection_mask) = 0;
           id(camera_detection_clear_ready) = false;
+          id(camera_hold_started_ms) = 0;
 
           // If another camera request is queued, this timestamp prevents it from
           // subtracting the time spent on the previous alert from the normal page.

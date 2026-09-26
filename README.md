@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.6.6 — clean conditional camera-trigger package resolution.** GitHub Actions validates and
+**Version: 0.6.7 — bounded detector-following camera alerts.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
@@ -31,6 +31,8 @@ rollout. See [validation](docs/VALIDATION.md).
   keeping the last good frame visible if a refresh fails. Automatic person/vehicle
   alerts can remain visible while any enabled detector for that camera is active,
   then stay visible for a configurable clear delay after all detectors turn off.
+  A shared hard maximum prevents a stuck detector from monopolizing the display,
+  and that maximum can be overridden per camera.
 - An optional normal-rotation camera-page template for deliberately putting a
   camera view into the playlist.
 - A manual/automation snapshot button and independent Alerts switch for every
@@ -243,8 +245,10 @@ that attribute. By default each accepted trigger requests one still. Setting
 `camera_refresh_interval_ms` above zero requests successive stills serially
 during the alert window. Automatic detector alerts show for at least
 `camera_min_hold_time`, continue while any enabled person/vehicle detector for
-that camera remains active, and end only after all enabled detectors stay clear
-for `camera_clear_delay`. Manual snapshot buttons continue to use the fixed
+that camera remains active, and normally end after all enabled detectors stay
+clear for `camera_clear_delay`. The shared `camera_max_hold_ms` (30 seconds by
+default) provides a hard bound and may be overridden in an individual
+camera-source entry. Manual snapshot buttons continue to use the fixed
 `camera_hold_time`. This is still not a live stream and a still is not
 necessarily the exact frame that caused detection. Only the expected camera
 proxy path and configured origin are accepted. Token-bearing URLs are not logged
@@ -275,7 +279,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.6.6 is validated by the repository's synthetic ESPHome CI matrix but
+Version 0.6.7 is validated by the repository's synthetic ESPHome CI matrix but
 is not, by itself, a claim that every hardware/profile combination has been
 physically validated. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed

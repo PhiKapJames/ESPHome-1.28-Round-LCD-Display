@@ -100,6 +100,8 @@ script:
           override_request: !lambda return override_request;
           detection_mask: !lambda |-
             return override_request ? 0 : id(camera_detection_mask_${camera_id});
+          max_hold_ms: !lambda |-
+            return static_cast<int32_t>(${camera_max_hold_ms});
           requested_ms: !lambda return static_cast<int32_t>(millis());
 
 switch:
