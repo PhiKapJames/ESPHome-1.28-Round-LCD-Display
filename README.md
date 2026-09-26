@@ -10,6 +10,26 @@ compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
 
+## Screenshots and demo
+
+<p align="center">
+  <a href="docs/media/readme-demo.mp4">
+    <img src="docs/media/readme-hero.jpg" alt="HA ESP Round Minion showing the Kitchen numeric page" width="360">
+  </a>
+</p>
+
+Real photos of the round Minion hardware running the shared ESPHome layouts.
+
+<p align="center">
+  <img src="docs/media/minion-clock.jpg" alt="Clock face on the round Minion display" width="240">
+  <img src="docs/media/minion-kitchen.jpg" alt="Kitchen numeric page on the round Minion display" width="240">
+  <img src="docs/media/minion-battery.jpg" alt="Battery page on the round Minion display" width="240">
+</p>
+
+The gallery shows the shared clock face, a numeric/temperature page, and the
+battery page. Click the hero image to open the muted, cropped
+[demo video](docs/media/readme-demo.mp4).
+
 ## What it displays
 
 - Any number of reusable numeric/temperature and battery-percentage rotation
