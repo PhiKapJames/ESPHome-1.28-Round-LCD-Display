@@ -69,6 +69,13 @@ def scalar_defaults(path):
     raw=load(path); env={}
     for p in raw.get('packages',{}).values():
         if isinstance(p,Tagged) and p.tag=='!include':
+            spec=p.value
+            include_file=spec if isinstance(spec,str) else spec.get('file','')
+            # Dynamic include filenames depend on the package instance's vars,
+            # which are not available during this preliminary defaults walk.
+            # They are resolved later by expand() with the correct context.
+            if isinstance(include_file,str) and '${' in include_file:
+                continue
             dest,_=include_parts(p,Path(path).parent)
             env.update(scalar_defaults(dest))
     env.update({k:v for k,v in raw.get('substitutions',{}).items() if not isinstance(v,Tagged)})
