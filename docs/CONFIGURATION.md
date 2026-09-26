@@ -350,12 +350,25 @@ Version 0.4.0 precomputes the static metric and clock arc coordinates and the
 60 minute-marker positions. This removes runtime sine/cosine calculations from
 normal metric/clock drawing without changing those coordinates.
 
+Version 0.6.8 reduces repeated framebuffer writes on page transitions without
+lowering the configured display color depth, buffer size, or SPI rate:
+
+- rounded metric/battery panels use one horizontal span per scanline instead of
+  overlapping two filled rectangles and four filled circles;
+- repeated radius-2/radius-3 arc markers use non-overlapping scanline shapes
+  instead of `filled_circle()`'s duplicate border/span writes;
+- the S3/high-quality battery percentage keyline uses one bold black underlay
+  plus the regular white value instead of eight offset renders of the 84 px font;
+- the original clock face clears only the ring pixels that cross behind its
+  large hour/minute text instead of repainting large black rectangles.
+
 The display still refreshes on each normal page transition. The previous extra
 full redraw at every minute boundary was removed because normal pages already
 rotate every few seconds; Home Assistant time synchronization can still request
 a refresh when time first becomes valid.
 
 C3 and the 4 MB/no-PSRAM C6 profile keep the 50% framebuffer to preserve
-camera RAM headroom and use the four-direction battery percentage keyline.
-S3 quad-PSRAM keeps its 100% framebuffer and full eight-direction keyline. This is an intentional
-hardware-performance difference, not a layout/theme difference.
+camera RAM headroom and use the established four-direction battery percentage
+keyline. S3 quad-PSRAM keeps its 100% framebuffer and uses the optimized bold
+underlay keyline. This is an intentional hardware-performance difference, not a
+layout/theme change.

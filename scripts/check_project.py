@@ -199,6 +199,12 @@ def test_configs():
         assert 'MAX_VISIBLE_DOTS = 9' in page_raw
         assert 'more_before' in page_raw and 'more_after' in page_raw
         assert 'it.line(' in page_raw
+        assert 'duplicate PSRAM framebuffer writes' in page_raw
+        assert 'draw_arc_dot' in page_raw
+        assert 'it.horizontal_line(x + inset, y + row, span, color)' in page_raw
+        # The optimized rounded box must not regress to overlapping full
+        # rectangles plus four filled-circle corners.
+        assert 'it.filled_rectangle(x + radius, y, width - 2 * radius, height, color)' not in page_raw
     time_cfg=core_raw['time'][0]
     assert time_cfg['platform'] == 'homeassistant'
     assert time_cfg['id'] == 'ha_time'
@@ -220,6 +226,17 @@ def test_configs():
     assert c6_raw['esp32']['variant'] == 'esp32c6'
     assert c6_raw['esp32']['flash_size'] == '4MB'
     assert 'psram' not in c6_raw
+    theme_raw=(ROOT/'packages'/'theme.yaml').read_text(encoding='utf-8')
+    assert 'id: battery_outline_font' in theme_raw
+    assert 'weight: bold' in theme_raw
+    assert 'glyphs: "0123456789%-"' in theme_raw
+    assert 'battery_outline_font' in battery_raw
+    assert 'DIAGONAL_OFFSETS' not in battery_raw
+    assert 'eight separate' in battery_raw
+    assert 'start_clipping(display::Rect(field_x, field_y, field_w, field_h))' in clock_raw
+    assert 'Only erase the ring pixels crossing the text field' in clock_raw
+    print('PASS scanline renderer optimizations and S3 two-render battery keyline')
+    print('PASS original clock clears only ring crossings behind large digits')
     print('PASS renderer performance invariants and hardware quality split')
 
     # Clock-style regression coverage. The package must default to the original

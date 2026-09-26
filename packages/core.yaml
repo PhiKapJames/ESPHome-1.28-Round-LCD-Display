@@ -19,7 +19,7 @@ esphome:
         - script.execute: display_rotation
   project:
     name: phikapjames.round-minions
-    version: 0.6.7
+    version: 0.6.8
 
 logger:
   level: INFO

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.8 — 2026-09-26
+
+- Reduced display-render framebuffer work without lowering S3 color depth, full-buffer mode, or 80 MHz LCD SPI rate.
+- Replaced overlapping rounded-box construction on numeric/battery pages with single-pass scanline fills.
+- Replaced frequent small filled-circle arc markers with equivalent non-overlapping scanline dots.
+- Reworked the S3/high-quality battery value keyline from eight offset 84 px font renders to one glyph-restricted bold underlay plus the regular white value.
+- Reworked the original clock's large digit cleanup to erase only ring pixels crossing the text fields instead of filling large black rectangles.
+- Preserved C3/C6 four-direction battery keyline behavior.
+- Added structural regression checks for the optimized renderer paths.
+
 ## 0.6.7 — 2026-09-26
 
 - Added a shared automatic-alert hard maximum through `camera_max_hold_ms`, defaulting to `30000` ms.
