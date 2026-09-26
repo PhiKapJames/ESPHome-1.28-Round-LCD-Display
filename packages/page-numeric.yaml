@@ -140,7 +140,7 @@ display:
                TextAlign::BASELINE_CENTER, value_text, value_background);
 
 
-      auto now = id(sntp_time).now();
+      auto now = id(ha_time).now();
       char time_text[16];
       if (now.is_valid()) {
         int hour12 = now.hour % 12;
