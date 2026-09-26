@@ -62,6 +62,25 @@ display:
         it.print(x, baseline, f, color, TextAlign::BASELINE_CENTER, text);
       };
 
+      // Frequent small marker dots use non-overlapping scanlines instead of
+      // filled_circle(), which redraws border pixels in addition to spans.
+      auto draw_dot2 = [&](int x, int y, Color color) {
+        it.horizontal_line(x,     y - 2, 1, color);
+        it.horizontal_line(x - 1, y - 1, 3, color);
+        it.horizontal_line(x - 2, y,     5, color);
+        it.horizontal_line(x - 1, y + 1, 3, color);
+        it.horizontal_line(x,     y + 2, 1, color);
+      };
+      auto draw_dot3 = [&](int x, int y, Color color) {
+        it.horizontal_line(x,     y - 3, 1, color);
+        it.horizontal_line(x - 2, y - 2, 5, color);
+        it.horizontal_line(x - 2, y - 1, 5, color);
+        it.horizontal_line(x - 3, y,     7, color);
+        it.horizontal_line(x - 2, y + 1, 5, color);
+        it.horizontal_line(x - 2, y + 2, 5, color);
+        it.horizontal_line(x,     y + 3, 1, color);
+      };
+
       auto scaled_point = [&](int index, float scale, int &x, int &y) {
         const auto &p = MINUTE_MARKER_POINTS[index % 60];
         x = 120 + static_cast<int>((p[0] - 120) * scale);
@@ -101,7 +120,7 @@ display:
         it.circle(120, 120, 78, blue);
 
         for (const auto &point : CLOCK_ORBIT_POINTS)
-          it.filled_circle(point[0], point[1], 2, purple);
+          draw_dot2(point[0], point[1], purple);
 
         it.filled_circle(42, 120, 6, purple);
         it.filled_circle(198, 120, 6, purple);
@@ -117,8 +136,20 @@ display:
 
           int width, offset, measured_baseline, height;
           f->measure(text, &width, &offset, &measured_baseline, &height);
-          it.filled_rectangle(120 - width / 2 - 5, baseline - cap - 4,
-                              width + 10, cap + 9, background);
+
+          // Only erase the ring pixels crossing the text field. The previous
+          // full black rectangle rewrote several thousand already-black
+          // framebuffer pixels on every clock transition.
+          const int field_x = 120 - width / 2 - 5;
+          const int field_y = baseline - cap - 4;
+          const int field_w = width + 10;
+          const int field_h = cap + 9;
+          it.start_clipping(display::Rect(field_x, field_y, field_w, field_h));
+          it.circle(120, 120, 96, background);
+          it.circle(120, 120, 95, background);
+          it.circle(120, 120, 78, background);
+          it.end_clipping();
+
           it.print(122, baseline + 2, f, blue,
                    TextAlign::BASELINE_CENTER, text);
           it.print(120, baseline, f, white,
@@ -153,7 +184,7 @@ display:
         for (int i = 0; i < 60; i++) {
           const auto &p = MINUTE_MARKER_POINTS[i];
           if (i % 5 == 0)
-            it.filled_circle(p[0], p[1], 3, cyan);
+            draw_dot3(p[0], p[1], cyan);
           else
             it.filled_circle(p[0], p[1], 1, gray);
         }
@@ -190,9 +221,9 @@ display:
             const Color accent =
                 (i == 0 || i == 20 || i == 40) ? cyan :
                 (i == 10 ? green : (i == 30 ? yellow : purple));
-            it.filled_circle(p[0], p[1], 3, accent);
+            draw_dot3(p[0], p[1], accent);
           } else if (i % 5 == 0) {
-            it.filled_circle(p[0], p[1], 2, gray);
+            draw_dot2(p[0], p[1], gray);
           }
         }
 
@@ -222,10 +253,14 @@ display:
         for (int i = 0; i < 60; i++) {
           const auto &p = MINUTE_MARKER_POINTS[i];
           const bool active = i <= progress;
-          if (active)
-            it.filled_circle(p[0], p[1], i % 5 == 0 ? 5 : 3, purple);
-          else if (i % 5 == 0)
-            it.filled_circle(p[0], p[1], 2, gray);
+          if (active) {
+            if (i % 5 == 0)
+              it.filled_circle(p[0], p[1], 5, purple);
+            else
+              draw_dot3(p[0], p[1], purple);
+          } else if (i % 5 == 0) {
+            draw_dot2(p[0], p[1], gray);
+          }
         }
 
         draw_centered(120, 103, id(clock_digital_font), white, digital_time);
@@ -253,11 +288,11 @@ display:
 
         for (const int i : LEFT_ARC) {
           const auto &p = MINUTE_MARKER_POINTS[i];
-          it.filled_circle(p[0], p[1], 3, cyan);
+          draw_dot3(p[0], p[1], cyan);
         }
         for (const int i : RIGHT_ARC) {
           const auto &p = MINUTE_MARKER_POINTS[i];
-          it.filled_circle(p[0], p[1], 3, red);
+          draw_dot3(p[0], p[1], red);
         }
 
         it.circle(120, 120, 93, dim_gray);

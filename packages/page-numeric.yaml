@@ -71,25 +71,54 @@ display:
         {22,181},{20,177}
       };
 
+      // Fill each rounded-rectangle scanline exactly once. The previous
+      // implementation overlapped two large rectangles plus four filled
+      // circles, causing thousands of duplicate PSRAM framebuffer writes.
       auto rounded_box = [&](int x, int y, int width, int height,
                              int radius, Color color) {
         if (radius <= 0) {
           it.filled_rectangle(x, y, width, height, color);
           return;
         }
-        it.filled_rectangle(x + radius, y, width - 2 * radius, height, color);
-        it.filled_rectangle(x, y + radius, width, height - 2 * radius, color);
-        it.filled_circle(x + radius, y + radius, radius, color);
-        it.filled_circle(x + width - radius - 1, y + radius, radius, color);
-        it.filled_circle(x + radius, y + height - radius - 1, radius, color);
-        it.filled_circle(x + width - radius - 1,
-                         y + height - radius - 1, radius, color);
+
+        const int radius_sq = radius * radius;
+        for (int row = 0; row < height; row++) {
+          int inset = 0;
+          if (row < radius || row >= height - radius) {
+            const int local =
+                row < radius ? row : height - 1 - row;
+            const int dy = radius - local;
+            while (inset < radius) {
+              const int dx = radius - inset;
+              if (dx * dx + dy * dy <= radius_sq)
+                break;
+              inset++;
+            }
+          }
+
+          const int span = width - 2 * inset;
+          if (span > 0)
+            it.horizontal_line(x + inset, y + row, span, color);
+        }
+      };
+
+      // Radius-3 filled dot using non-overlapping scanlines. This preserves
+      // the 7x7 segmented-arc footprint without filled_circle's duplicate
+      // border/span writes.
+      auto draw_arc_dot = [&](int x, int y, Color color) {
+        it.horizontal_line(x,     y - 3, 1, color);
+        it.horizontal_line(x - 2, y - 2, 5, color);
+        it.horizontal_line(x - 2, y - 1, 5, color);
+        it.horizontal_line(x - 3, y,     7, color);
+        it.horizontal_line(x - 2, y + 1, 5, color);
+        it.horizontal_line(x - 2, y + 2, 5, color);
+        it.horizontal_line(x,     y + 3, 1, color);
       };
 
       it.fill(Color::BLACK);
       it.circle(120, 120, 115, dim);
       for (const auto &point : METRIC_ARC_POINTS)
-        it.filled_circle(point[0], point[1], 3, accent);
+        draw_arc_dot(point[0], point[1], accent);
 
       it.print(120, 71, id(title_font), accent,
                TextAlign::BASELINE_CENTER, "${page_label}");

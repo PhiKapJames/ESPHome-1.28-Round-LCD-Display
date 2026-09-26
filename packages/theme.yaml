@@ -27,6 +27,13 @@ font:
 - id: clock_tiny_font
   file: gfonts://Roboto
   size: 18
+- id: battery_outline_font
+  file:
+    type: gfonts
+    family: Roboto
+    weight: bold
+  size: 84
+  glyphs: "0123456789%-"
 color:
 - id: color_clock_ring_outer
   red: 0%
