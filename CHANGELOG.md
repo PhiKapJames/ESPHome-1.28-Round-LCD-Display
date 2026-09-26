@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.6.7 — 2026-09-26
+
+- Added a shared automatic-alert hard maximum through `camera_max_hold_ms`, defaulting to `30000` ms.
+- The maximum is measured from the first successful image/hold phase, so initial download time does not consume the visible hold budget.
+- Individual camera-source entries can override the shared maximum by supplying `camera_max_hold_ms` in that entry's `vars`.
+- A per-camera value of `0` disables the hard cap for that source.
+- The hard maximum wins over a detector that remains ON or a clear-delay tail that would otherwise extend past the limit.
+- Manual snapshot duration remains controlled only by `camera_hold_time`.
+- Added an INFO log when an automatic alert ends because its maximum hold was reached.
+- Added CI coverage for inherited, overridden, and unlimited per-camera maximum values.
+
 ## 0.6.6 — 2026-09-26
 
 - Reworked optional camera detector package selection to use ESPHome's supported conditional `!include` filename pattern.

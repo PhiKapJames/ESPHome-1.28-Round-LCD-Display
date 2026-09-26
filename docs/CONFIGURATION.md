@@ -215,6 +215,7 @@ Shared engine substitutions:
 | `camera_hold_time` | `15s` | Fixed display time for a successful **manual** snapshot request. |
 | `camera_min_hold_time` | `7s` | Minimum display time for a successful automatic person/vehicle alert. |
 | `camera_clear_delay` | `2s` | After the minimum, all enabled detectors for that camera must remain continuously OFF for this long before rotation resumes. |
+| `camera_max_hold_ms` | `'30000'` | Hard maximum for a successful automatic alert's hold/follow phase, measured from the first successful image. `0` disables the hard cap. A camera-source file entry can override this value for that source. |
 | `camera_refresh_interval_ms` | `'0'` | Optional alert-image refresh interval in milliseconds; `0` keeps the established single-snapshot behavior. A value such as `'1000'` requests a new still about once per second, never overlapping downloads. |
 | `camera_download_timeout` | `20s` | Whole-download cooperative backstop. |
 | `camera_error_hold_time` | `4s` | Failure-screen duration. |
@@ -232,9 +233,17 @@ Automatic person/vehicle alerts are detector-driven. They remain visible for at
 least `camera_min_hold_time`, continue while any enabled detector for that
 camera is ON, then require every enabled detector to remain continuously OFF for
 `camera_clear_delay`. If a detector turns back ON during the clear delay, that
-delay is cancelled and restarts after the next clear transition. Manual snapshot
-requests do not follow detector state and retain the fixed `camera_hold_time`.
-The display-off gate still cancels either kind of alert immediately.
+delay is cancelled and restarts after the next clear transition.
+
+A successful automatic alert is also bounded by `camera_max_hold_ms`, measured
+from the first successfully decoded image. The default is 30 seconds. The hard
+maximum wins even if a detector is still ON or the clear-delay tail has not
+completed. Set it to `0` to disable the cap. A camera can override the shared
+value by supplying `camera_max_hold_ms` in that camera-source entry's `vars`.
+
+Manual snapshot requests do not follow detector state and retain the fixed
+`camera_hold_time`. The display-off gate still cancels either kind of alert
+immediately.
 
 Each `packages/camera-source.yaml` instance requires these variables:
 
@@ -250,6 +259,7 @@ Each `packages/camera-source.yaml` instance requires these variables:
 | `camera_trigger_vehicle` | `'true'` | Include a vehicle detector subscription. |
 | `camera_vehicle_entity` | `binary_sensor.driveway_vehicle` | Vehicle entity; supply a valid placeholder even if the trigger is false. |
 | `camera_cooldown_ms` | `'60000'` | Automatic cooldown for only this source. |
+| `camera_max_hold_ms` | omitted | Optional per-source override of the shared `camera_max_hold_ms`. Example: `'45000'` for 45 seconds, or `'0'` for no hard cap. |
 
 When person and vehicle are both enabled on one source, they are **OR** triggers
 both for starting the alert and for keeping it visible: the alert remains active
@@ -289,6 +299,8 @@ packages:
           camera_trigger_vehicle: 'true'
           camera_vehicle_entity: binary_sensor.driveway_vehicle
           camera_cooldown_ms: '60000'
+          # Optional: override the shared 30-second maximum for this camera.
+          camera_max_hold_ms: '45000'
 
       - path: packages/camera-source.yaml
         vars:

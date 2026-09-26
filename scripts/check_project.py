@@ -326,7 +326,13 @@ def test_configs():
     assert 'camera_detector_garage_1' not in multi_ids
     assert 'camera_detector_garage_2' not in multi_ids
     assert len([x for x in multi_ids if x.startswith('camera_picture_path_')]) == 6
+
+    multi_strings=list(all_strings(multi))
+    assert any('static_cast<int32_t>(45000)' in text for text in multi_strings)
+    assert any('static_cast<int32_t>(30000)' in text for text in multi_strings)
+    assert any('static_cast<int32_t>(0)' in text for text in multi_strings)
     print('PASS six reusable camera instances and independent detector routing')
+    print('PASS global camera max hold plus per-source override and unlimited override')
 
     camera_alert_raw=(ROOT/'packages'/'camera-alerts.yaml').read_text(encoding='utf-8')
     assert "camera_refresh_interval_ms: '0'" in camera_alert_raw
@@ -337,6 +343,9 @@ def test_configs():
     assert '!id(lcd_backlight_switch).state' in camera_alert_raw
     assert 'camera_min_hold_time: 7s' in camera_alert_raw
     assert 'camera_clear_delay: 2s' in camera_alert_raw
+    assert "camera_max_hold_ms: '30000'" in camera_alert_raw
+    assert 'max_hold_ms: int' in camera_alert_raw
+    assert 'Maximum alert hold reached' in camera_alert_raw
     assert 'id: camera_clear_timer' in camera_alert_raw
     assert 'id: camera_detection_state' in camera_alert_raw
     assert 'camera_detection_clear_ready' in camera_alert_raw
@@ -413,6 +422,8 @@ def test_configs():
     assert '!id(lcd_backlight_switch).state' in camera_source_raw
     assert 'camera_detection_mask_${camera_id}' in camera_source_raw
     assert 'detection_mask: !lambda' in camera_source_raw
+    assert 'max_hold_ms: !lambda' in camera_source_raw
+    assert 'camera_max_hold_ms' in camera_source_raw
     assert 'do not queue a duplicate alert' in camera_source_raw
     assert '_person_trigger' not in camera_source_raw
     assert '_vehicle_trigger' not in camera_source_raw
