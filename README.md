@@ -84,7 +84,7 @@ checks.
 1. Copy [the example](examples/device.example.yaml) into your **local** ESPHome
    configuration directory. Do not enter real settings in the public example.
 2. Set the hardware profile and actual entities in that local file.
-3. Preserve the existing device `name`, API key, and OTA password during migration.
+3. Preserve the existing device `name` and API/OTA credentials during migration.
 4. Run ESPHome **Validate**, then compile and install on one device first.
 5. Test every enabled metric, battery fill, clock, snapshot override, detection,
    failed download, and return to the interrupted page.

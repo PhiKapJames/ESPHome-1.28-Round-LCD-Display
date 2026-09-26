@@ -44,11 +44,12 @@ Those tests generate synthetic firmware. **Do not install the test fixture on
 an existing device**: it intentionally has fake Wi-Fi/API/OTA credentials.
 Validate and compile the private local device YAML separately for deployment.
 
-A first physical migration should verify that the identity and HA controls are
-unchanged, all six existing screens retain their geometry, person detection and
-the snapshot override display the full-screen crop, failure paths return to the
-playlist, and RAM recovers after repeated alerts. Test an S3 separately before
-applying the S3 profile to additional devices.
+A first physical migration should verify that identity and Home Assistant
+controls are unchanged, configured pages retain their geometry, person/vehicle
+detection and snapshot overrides behave as intended, failure paths return to the
+playlist, display suspension resumes cleanly, and RAM recovers after repeated
+camera alerts. Test an S3 separately before applying the S3 profile to
+additional devices.
 
 
 ## ESP32-C6 profile
