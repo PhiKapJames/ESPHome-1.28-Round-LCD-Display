@@ -14,3 +14,4 @@ substitutions:
   backlight_restore_mode: ALWAYS_ON
   display_rotation_degrees: '0'
   display_spi_rate: 80MHz
+  display_profile_warn_ms: '50'

@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
 passwords in local ESPHome configuration files.
 
-**Version: 0.6.8 — lower-overhead display rendering.** GitHub Actions validates and
+**Version: 0.6.9 — page-aware display profiling.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
@@ -167,7 +167,14 @@ framebuffer work without lowering the S3's 16-bit/full-buffer display quality:
 rounded panels are filled once per scanline, repeated arc dots avoid duplicate
 circle writes, the S3 battery keyline uses one bold underlay instead of eight
 offset large-font renders, and the original clock erases only ring crossings
-behind its large digits. Never hide timing warnings as a fix.
+behind its large digits.
+
+Version 0.6.9 adds a page-aware profiler for normal rotation. Slow updates log
+the page label and total render+flush time under `round_minion.display`, while
+the physical update is deferred onto the MIPI display component so ESPHome's
+stock blocking warning no longer blames `display_rotation`. The default
+page-aware warning threshold is 50 ms and can be changed with
+`display_profile_warn_ms`. Never hide timing warnings as a fix.
 
 ## Clock faces
 
@@ -284,7 +291,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.6.8 is validated by the repository's synthetic ESPHome CI matrix but
+Version 0.6.9 is validated by the repository's synthetic ESPHome CI matrix but
 is not, by itself, a claim that every hardware/profile combination has been
 physically validated. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed

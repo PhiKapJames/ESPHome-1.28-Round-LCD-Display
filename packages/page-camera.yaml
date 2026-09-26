@@ -21,6 +21,7 @@ esphome:
         id(rotation_pages).push_back(id(rotation_page_${page_id}));
         id(rotation_durations).push_back(${page_duration_ms});
         id(rotation_orders).push_back(${page_order});
+        id(rotation_labels).push_back("${page_label}");
         id(rotation_enter_callbacks).push_back([](){
           id(rotation_camera_prepare_${page_id}).execute();
         });

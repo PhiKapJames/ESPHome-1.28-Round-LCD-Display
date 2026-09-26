@@ -152,6 +152,7 @@ rotation pages remain clean full-screen images and do not overlay the indicator.
 | `backlight_restore_mode` | `ALWAYS_ON` |
 | `display_rotation_degrees` | `'0'` |
 | `display_spi_rate` | `80MHz` |
+| `display_profile_warn_ms` | `'50'` | Page-aware profiler warning threshold for normal rotation updates. Updates at or below the threshold log only at DEBUG. |
 | `battery_outline_quality` | hardware profile | `1` = four-direction C3/C6 keyline; `2` = full eight-direction S3 keyline. |
 
 `display_color_depth`, `display_buffer_size`, and `battery_outline_quality` are supplied by the selected
@@ -372,3 +373,19 @@ camera RAM headroom and use the established four-direction battery percentage
 keyline. S3 quad-PSRAM keeps its 100% framebuffer and uses the optimized bold
 underlay keyline. This is an intentional hardware-performance difference, not a
 layout/theme change.
+
+Version 0.6.9 adds page-aware display profiling for normal rotation. The physical
+`main_display.update()` is deferred onto the MIPI display component, so ESPHome's
+own blocking warning is attributed to the display rather than to
+`display_rotation`. The shared profiler measures the complete render + LCD flush
+duration and emits a warning such as:
+
+```text
+[W][round_minion.display]: page=Battery render+flush=90 ms (threshold=50 ms)
+```
+
+The default profiler threshold is `display_profile_warn_ms: '50'`. Faster
+updates are logged at DEBUG only. Numeric, battery, and optional rotation-camera
+templates register their `page_label`; the shared clock reports as `clock`.
+This measures the whole display update and does not currently split framebuffer
+render time from SPI transfer time.

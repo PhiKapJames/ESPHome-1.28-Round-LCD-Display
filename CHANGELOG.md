@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.9 — 2026-09-26
+
+- Added page-aware profiling for normal rotation display updates.
+- Numeric, battery, and optional rotation-camera templates now register their `page_label` alongside the ordered page registry; the shared clock reports as `clock`.
+- Added `display_profile_warn_ms` with a default of `50` ms. Slow updates log the page name and complete render+flush duration under `round_minion.display`; faster updates are DEBUG-only.
+- Moved normal-rotation `main_display.update()` work into a defer owned by the display component, so ESPHome's stock blocking warning is attributed to the MIPI display rather than `display_rotation`.
+- Preserved page-duration semantics by waiting for the deferred display update to finish before starting each page's visible-duration timer.
+- Display suspension and camera takeover cancel any pending profiled normal-page update so a stale deferred render cannot overwrite the new display state.
+- Added regression coverage for profiler registration, page-label alignment, deferred display ownership, and camera-takeover cancellation.
+
 ## 0.6.8 — 2026-09-26
 
 - Reduced display-render framebuffer work without lowering S3 color depth, full-buffer mode, or 80 MHz LCD SPI rate.

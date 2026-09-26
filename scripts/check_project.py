@@ -252,6 +252,7 @@ def test_configs():
     defaults = load(ROOT/'packages'/'defaults.yaml')['substitutions']
     assert defaults['clock_face_style'] == 'original'
     assert defaults['backlight_restore_mode'] == 'ALWAYS_ON'
+    assert str(defaults['display_profile_warn_ms']) == '50'
 
     clock_source = (ROOT/'packages'/'clock-page.yaml').read_text(encoding='utf-8')
     for style in supported_clock_styles:
@@ -321,6 +322,8 @@ def test_configs():
         assert ('psram' in config)==('s3' in name)
         assert [f['size'] for f in config['font'][:5]]==[44,84,36,92,92]
         assert 'rotation_pages' in ids and 'rotation_orders' in ids
+        assert 'rotation_labels' in ids
+        assert 'profiled_display_update' in ids
         print(f'PASS {name}: includes/substitutions/IDs/features')
 
     # Reusable-camera regression: six instances exceed the former four-source design.
@@ -422,6 +425,7 @@ def test_configs():
     core_text=(ROOT/'packages'/'core.yaml').read_text(encoding='utf-8')
     assert 'rotation_pages' in core_text
     assert 'rotation_orders' in core_text
+    assert 'rotation_labels' in core_text
     assert 'rotation_enter_callbacks' in core_text
     assert 'rotation_exit_callbacks' in core_text
     assert 'if (count == 0)' in core_text
@@ -432,8 +436,22 @@ def test_configs():
     assert 'on_turn_off:' in core_text and 'script.execute: suspend_display' in core_text
     assert 'on_turn_on:' in core_text and 'script.execute: resume_display' in core_text
     assert 'restore_mode: ${backlight_restore_mode}' in core_text
+    assert 'id: profiled_display_update' in core_text
+    assert 'defer("round_minion_profile_update"' in core_text
+    assert '"round_minion.display"' in core_text
+    assert 'render+flush=%u ms' in core_text
+    assert '${display_profile_warn_ms}' in core_text
+    assert 'component.update: main_display' not in core_text
     assert '<esp_heap_caps.h>' in core_text
     assert 'Public ESP-IDF heap-capability API' in core_text
+
+    numeric_source_raw=(ROOT/'packages'/'page-numeric.yaml').read_text(encoding='utf-8')
+    battery_source_raw=(ROOT/'packages'/'page-battery.yaml').read_text(encoding='utf-8')
+    page_camera_source_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
+    for page_source_raw in (numeric_source_raw, battery_source_raw, page_camera_source_raw):
+        assert 'id(rotation_labels).push_back("${page_label}")' in page_source_raw
+    assert 'std::swap(id(rotation_labels)[i], id(rotation_labels)[best])' in core_text
+    print('PASS page-aware display profiler registry and deferred display ownership')
 
     camera_source_raw=(ROOT/'packages'/'camera-source.yaml').read_text(encoding='utf-8')
     assert '!id(lcd_backlight_switch).state' in camera_source_raw
@@ -446,6 +464,11 @@ def test_configs():
     assert '_vehicle_trigger' not in camera_source_raw
     assert 'file: ${ "camera-trigger.yaml" if camera_trigger_person' in camera_source_raw
     assert 'file: ${ "camera-trigger.yaml" if camera_trigger_vehicle' in camera_source_raw
+
+    camera_alert_raw=(ROOT/'packages'/'camera-alerts.yaml').read_text(encoding='utf-8')
+    assert 'script.stop: profiled_display_update' in camera_alert_raw
+    assert 'cancel_defer("round_minion_profile_update")' in camera_alert_raw
+    assert 'display_profile_update_done' in camera_alert_raw
 
     camera_trigger_raw=(ROOT/'packages'/'camera-trigger.yaml').read_text(encoding='utf-8')
     assert 'on_press:' in camera_trigger_raw
