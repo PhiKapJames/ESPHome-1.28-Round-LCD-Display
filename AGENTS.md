@@ -42,7 +42,7 @@ Keep these in the user's private/local ESPHome YAML or `secrets.yaml`:
 - Home Assistant IP addresses, hostnames, or origins;
 - Wi-Fi SSIDs/passwords;
 - API encryption keys;
-- OTA passwords/keys;
+- OTA authentication material, including passwords or encryption keys;
 - access tokens, camera tokens, cookies, or credentials;
 - private site/device mappings;
 - generated firmware binaries containing credentials.
@@ -100,6 +100,8 @@ commit SHA; `refresh: never` is appropriate for an intentionally pinned ref.
 - Each template instance must have a unique ESPHome-safe `page_id`.
 - Keep site-specific entity IDs in the private device YAML.
 - Register normal rotation pages through the shared runtime registry.
+- Register a matching human-readable entry in `rotation_labels` so page-aware
+  display profiling stays aligned with the sorted page registry.
 - Preserve `page_order` and per-page duration behavior.
 - The clock remains an interstitial page managed by shared code.
 - Preserve `clock_face_style` as the per-device selector. Supported values are `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and `clean_arc`; `original` must remain the backward-compatible default unless explicitly changed.
@@ -121,6 +123,11 @@ commit SHA; `refresh: never` is appropriate for an intentionally pinned ref.
 - Do not log token-bearing snapshot URLs.
 - Preserve heap/contiguous-memory safeguards and queue/cooldown behavior unless
   the change is deliberate and tested.
+- Automatic alerts have three lifetime controls: minimum hold, detector-clear
+  delay, and a shared hard maximum that can be overridden per camera. Preserve
+  manual snapshot duration as a separate fixed setting.
+- Optional periodic refresh must remain serial: never overlap JPEG downloads or
+  discard the last good frame merely because a refresh fails.
 
 ## ESPHome compatibility
 
@@ -136,15 +143,36 @@ new ESPHome feature or syntax:
 Do not convert reusable YAML into an external component simply because
 `external_components` exists.
 
+## Display/runtime invariants
+
+- `LCD Backlight` is the authoritative display-enabled gate. OFF suspends
+  rotation/redraw/camera-display work but leaves networking, Home Assistant,
+  time, and diagnostics online.
+- The shared UI clock uses Home Assistant time with ID `ha_time`. A private
+  device may add a separate SNTP source for local schedule enforcement.
+- Normal rotation display updates go through `profiled_display_update`.
+  The physical `main_display.update()` is deferred onto `main_display` so
+  ESPHome attributes blocking time to the display component instead of
+  `display_rotation`.
+- The profiler threshold is controlled by `display_profile_warn_ms` (default
+  50 ms). Slow normal-rotation updates log their page label under
+  `round_minion.display`; the shared clock label is `clock`.
+- Do not reintroduce direct `component.update: main_display` calls into the
+  normal rotation path. Camera-alert rendering has its own update path.
+- Display suspension and camera takeover must cancel a pending profiled normal
+  update before changing pages, preventing stale deferred draws.
+
 ## Validation requirements
 
 For meaningful changes:
 
-1. run the repository's structural/privacy checks;
+1. run `scripts/check_public.py` and `scripts/check_project.py`;
 2. validate the affected synthetic ESPHome configurations;
 3. compile representative hardware profiles when CI supports them;
-4. inspect GitHub Actions results;
-5. test on one physical device before broad rollout when hardware behavior may
+4. for public-repo changes, inspect the 10-profile GitHub Actions matrix and do
+   not merge while any required config/compile job is failing;
+5. preserve the CI guard that rejects unresolved-substitution warnings;
+6. test on one physical device before broad rollout when hardware behavior may
    change.
 
 Do not suppress compiler/ESPHome warnings as a substitute for fixing the cause.

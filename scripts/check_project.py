@@ -480,6 +480,54 @@ def test_configs():
     print('PASS camera detector press/release events maintain per-source active masks')
     print('PASS active-camera detector changes do not queue duplicate alerts')
 
+    # Documentation consistency. Keep current-state docs tied to the actual
+    # project version and CI matrix, while allowing historical changelog text.
+    project_version=str(core_raw['esphome']['project']['version'])
+    readme=(ROOT/'README.md').read_text(encoding='utf-8')
+    agents=(ROOT/'AGENTS.md').read_text(encoding='utf-8')
+    configuration=(ROOT/'docs'/'CONFIGURATION.md').read_text(encoding='utf-8')
+    validation=(ROOT/'docs'/'VALIDATION.md').read_text(encoding='utf-8')
+    release_notes=(ROOT/'docs'/'RELEASE_NOTES.md').read_text(encoding='utf-8')
+
+    assert f'**Version: {project_version} —' in readme
+    assert f'current source version is **{project_version}**' in release_notes
+    assert 'display_profile_warn_ms' in readme
+    assert 'display_profile_warn_ms' in configuration
+    assert 'optimized S3 bold-underlay keyline' in configuration
+    assert 'profiled_display_update' in agents
+    assert 'three complementary validation layers' in validation
+
+    workflow=load(ROOT/'.github'/'workflows'/'validate.yaml')
+    ci_profiles=workflow['jobs']['build']['strategy']['matrix']['profile']
+    assert len(ci_profiles) == 10
+    for profile in ci_profiles:
+        assert f'`{profile}`' in validation, (
+            f'Validation docs missing CI profile {profile}'
+        )
+
+    markdown_paths=(
+        ROOT/'README.md',
+        ROOT/'AGENTS.md',
+        ROOT/'CHANGELOG.md',
+        ROOT/'docs'/'CONFIGURATION.md',
+        ROOT/'docs'/'VALIDATION.md',
+        ROOT/'docs'/'RELEASE_NOTES.md',
+    )
+    link_pattern=re.compile(r'\[[^\]]+\]\(([^)]+)\)')
+    for markdown_path in markdown_paths:
+        markdown=markdown_path.read_text(encoding='utf-8')
+        for link in link_pattern.findall(markdown):
+            if link.startswith(('http://','https://','#','mailto:')):
+                continue
+            relative=link.split('#',1)[0]
+            if not relative:
+                continue
+            target=(markdown_path.parent/relative).resolve()
+            assert target.is_file(), (
+                f'Broken Markdown link in {markdown_path.relative_to(ROOT)}: {link}'
+            )
+    print('PASS Markdown current-version, CI-matrix, and relative-link consistency')
+
 if __name__=='__main__':
     test_configs()
     print('These are offline structural checks, not ESPHome validation or a firmware compile.')
