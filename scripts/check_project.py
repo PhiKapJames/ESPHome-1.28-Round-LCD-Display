@@ -320,7 +320,7 @@ def test_configs():
             assert image_ids.count('camera_snapshot_next')==1
             assert 'camera_refresh_loop' in ids
         assert ('psram' in config)==('s3' in name)
-        assert [f['size'] for f in config['font'][:5]]==[44,84,36,92,92]
+        assert [f['size'] for f in config['font'][:6]]==[44,84,64,36,92,92]
         assert 'rotation_pages' in ids and 'rotation_orders' in ids
         assert 'rotation_labels' in ids
         assert 'profiled_display_update' in ids
@@ -398,6 +398,9 @@ def test_configs():
     assert 'rotation_camera_image_camera_front' in template_ids
     template_switches={s.get('id'): s for s in template_cfg.get('switch',[]) if isinstance(s,dict)}
     assert template_switches['rotation_page_enabled_numeric_10']['restore_mode']=='RESTORE_DEFAULT_OFF'
+    template_strings='\n'.join(all_strings(template_cfg))
+    assert 'id(temp_font_compact)->measure' in template_strings
+    assert 'id(temp_font_compact)->get_capheight()' in template_strings
     camera_page_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
     assert 'MAX_VISIBLE_DOTS' not in camera_page_raw
     assert camera_page_raw.count('id(lcd_backlight_switch).state') >= 3
@@ -454,6 +457,12 @@ def test_configs():
     assert 'Public ESP-IDF heap-capability API' in core_text
 
     numeric_source_raw=(ROOT/'packages'/'page-numeric.yaml').read_text(encoding='utf-8')
+    assert 'page_value_font: temp_font' in numeric_source_raw
+    assert 'id(${page_value_font})->measure' in numeric_source_raw
+    assert 'id(${page_value_font})->get_capheight()' in numeric_source_raw
+    assert 'id(${page_value_font}), Color::WHITE' in numeric_source_raw
+    assert 'id: temp_font_compact' in theme_raw
+    assert 'size: 64' in theme_raw
     battery_source_raw=(ROOT/'packages'/'page-battery.yaml').read_text(encoding='utf-8')
     page_camera_source_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
     for page_source_raw in (numeric_source_raw, battery_source_raw, page_camera_source_raw):

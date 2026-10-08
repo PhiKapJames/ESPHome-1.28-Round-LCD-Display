@@ -108,6 +108,9 @@ commit SHA; `refresh: never` is appropriate for an intentionally pinned ref.
   may opt into `RESTORE_DEFAULT_OFF`.
 - Preserve `page_order` and per-page duration behavior. Disabled pages are
   skipped by rotation and must not count toward numeric/battery page indicators.
+- Numeric pages may select their large value font with `page_value_font`.
+  Preserve `temp_font` as the backward-compatible default; shared alternate
+  fonts should be defined once in `theme.yaml` rather than duplicated per page.
 - The clock remains an interstitial page managed by shared code.
 - Preserve `clock_face_style` as the per-device selector. Supported values are `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and `clean_arc`; `original` must remain the backward-compatible default unless explicitly changed.
 - Camera alerts interrupt rotation and are not normal rotation pages unless

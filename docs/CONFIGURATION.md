@@ -89,6 +89,7 @@ shared-code count limit.
     page_unit: °F
     page_suffix: °
     page_decimals: '1'
+    page_value_font: temp_font
     page_panel_style: '1'
     page_color_red: 0%
     page_color_green: 62%
@@ -98,6 +99,26 @@ shared-code count limit.
 `page_unit` is Home Assistant sensor metadata and does not convert values.
 `page_suffix` is the text rendered after the number. Colors are independent
 per page.
+
+`page_value_font` selects the font used for the large numeric value on that
+specific page. It defaults to `temp_font` (84 px), preserving existing layouts.
+The shared theme also provides `temp_font_compact` (64 px) for longer values,
+for example a commute page rendering `37 min`:
+
+```yaml
+- path: packages/page-numeric.yaml
+  vars:
+    page_id: commute
+    page_label: Commute
+    page_entity: sensor.example_commute_minutes
+    page_value_font: temp_font_compact
+    page_suffix: " min"
+    page_decimals: "0"
+```
+
+Any font ID defined in the final ESPHome configuration can be supplied through
+`page_value_font`, so a private device YAML may add its own font and select it
+for only the pages that need it.
 
 Numeric and battery pages do not render history/trend graphs. No graph interval
 or graph-color variables are required in local device YAMLs.
