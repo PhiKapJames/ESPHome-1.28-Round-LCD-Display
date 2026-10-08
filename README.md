@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, and API/OTA
 credentials in local ESPHome configuration files.
 
-**Version: 0.7.0 — per-page rotation controls.** GitHub Actions validates and
+**Version: 0.7.1 — per-page numeric value fonts.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
@@ -37,7 +37,8 @@ battery page. Click the hero image to open the muted, cropped
   Home Assistant **<page label> Screen** configuration switch, so Home Assistant
   or Node-RED can include or exclude individual pages on a schedule.
 - Large centered readings, rounded panels, location accents, and a sliding
-  page-position indicator. Trend/history graphs are intentionally omitted. Up to nine enabled-page dots are shown at once;
+  page-position indicator. Numeric pages can override the large value font per
+  page while retaining the established 84 px default. Trend/history graphs are intentionally omitted. Up to nine enabled-page dots are shown at once;
   left/right chevrons indicate additional enabled pages before or after the visible window.
 - A shared clock between each enabled content page, with selectable `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and `clean_arc` renderers.
 - A horizontal battery silhouette filled from the reported percentage, with
