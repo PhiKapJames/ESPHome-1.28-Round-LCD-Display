@@ -44,13 +44,31 @@ packages:
           page_color_green: 70.6%
           page_color_blue: 91.4%
 
+      # Example schedule-only page. Home Assistant / Node-RED can turn its
+      # generated "Commute Screen" switch on only during the commute window.
+      - path: packages/page-numeric.yaml
+        vars:
+          page_id: commute
+          page_label: Commute
+          page_entity: sensor.example_commute_minutes
+          page_duration_ms: '4000'
+          page_order: '30'
+          page_enabled_restore_mode: RESTORE_DEFAULT_OFF
+          page_unit: min
+          page_suffix: ' min'
+          page_decimals: '0'
+          page_panel_style: '1'
+          page_color_red: 100%
+          page_color_green: 55%
+          page_color_blue: 0%
+
       - path: packages/page-battery.yaml
         vars:
           page_id: house_battery
           page_label: Battery
           page_entity: sensor.example_battery
           page_duration_ms: '4000'
-          page_order: '30'
+          page_order: '40'
       # Optional: deliberately place a camera view into normal rotation.
       # This requires a *-camera profile because it reuses camera_http.
       - path: packages/page-camera.yaml
@@ -59,7 +77,7 @@ packages:
           page_label: DRIVEWAY
           page_entity: camera.example_driveway
           page_duration_ms: '5000'
-          page_order: '40'
+          page_order: '50'
 
     refresh: 1d
 
