@@ -65,6 +65,12 @@ removes the page from rotation; turning it back ON makes it eligible again.
 The clock is still inserted automatically after every enabled normal content
 page.
 
+The `Screen · ` prefix is intentional: Home Assistant presents ESPHome
+configuration entities in one Configuration list, so the prefix keeps all page
+controls together under alphabetical sorting. Camera-source alert switches use
+the matching `Camera Alert · ` prefix; Firmware and built-in entities keep
+their native names.
+
 Page switches default to `RESTORE_DEFAULT_ON` for backward compatibility.
 Use `page_enabled_restore_mode: RESTORE_DEFAULT_OFF` for a schedule-only page
 such as a commute ETA screen. Home Assistant or Node-RED can then call
