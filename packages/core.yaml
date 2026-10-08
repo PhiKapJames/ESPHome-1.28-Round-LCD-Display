@@ -19,7 +19,7 @@ esphome:
         - script.execute: display_rotation
   project:
     name: phikapjames.round-minions
-    version: 0.6.9
+    version: 0.7.0
 
 logger:
   level: INFO
@@ -61,6 +61,18 @@ globals:
   type: std::vector<std::string>
   restore_value: false
   initial_value: 'std::vector<std::string>{}'
+- id: rotation_enabled_callbacks
+  type: std::vector<std::function<bool()>>
+  restore_value: false
+  initial_value: 'std::vector<std::function<bool()>>{}'
+- id: rotation_enabled_count
+  type: int
+  restore_value: false
+  initial_value: '0'
+- id: active_rotation_position
+  type: int
+  restore_value: false
+  initial_value: '-1'
 - id: rotation_enter_callbacks
   type: std::vector<std::function<void()>>
   restore_value: false
@@ -156,6 +168,8 @@ script:
       id(rotation_resume_pending) = false;
       id(rotation_content_index) = 0;
       id(active_rotation_index) = -1;
+      id(active_rotation_position) = -1;
+      id(rotation_enabled_count) = 0;
       id(normal_page) = nullptr;
       id(normal_is_clock) = false;
       id(normal_remaining_ms) = 1;
@@ -175,6 +189,8 @@ script:
           id(rotation_resume_pending) = false;
           id(rotation_content_index) = 0;
           id(active_rotation_index) = -1;
+          id(active_rotation_position) = -1;
+          id(rotation_enabled_count) = 0;
           id(normal_page) = nullptr;
           id(normal_is_clock) = false;
           id(normal_remaining_ms) = 1;
@@ -265,6 +281,8 @@ script:
                 std::swap(id(rotation_orders)[i], id(rotation_orders)[best]);
                 if (id(rotation_labels).size() == count)
                   std::swap(id(rotation_labels)[i], id(rotation_labels)[best]);
+                if (id(rotation_enabled_callbacks).size() == count)
+                  std::swap(id(rotation_enabled_callbacks)[i], id(rotation_enabled_callbacks)[best]);
                 std::swap(id(rotation_enter_callbacks)[i], id(rotation_enter_callbacks)[best]);
                 std::swap(id(rotation_exit_callbacks)[i], id(rotation_exit_callbacks)[best]);
               }
@@ -272,22 +290,64 @@ script:
             id(rotation_registry_sorted) = true;
           }
 
-          if (id(rotation_resume_pending) && id(normal_page) != nullptr) {
+          const size_t count = id(rotation_pages).size();
+          const bool enabled_registry_aligned =
+              id(rotation_enabled_callbacks).size() == count;
+
+          auto page_enabled = [&](size_t index) -> bool {
+            if (!enabled_registry_aligned)
+              return true;
+            auto &callback = id(rotation_enabled_callbacks)[index];
+            return !callback || callback();
+          };
+
+          size_t enabled_count = 0;
+          for (size_t i = 0; i < count; i++) {
+            if (page_enabled(i))
+              enabled_count++;
+          }
+          id(rotation_enabled_count) = static_cast<int>(enabled_count);
+
+          auto enabled_position = [&](size_t index) -> int {
+            int position = 0;
+            for (size_t i = 0; i < index; i++) {
+              if (page_enabled(i))
+                position++;
+            }
+            return position;
+          };
+
+          bool can_resume =
+              id(rotation_resume_pending) && id(normal_page) != nullptr;
+          if (can_resume && !id(normal_is_clock)) {
+            const int index = id(active_rotation_index);
+            if (index < 0 ||
+                static_cast<size_t>(index) >= count ||
+                !page_enabled(static_cast<size_t>(index))) {
+              can_resume = false;
+            }
+          }
+
+          if (can_resume) {
             id(rotation_resume_pending) = false;
             const int index = id(active_rotation_index);
             if (!id(normal_is_clock) &&
                 index >= 0 &&
-                static_cast<size_t>(index) < id(rotation_enter_callbacks).size() &&
-                id(rotation_enter_callbacks)[index]) {
-              id(rotation_enter_callbacks)[index]();
+                static_cast<size_t>(index) < id(rotation_enter_callbacks).size()) {
+              id(active_rotation_position) =
+                  enabled_position(static_cast<size_t>(index));
+              if (id(rotation_enter_callbacks)[index])
+                id(rotation_enter_callbacks)[index]();
+            } else {
+              id(active_rotation_position) = -1;
             }
             id(main_display).show_page(id(normal_page));
           } else {
             id(rotation_resume_pending) = false;
-            const size_t count = id(rotation_pages).size();
 
-            if (count == 0) {
+            if (count == 0 || enabled_count == 0) {
               id(active_rotation_index) = -1;
+              id(active_rotation_position) = -1;
               id(normal_is_clock) = true;
               id(normal_page) = id(page_clock);
               id(normal_remaining_ms) = ${clock_page_duration_ms};
@@ -296,8 +356,18 @@ script:
               if (id(rotation_content_index) >= count)
                 id(rotation_content_index) = 0;
 
-              const size_t index = id(rotation_content_index);
+              size_t index = id(rotation_content_index);
+              for (size_t attempt = 0; attempt < count; attempt++) {
+                const size_t candidate =
+                    (id(rotation_content_index) + attempt) % count;
+                if (page_enabled(candidate)) {
+                  index = candidate;
+                  break;
+                }
+              }
+
               id(active_rotation_index) = static_cast<int>(index);
+              id(active_rotation_position) = enabled_position(index);
               id(active_content_duration_ms) = id(rotation_durations)[index];
               id(normal_remaining_ms) = id(rotation_durations)[index];
               id(normal_page) = id(rotation_pages)[index];

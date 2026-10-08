@@ -388,11 +388,16 @@ def test_configs():
     for i in range(1,11):
         assert f'rotation_page_numeric_{i}' in template_ids
         assert f'rotation_sensor_numeric_{i}' in template_ids
+        assert f'rotation_page_enabled_numeric_{i}' in template_ids
     assert 'rotation_page_battery_main' in template_ids
+    assert 'rotation_page_enabled_battery_main' in template_ids
     assert 'rotation_battery_sensor_battery_main' in template_ids
     assert 'rotation_page_camera_front' in template_ids
+    assert 'rotation_page_enabled_camera_front' in template_ids
     assert 'rotation_camera_picture_camera_front' in template_ids
     assert 'rotation_camera_image_camera_front' in template_ids
+    template_switches={s.get('id'): s for s in template_cfg.get('switch',[]) if isinstance(s,dict)}
+    assert template_switches['rotation_page_enabled_numeric_10']['restore_mode']=='RESTORE_DEFAULT_OFF'
     camera_page_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
     assert 'MAX_VISIBLE_DOTS' not in camera_page_raw
     assert camera_page_raw.count('id(lcd_backlight_switch).state') >= 3
@@ -426,9 +431,12 @@ def test_configs():
     assert 'rotation_pages' in core_text
     assert 'rotation_orders' in core_text
     assert 'rotation_labels' in core_text
+    assert 'rotation_enabled_callbacks' in core_text
+    assert 'rotation_enabled_count' in core_text
+    assert 'active_rotation_position' in core_text
     assert 'rotation_enter_callbacks' in core_text
     assert 'rotation_exit_callbacks' in core_text
-    assert 'if (count == 0)' in core_text
+    assert 'if (count == 0 || enabled_count == 0)' in core_text
     assert 'id: suspend_display' in core_text
     assert 'id: resume_display' in core_text
     assert 'display_suspend_callbacks' in core_text
@@ -450,8 +458,17 @@ def test_configs():
     page_camera_source_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
     for page_source_raw in (numeric_source_raw, battery_source_raw, page_camera_source_raw):
         assert 'id(rotation_labels).push_back("${page_label}")' in page_source_raw
+        assert 'id(rotation_enabled_callbacks).push_back' in page_source_raw
+        assert 'id: rotation_page_enabled_${page_id}' in page_source_raw
+        assert 'restore_mode: ${page_enabled_restore_mode}' in page_source_raw
+    for indicator_source_raw in (numeric_source_raw, battery_source_raw):
+        assert 'id(rotation_enabled_count)' in indicator_source_raw
+        assert 'id(active_rotation_position)' in indicator_source_raw
     assert 'std::swap(id(rotation_labels)[i], id(rotation_labels)[best])' in core_text
-    print('PASS page-aware display profiler registry and deferred display ownership')
+    assert 'std::swap(id(rotation_enabled_callbacks)[i], id(rotation_enabled_callbacks)[best])' in core_text
+    assert 'enabled_count == 0' in core_text
+    assert '!page_enabled(static_cast<size_t>(index))' in core_text
+    print('PASS page-aware profiler, per-page controls, enabled-only indicators, and alert-resume filtering')
 
     camera_source_raw=(ROOT/'packages'/'camera-source.yaml').read_text(encoding='utf-8')
     assert '!id(lcd_backlight_switch).state' in camera_source_raw

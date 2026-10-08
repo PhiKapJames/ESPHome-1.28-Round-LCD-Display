@@ -1,11 +1,11 @@
 # Release notes and current source state
 
-The current source version is **0.6.9**. The `esphome.project.version` value
+The current source version is **0.7.0**. The `esphome.project.version` value
 describes the source/firmware behavior; it does not by itself imply that a
 matching GitHub release tag exists. For the complete version-by-version history,
 see the [changelog](../CHANGELOG.md).
 
-## Current 0.6.9 architecture
+## Current 0.7.0 architecture
 
 - ESPHome **2026.9.0 or newer** is required. CI is pinned to
   `ghcr.io/esphome/esphome:2026.9.0`.
@@ -16,7 +16,9 @@ see the [changelog](../CHANGELOG.md).
 - Normal content uses an ordered runtime registry populated by repeated
   `page-numeric.yaml`, `page-battery.yaml`, and optional
   `page-camera.yaml` template instances. There is no fixed page-count limit in
-  shared code.
+  shared code. Every registered normal page has its own Home Assistant config
+  switch and can be excluded from rotation without removing its YAML instance;
+  `page_enabled_restore_mode` controls the switch's boot/restore behavior.
 - The clock remains a shared interstitial page with five selectable renderers:
   `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and
   `clean_arc`.
@@ -81,6 +83,9 @@ replace validation of a private device YAML or physical-device testing. See
   renderers without lowering S3 display quality.
 - **0.6.9:** added page-aware normal-rotation display profiling and moved the
   physical normal-page update onto the display component's scheduler context.
+- **0.7.0:** added per-page Home Assistant configuration switches, default-off
+  restore support for schedule-only pages, enabled-page scheduler filtering,
+  and enabled-only page indicators.
 
 ## Historical v0.1.0 migration note
 

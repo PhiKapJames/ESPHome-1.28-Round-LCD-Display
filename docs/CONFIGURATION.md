@@ -59,8 +59,18 @@ device so configuration mistakes are obvious.
 Version 0.5.0 removes the six-page limit from the rotation engine. The display
 maintains an ordered registry populated by page-template instances at boot.
 Each template has a unique `page_id`, integer `page_order`, and
-`page_duration_ms`. The clock is still inserted automatically after every
-normal content page.
+`page_duration_ms`. Every normal rotation page also exposes a Home Assistant
+configuration switch named **<page label> Screen**. Turning that switch OFF
+removes the page from rotation; turning it back ON makes it eligible again.
+The clock is still inserted automatically after every enabled normal content
+page.
+
+Page switches default to `RESTORE_DEFAULT_ON` for backward compatibility.
+Use `page_enabled_restore_mode: RESTORE_DEFAULT_OFF` for a schedule-only page
+such as a commute ETA screen. Home Assistant or Node-RED can then call
+`switch.turn_on` and `switch.turn_off` for that page's switch. A state change
+is picked up at the next normal page boundary, so an already-visible page may
+remain for the rest of its configured `page_duration_ms`.
 
 ### Numeric / temperature page
 
@@ -75,6 +85,7 @@ shared-code count limit.
     page_entity: sensor.kitchen_temperature
     page_duration_ms: '4000'
     page_order: '10'
+    page_enabled_restore_mode: RESTORE_DEFAULT_ON
     page_unit: °F
     page_suffix: °
     page_decimals: '1'
@@ -103,6 +114,7 @@ Include `packages/page-battery.yaml` for each battery percentage page:
     page_entity: sensor.main_battery_percent
     page_duration_ms: '4000'
     page_order: '50'
+    page_enabled_restore_mode: RESTORE_DEFAULT_ON
 ```
 
 The battery renderer keeps the 0–25 red, 25–50 yellow, 50–75 cyan/blue, and
@@ -122,6 +134,7 @@ camera-enabled profile because it reuses that profile's shared HTTP requester.
     page_entity: camera.driveway
     page_duration_ms: '5000'
     page_order: '60'
+    page_enabled_restore_mode: RESTORE_DEFAULT_ON
 ```
 
 The page requests the camera's current `entity_picture` when it enters
@@ -134,11 +147,13 @@ Assistant subscriptions rather than an artificial page-count constant. CI
 includes a synthetic 12-content-page configuration containing 10 numeric pages,
 one battery page, and one camera page.
 
-Numeric and battery pages show a sliding page-position indicator. Up to nine
-page dots are displayed at once. When earlier pages are outside the visible
-window a left chevron is shown; when later pages are outside the visible window
-a right chevron is shown. The active page stays centered when possible. Camera
-rotation pages remain clean full-screen images and do not overlay the indicator.
+Numeric and battery pages show a sliding page-position indicator for enabled
+pages only. Up to nine page dots are displayed at once. Disabled pages do not
+leave placeholder dots. When earlier enabled pages are outside the visible
+window a left chevron is shown; when later enabled pages are outside the visible
+window a right chevron is shown. The active page stays centered when possible.
+Camera rotation pages remain clean full-screen images and do not overlay the
+indicator.
 
 ## Hardware overrides
 
