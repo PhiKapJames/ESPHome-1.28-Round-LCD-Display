@@ -231,6 +231,8 @@ def test_configs():
     assert 'weight: bold' in theme_raw
     assert 'glyphs: "0123456789%-"' in theme_raw
     assert 'battery_outline_font' in battery_raw
+    assert 'id(number_font)' in battery_raw
+    assert 'temp_font' not in battery_raw
     assert 'DIAGONAL_OFFSETS' not in battery_raw
     assert 'eight separate' in battery_raw
     assert 'start_clipping(display::Rect(field_x, field_y, field_w, field_h))' in clock_raw
