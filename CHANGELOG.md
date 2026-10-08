@@ -4,6 +4,20 @@
 
 - No unreleased changes.
 
+## 0.7.2 — 2026-10-08
+
+- Renamed the shared numeric fonts from `temp_font` / `temp_font_compact` to
+  `number_font` / `number_font_compact`. No compatibility aliases are kept;
+  private YAML using the old font IDs must be updated.
+- Changed normal page configuration-switch names from `<page> Screen` to
+  `Screen · <page>` so Home Assistant's alphabetical Configuration list keeps
+  all page controls together.
+- Changed per-camera automatic alert-switch names from `<SOURCE> Alerts` to
+  `Camera Alert · <SOURCE>` so camera alert controls sort together.
+- Kept Firmware and other built-in configuration entities unchanged.
+- Added regression coverage for the new font IDs and grouped Home Assistant
+  configuration names.
+
 ## 0.7.1 — 2026-10-08
 
 - Added `page_value_font` to `page-numeric.yaml`, allowing each numeric page
