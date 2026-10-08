@@ -348,6 +348,8 @@ def test_configs():
     assert len([x for x in multi_ids if x.startswith('camera_picture_path_')]) == 6
 
     multi_strings=list(all_strings(multi))
+    multi_switches={s.get('id'): s for s in multi.get('switch',[]) if isinstance(s,dict)}
+    assert multi_switches['camera_alerts_enabled_driveway']['name']=='Camera Alert · DRIVEWAY'
     assert any('static_cast<int32_t>(45000)' in text for text in multi_strings)
     assert any('static_cast<int32_t>(30000)' in text for text in multi_strings)
     assert any('static_cast<int32_t>(0)' in text for text in multi_strings)
@@ -398,9 +400,12 @@ def test_configs():
     assert 'rotation_camera_image_camera_front' in template_ids
     template_switches={s.get('id'): s for s in template_cfg.get('switch',[]) if isinstance(s,dict)}
     assert template_switches['rotation_page_enabled_numeric_10']['restore_mode']=='RESTORE_DEFAULT_OFF'
+    assert template_switches['rotation_page_enabled_numeric_10']['name']=='Screen · Metric 10'
+    assert template_switches['rotation_page_enabled_battery_main']['name']=='Screen · Battery'
+    assert template_switches['rotation_page_enabled_camera_front']['name']=='Screen · FRONT'
     template_strings='\n'.join(all_strings(template_cfg))
-    assert 'id(temp_font_compact)->measure' in template_strings
-    assert 'id(temp_font_compact)->get_capheight()' in template_strings
+    assert 'id(number_font_compact)->measure' in template_strings
+    assert 'id(number_font_compact)->get_capheight()' in template_strings
     camera_page_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
     assert 'MAX_VISIBLE_DOTS' not in camera_page_raw
     assert camera_page_raw.count('id(lcd_backlight_switch).state') >= 3
@@ -457,11 +462,13 @@ def test_configs():
     assert 'Public ESP-IDF heap-capability API' in core_text
 
     numeric_source_raw=(ROOT/'packages'/'page-numeric.yaml').read_text(encoding='utf-8')
-    assert 'page_value_font: temp_font' in numeric_source_raw
+    assert 'page_value_font: number_font' in numeric_source_raw
     assert 'id(${page_value_font})->measure' in numeric_source_raw
     assert 'id(${page_value_font})->get_capheight()' in numeric_source_raw
     assert 'id(${page_value_font}), Color::WHITE' in numeric_source_raw
-    assert 'id: temp_font_compact' in theme_raw
+    assert 'id: number_font' in theme_raw
+    assert 'id: number_font_compact' in theme_raw
+    assert 'temp_font' not in theme_raw
     assert 'size: 64' in theme_raw
     battery_source_raw=(ROOT/'packages'/'page-battery.yaml').read_text(encoding='utf-8')
     page_camera_source_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
@@ -469,6 +476,7 @@ def test_configs():
         assert 'id(rotation_labels).push_back("${page_label}")' in page_source_raw
         assert 'id(rotation_enabled_callbacks).push_back' in page_source_raw
         assert 'id: rotation_page_enabled_${page_id}' in page_source_raw
+        assert 'name: "Screen · ${page_label}"' in page_source_raw
         assert 'restore_mode: ${page_enabled_restore_mode}' in page_source_raw
     for indicator_source_raw in (numeric_source_raw, battery_source_raw):
         assert 'id(rotation_enabled_count)' in indicator_source_raw
@@ -480,6 +488,7 @@ def test_configs():
     print('PASS page-aware profiler, per-page controls, enabled-only indicators, and alert-resume filtering')
 
     camera_source_raw=(ROOT/'packages'/'camera-source.yaml').read_text(encoding='utf-8')
+    assert 'name: "Camera Alert · ${camera_source_label}"' in camera_source_raw
     assert '!id(lcd_backlight_switch).state' in camera_source_raw
     assert 'camera_detection_mask_${camera_id}' in camera_source_raw
     assert 'detection_mask: !lambda' in camera_source_raw
