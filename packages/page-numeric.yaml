@@ -10,6 +10,7 @@ substitutions:
   page_unit: °F
   page_suffix: °
   page_decimals: '1'
+  page_value_font: temp_font
   page_panel_style: '1'
   page_color_red: 0%
   page_color_green: 80%
@@ -167,7 +168,7 @@ display:
                  ${page_decimals}, value, "${page_suffix}");
 
         int width, offset, baseline, height;
-        id(temp_font)->measure(value_text, &width, &offset, &baseline, &height);
+        id(${page_value_font})->measure(value_text, &width, &offset, &baseline, &height);
         if (width > 220 && ${page_decimals} > 0) {
           snprintf(value_text, sizeof(value_text), "%.0f%s",
                    value, "${page_suffix}");
@@ -178,8 +179,8 @@ display:
       }
 
       const int value_baseline =
-          120 + id(temp_font)->get_capheight() / 2;
-      it.print(120, value_baseline, id(temp_font), Color::WHITE,
+          120 + id(${page_value_font})->get_capheight() / 2;
+      it.print(120, value_baseline, id(${page_value_font}), Color::WHITE,
                TextAlign::BASELINE_CENTER, value_text, value_background);
 
 
