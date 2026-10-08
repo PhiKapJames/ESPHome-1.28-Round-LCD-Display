@@ -180,7 +180,7 @@ display:
         snprintf(value_text, sizeof(value_text), "--%%");
 
       const int value_baseline =
-          120 + id(temp_font)->get_capheight() / 2;
+          120 + id(number_font)->get_capheight() / 2;
 
       constexpr int BATTERY_OUTLINE_QUALITY = ${battery_outline_quality};
       static_assert(BATTERY_OUTLINE_QUALITY == 1 ||
@@ -203,11 +203,11 @@ display:
         };
         for (const auto &offset : CARDINAL_OFFSETS) {
           it.print(120 + offset[0], value_baseline + offset[1],
-                   id(temp_font), outline,
+                   id(number_font), outline,
                    TextAlign::BASELINE_CENTER, value_text);
         }
       }
-      it.print(120, value_baseline, id(temp_font), Color::WHITE,
+      it.print(120, value_baseline, id(number_font), Color::WHITE,
                TextAlign::BASELINE_CENTER, value_text);
 
 
