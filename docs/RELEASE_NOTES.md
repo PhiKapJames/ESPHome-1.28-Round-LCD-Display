@@ -1,11 +1,11 @@
 # Release notes and current source state
 
-The current source version is **0.7.0**. The `esphome.project.version` value
+The current source version is **0.7.1**. The `esphome.project.version` value
 describes the source/firmware behavior; it does not by itself imply that a
 matching GitHub release tag exists. For the complete version-by-version history,
 see the [changelog](../CHANGELOG.md).
 
-## Current 0.7.0 architecture
+## Current 0.7.1 architecture
 
 - ESPHome **2026.9.0 or newer** is required. CI is pinned to
   `ghcr.io/esphome/esphome:2026.9.0`.
@@ -22,7 +22,10 @@ see the [changelog](../CHANGELOG.md).
 - The clock remains a shared interstitial page with five selectable renderers:
   `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and
   `clean_arc`.
-- Numeric and battery pages intentionally omit trend/history graphs.
+- Numeric and battery pages intentionally omit trend/history graphs. Numeric
+  pages use the shared 84 px `temp_font` by default and may select a different
+  value font per page through `page_value_font`; the shared theme includes a
+  64 px `temp_font_compact` option.
 - The `LCD Backlight` switch is the display-enabled gate. Turning it OFF stops
   rotation/redraw/camera-display work while networking, Home Assistant, time,
   and diagnostics remain online.
@@ -86,6 +89,8 @@ replace validation of a private device YAML or physical-device testing. See
 - **0.7.0:** added per-page Home Assistant configuration switches, default-off
   restore support for schedule-only pages, enabled-page scheduler filtering,
   and enabled-only page indicators.
+- **0.7.1:** added per-page numeric value-font selection with the existing
+  84 px font as the default and a shared 64 px compact option for longer values.
 
 ## Historical v0.1.0 migration note
 
