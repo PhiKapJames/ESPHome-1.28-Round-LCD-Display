@@ -54,7 +54,7 @@ packages:
           page_duration_ms: '4000'
           page_order: '30'
           page_enabled_restore_mode: RESTORE_DEFAULT_OFF
-          page_value_font: temp_font_compact
+          page_value_font: number_font_compact
           page_unit: min
           page_suffix: ' min'
           page_decimals: '0'
