@@ -6,6 +6,9 @@ font:
 - id: temp_font
   file: gfonts://Roboto
   size: 84
+- id: temp_font_compact
+  file: gfonts://Roboto
+  size: 64
 - id: time_font
   file: gfonts://Roboto
   size: 36
