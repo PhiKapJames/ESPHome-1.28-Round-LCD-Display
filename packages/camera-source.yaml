@@ -107,7 +107,7 @@ script:
 switch:
 - platform: template
   id: camera_alerts_enabled_${camera_id}
-  name: "${camera_source_label} Alerts"
+  name: "Camera Alert · ${camera_source_label}"
   entity_category: config
   icon: mdi:bell
   optimistic: true

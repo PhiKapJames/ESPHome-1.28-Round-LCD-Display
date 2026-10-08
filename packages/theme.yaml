@@ -3,10 +3,10 @@ font:
 - id: title_font
   file: gfonts://Roboto
   size: 44
-- id: temp_font
+- id: number_font
   file: gfonts://Roboto
   size: 84
-- id: temp_font_compact
+- id: number_font_compact
   file: gfonts://Roboto
   size: 64
 - id: time_font

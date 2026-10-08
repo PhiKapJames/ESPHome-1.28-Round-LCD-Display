@@ -10,7 +10,7 @@ substitutions:
   page_unit: °F
   page_suffix: °
   page_decimals: '1'
-  page_value_font: temp_font
+  page_value_font: number_font
   page_panel_style: '1'
   page_color_red: 0%
   page_color_green: 80%
@@ -35,7 +35,7 @@ esphome:
 switch:
 - platform: template
   id: rotation_page_enabled_${page_id}
-  name: "${page_label} Screen"
+  name: "Screen · ${page_label}"
   entity_category: config
   icon: mdi:view-carousel
   optimistic: true

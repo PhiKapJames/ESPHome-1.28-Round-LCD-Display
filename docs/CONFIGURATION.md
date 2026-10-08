@@ -60,10 +60,16 @@ Version 0.5.0 removes the six-page limit from the rotation engine. The display
 maintains an ordered registry populated by page-template instances at boot.
 Each template has a unique `page_id`, integer `page_order`, and
 `page_duration_ms`. Every normal rotation page also exposes a Home Assistant
-configuration switch named **<page label> Screen**. Turning that switch OFF
+configuration switch named **Screen · <page label>**. Turning that switch OFF
 removes the page from rotation; turning it back ON makes it eligible again.
 The clock is still inserted automatically after every enabled normal content
 page.
+
+The `Screen · ` prefix is intentional: Home Assistant presents ESPHome
+configuration entities in one Configuration list, so the prefix keeps all page
+controls together under alphabetical sorting. Camera-source alert switches use
+the matching `Camera Alert · ` prefix; Firmware and built-in entities keep
+their native names.
 
 Page switches default to `RESTORE_DEFAULT_ON` for backward compatibility.
 Use `page_enabled_restore_mode: RESTORE_DEFAULT_OFF` for a schedule-only page
@@ -89,7 +95,7 @@ shared-code count limit.
     page_unit: °F
     page_suffix: °
     page_decimals: '1'
-    page_value_font: temp_font
+    page_value_font: number_font
     page_panel_style: '1'
     page_color_red: 0%
     page_color_green: 62%
@@ -101,8 +107,8 @@ shared-code count limit.
 per page.
 
 `page_value_font` selects the font used for the large numeric value on that
-specific page. It defaults to `temp_font` (84 px), preserving existing layouts.
-The shared theme also provides `temp_font_compact` (64 px) for longer values,
+specific page. It defaults to `number_font` (84 px), preserving existing layouts.
+The shared theme also provides `number_font_compact` (64 px) for longer values,
 for example a commute page rendering `37 min`:
 
 ```yaml
@@ -111,7 +117,7 @@ for example a commute page rendering `37 min`:
     page_id: commute
     page_label: Commute
     page_entity: sensor.example_commute_minutes
-    page_value_font: temp_font_compact
+    page_value_font: number_font_compact
     page_suffix: " min"
     page_decimals: "0"
 ```
@@ -307,7 +313,7 @@ until both detectors are OFF and the configured clear delay has elapsed.
 A vehicle-only source does not subscribe to its person entity. A manual-only
 source sets both trigger flags false but still gets its snapshot button.
 
-Every source exposes its own **<SOURCE> Alerts** switch, so automatic alerts are
+Every source exposes its own **Camera Alert · <SOURCE>** switch, so automatic alerts are
 enabled or disabled independently per camera. Manual snapshot buttons bypass
 that source's automatic-alert switch and cooldown, but retain the readiness/RAM
 safeguards.

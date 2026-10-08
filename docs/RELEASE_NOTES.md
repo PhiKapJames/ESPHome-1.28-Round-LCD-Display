@@ -1,11 +1,11 @@
 # Release notes and current source state
 
-The current source version is **0.7.1**. The `esphome.project.version` value
+The current source version is **0.7.2**. The `esphome.project.version` value
 describes the source/firmware behavior; it does not by itself imply that a
 matching GitHub release tag exists. For the complete version-by-version history,
 see the [changelog](../CHANGELOG.md).
 
-## Current 0.7.1 architecture
+## Current 0.7.2 architecture
 
 - ESPHome **2026.9.0 or newer** is required. CI is pinned to
   `ghcr.io/esphome/esphome:2026.9.0`.
@@ -23,9 +23,9 @@ see the [changelog](../CHANGELOG.md).
   `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and
   `clean_arc`.
 - Numeric and battery pages intentionally omit trend/history graphs. Numeric
-  pages use the shared 84 px `temp_font` by default and may select a different
+  pages use the shared 84 px `number_font` by default and may select a different
   value font per page through `page_value_font`; the shared theme includes a
-  64 px `temp_font_compact` option.
+  64 px `number_font_compact` option.
 - The `LCD Backlight` switch is the display-enabled gate. Turning it OFF stops
   rotation/redraw/camera-display work while networking, Home Assistant, time,
   and diagnostics remain online.
@@ -35,8 +35,8 @@ see the [changelog](../CHANGELOG.md).
   ESPHome's stock blocking warning is attributed to display work rather than
   `display_rotation`.
 - Camera alerts are separate from normal rotation unless a
-  `page-camera.yaml` instance is explicitly added. Each source has its own
-  Alerts switch and manual snapshot button.
+  `page-camera.yaml` instance is explicitly added. Each source has its own alphabetically grouped
+  `Camera Alert · <source>` switch and manual snapshot button.
 - Automatic camera alerts support person, vehicle, both (OR), or manual-only
   sources. They have a minimum hold, detector-clear delay, and a shared hard
   maximum that can be overridden per source. Optional refresh remains serialized
@@ -91,6 +91,10 @@ replace validation of a private device YAML or physical-device testing. See
   and enabled-only page indicators.
 - **0.7.1:** added per-page numeric value-font selection with the existing
   84 px font as the default and a shared 64 px compact option for longer values.
+- **0.7.2:** renamed the shared numeric fonts to `number_font` and
+  `number_font_compact`, and renamed configuration switches to
+  `Screen · <page>` / `Camera Alert · <source>` so Home Assistant sorts them
+  into visual groups. This is intentionally a breaking naming cleanup.
 
 ## Historical v0.1.0 migration note
 

@@ -103,14 +103,14 @@ commit SHA; `refresh: never` is appropriate for an intentionally pinned ref.
 - Register a matching human-readable entry in `rotation_labels` so page-aware
   display profiling stays aligned with the sorted page registry.
 - Register a matching `rotation_enabled_callbacks` entry and expose a
-  `<page label> Screen` template switch with `page_enabled_restore_mode`.
+  `Screen · <page label>` template switch with `page_enabled_restore_mode`.
   Existing/general pages default to `RESTORE_DEFAULT_ON`; schedule-only pages
   may opt into `RESTORE_DEFAULT_OFF`.
 - Preserve `page_order` and per-page duration behavior. Disabled pages are
   skipped by rotation and must not count toward numeric/battery page indicators.
 - Numeric pages may select their large value font with `page_value_font`.
-  Preserve `temp_font` as the backward-compatible default; shared alternate
-  fonts should be defined once in `theme.yaml` rather than duplicated per page.
+  Use `number_font` as the default; shared alternate
+  fonts such as `number_font_compact` should be defined once in `theme.yaml` rather than duplicated per page.
 - The clock remains an interstitial page managed by shared code.
 - Preserve `clock_face_style` as the per-device selector. Supported values are `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and `clean_arc`; `original` must remain the backward-compatible default unless explicitly changed.
 - Camera alerts interrupt rotation and are not normal rotation pages unless
