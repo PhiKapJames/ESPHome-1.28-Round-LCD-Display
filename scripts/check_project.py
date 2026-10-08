@@ -436,7 +436,7 @@ def test_configs():
     assert 'active_rotation_position' in core_text
     assert 'rotation_enter_callbacks' in core_text
     assert 'rotation_exit_callbacks' in core_text
-    assert 'if (count == 0)' in core_text
+    assert 'if (count == 0 || enabled_count == 0)' in core_text
     assert 'id: suspend_display' in core_text
     assert 'id: resume_display' in core_text
     assert 'display_suspend_callbacks' in core_text
