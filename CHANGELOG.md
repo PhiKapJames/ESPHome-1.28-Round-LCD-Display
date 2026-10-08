@@ -4,6 +4,17 @@
 
 - No unreleased changes.
 
+## 0.7.1 — 2026-10-08
+
+- Added `page_value_font` to `page-numeric.yaml`, allowing each numeric page
+  to select its own value font while preserving `temp_font` as the default.
+- Added shared `temp_font_compact` at 64 px for longer values such as commute
+  durations rendered with a ` min` suffix.
+- Updated numeric width measurement, vertical centering, and rendering to use
+  the selected per-page font consistently.
+- Added synthetic regression coverage for an explicit compact-font page and
+  updated the public Commute example and configuration documentation.
+
 ## 0.7.0 — 2026-10-08
 
 - Added one Home Assistant configuration switch per normal rotation page:
