@@ -37,7 +37,7 @@ esphome:
 switch:
 - platform: template
   id: rotation_page_enabled_${page_id}
-  name: "${page_label} Screen"
+  name: "Screen · ${page_label}"
   entity_category: config
   icon: mdi:view-carousel
   optimistic: true
