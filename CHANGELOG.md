@@ -2,6 +2,24 @@
 
 ## Unreleased
 
+- No unreleased changes.
+
+## 0.7.0 — 2026-10-08
+
+- Added one Home Assistant configuration switch per normal rotation page:
+  `<page label> Screen`.
+- Added `page_enabled_restore_mode` to numeric, battery, and rotation-camera
+  templates. The backward-compatible default is `RESTORE_DEFAULT_ON`;
+  schedule-only pages can use `RESTORE_DEFAULT_OFF`.
+- Rotation now skips disabled pages while preserving configured page order and
+  duration for enabled pages.
+- Camera-alert resume no longer restores a normal page that was disabled while
+  the alert was active.
+- Numeric and battery page indicators now count enabled pages only, so disabled
+  pages do not leave ghost dots.
+- Added synthetic and structural regression coverage for per-page switches,
+  default-off configuration, scheduler filtering, and enabled-only indicators.
+
 - Audited all repository Markdown against the current 0.6.9 packages, hardware
   profiles, and CI workflow.
 - Corrected S3 battery-keyline wording to match the optimized bold-underlay
