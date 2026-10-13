@@ -1,0 +1,62 @@
+# SYNTHETIC CI FIXTURE — local mirror of examples/multi-camera.example.yaml.
+# scripts/check_project.py fails when the example's files/vars drift from
+# this mirror. Never install on a real device.
+substitutions:
+  device_name: ci-c3-example-multi-camera
+  friendly_name: CI Only
+  timezone: Etc/UTC
+  ha_base_url: http://homeassistant.local:8123
+  clock_page_duration_ms: '4000'
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-c3-camera.yaml
+  page_room: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: room
+      page_label: Room
+      page_entity: sensor.example_metric_1
+      page_duration_ms: '4000'
+      page_order: '10'
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 33.7%
+      page_color_green: 70.6%
+      page_color_blue: 91.4%
+  camera_driveway: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: driveway
+      camera_entity: camera.example_driveway
+      camera_source_label: DRIVEWAY
+      camera_status_label: driveway
+      camera_button_name: Show Driveway Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_driveway_person
+      camera_trigger_vehicle: 'true'
+      camera_vehicle_entity: binary_sensor.example_driveway_vehicle
+      camera_cooldown_ms: '60000'
+  camera_garage: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: garage
+      camera_entity: camera.example_garage
+      camera_source_label: GARAGE
+      camera_status_label: garage
+      camera_button_name: Show Garage Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_garage_person
+      camera_trigger_vehicle: 'false'
+      camera_vehicle_entity: binary_sensor.example_garage_vehicle
+      camera_cooldown_ms: '60000'
+api:
+  encryption:
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+ota:
+- platform: esphome
+  password: not-a-production-password
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password

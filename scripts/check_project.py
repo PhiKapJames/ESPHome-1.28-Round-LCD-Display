@@ -328,6 +328,85 @@ def test_configs():
         assert 'profiled_display_update' in ids
         print(f'PASS {name}: includes/substitutions/IDs/features')
 
+    # Public examples are the documented install path and must always match
+    # current template interfaces. Each example has a local synthetic mirror
+    # fixture that CI compiles, and this check fails if the example's
+    # files/vars ever drift from its mirror.
+    example_mirrors = (
+        ('examples/device.example.yaml',
+         'tests/esp32-c3-example.yaml'),
+        ('examples/multi-camera.example.yaml',
+         'tests/esp32-c3-example-multi-camera.yaml'),
+        ('examples/template-pages.example.yaml',
+         'tests/esp32-s3-example-template-pages.yaml'),
+    )
+
+    def example_entries(path):
+        raw = load(ROOT/path)
+        entries = []
+        for item in raw['packages']['round_minion']['files']:
+            if isinstance(item, str):
+                entries.append((item, {}))
+            else:
+                entries.append((item['path'],
+                                {k: str(v) for k, v in item.get('vars', {}).items()}))
+        return raw, entries
+
+    def mirror_entries(path):
+        raw = load(ROOT/path)
+        entries = []
+        for package in raw['packages'].values():
+            assert isinstance(package, Tagged) and package.tag == '!include'
+            spec = package.value
+            if isinstance(spec, str):
+                spec = {'file': spec}
+            target = spec['file']
+            if target.startswith('../profiles/'):
+                entries.insert(0, (target[len('../'):], {}))
+                continue
+            assert target.startswith('../packages/'), \
+                f'Unexpected mirror package path in {path}: {target}'
+            entries.append((target[len('../'):],
+                            {k: str(v) for k, v in spec.get('vars', {}).items()}))
+        return raw, entries
+
+    for example_path, mirror_path in example_mirrors:
+        example_raw, example_files = example_entries(example_path)
+        mirror_raw, mirror_files = mirror_entries(mirror_path)
+        assert example_files == mirror_files, (
+            f'{example_path} files/vars no longer match mirror {mirror_path}. '
+            'Update the mirror fixture so CI keeps validating the public example.'
+        )
+        example_subs = {k: str(v) for k, v in example_raw.get('substitutions', {}).items()}
+        mirror_subs = {k: str(v) for k, v in mirror_raw.get('substitutions', {}).items()}
+        assert set(mirror_subs) == set(example_subs), (
+            f'{mirror_path} substitutions {sorted(mirror_subs)} diverged from '
+            f'{example_path} {sorted(example_subs)}'
+        )
+        for key, value in example_subs.items():
+            if key in ('device_name', 'friendly_name'):
+                continue
+            assert mirror_subs[key] == value, (
+                f'{mirror_path} substitution {key} no longer matches '
+                f'{example_path}: {mirror_subs[key]!r} != {value!r}'
+            )
+        # Expand each mirror so interface drift (renamed/retired vars,
+        # dangling id() references) fails here as well as in esphome config.
+        config, _ = expand_file(ROOT/mirror_path)
+        mirror_ids = definition_ids(config)
+        assert len(mirror_ids) == len(set(mirror_ids)), \
+            f'Duplicate component IDs mirroring {example_path}'
+        mirror_strings = list(all_strings(config))
+        assert not any('${' in s for s in mirror_strings), \
+            f'Unresolved substitution mirroring {example_path}'
+        mirror_refs = set(re.findall(
+            r'\bid\(([A-Za-z_][A-Za-z0-9_]*)\)', '\n'.join(mirror_strings)))
+        assert mirror_refs <= set(mirror_ids), (
+            f'Missing IDs {sorted(mirror_refs - set(mirror_ids))} '
+            f'mirroring {example_path}'
+        )
+    print('PASS public examples mirror fixtures track current template interfaces')
+
     # Reusable-camera regression: six instances exceed the former four-source design.
     # Driveway = person OR vehicle; parking = vehicle only; garage = manual only.
     multi,_=expand_file(ROOT/'tests/esp32-c3-multi-camera.yaml')
@@ -506,6 +585,16 @@ def test_configs():
     assert 'script.stop: profiled_display_update' in camera_alert_raw
     assert 'cancel_defer("round_minion_profile_update")' in camera_alert_raw
     assert 'display_profile_update_done' in camera_alert_raw
+    # Queued alerts re-read the originating source's enable switch when the
+    # queued execution starts; enqueue-time bools would freeze the old state.
+    assert 'id: camera_alert_source_entities' in camera_alert_raw
+    assert 'id: camera_alert_enabled_callbacks' in camera_alert_raw
+    assert 'Dropping queued camera request; alerts disabled for %s' in camera_alert_raw
+    assert 'source_enabled:' not in camera_source_raw, (
+        'camera-source must not pass an enqueue-time enable bool to camera_alert'
+    )
+    assert 'id(camera_alert_source_entities).push_back' in camera_source_raw
+    assert 'id(camera_alert_enabled_callbacks).push_back' in camera_source_raw
 
     camera_trigger_raw=(ROOT/'packages'/'camera-trigger.yaml').read_text(encoding='utf-8')
     assert 'on_press:' in camera_trigger_raw
@@ -536,7 +625,34 @@ def test_configs():
 
     workflow=load(ROOT/'.github'/'workflows'/'validate.yaml')
     ci_profiles=workflow['jobs']['build']['strategy']['matrix']['profile']
-    assert len(ci_profiles) == 10
+    # tests/ holds one file per matrix profile plus shared fragments that are
+    # included by those profiles. Derive the fragments from the actual
+    # !include references instead of hard-coding a second list.
+    fragments = set()
+    tests_dir = (ROOT/'tests').resolve()
+    for fixture_path in (ROOT/'tests').glob('*.yaml'):
+        for include in load(fixture_path).get('packages', {}).values():
+            if not (isinstance(include, Tagged) and include.tag == '!include'):
+                continue
+            spec = include.value
+            target = spec if isinstance(spec, str) else spec.get('file', '')
+            if not isinstance(target, str) or '${' in target:
+                continue
+            resolved = (fixture_path.parent / target).resolve()
+            # Only local helpers living in tests/ are fragments; includes that
+            # point at profiles/ or packages/ are real component sources.
+            if resolved.parent == tests_dir:
+                fragments.add(resolved.stem)
+    fixture_profiles = sorted(
+        p.stem for p in (ROOT/'tests').glob('*.yaml') if p.stem not in fragments
+    )
+    assert sorted(ci_profiles) == fixture_profiles, (
+        f'CI matrix {sorted(ci_profiles)} no longer matches tests/ fixtures '
+        f'{fixture_profiles}: add/remove matrix entries and update VALIDATION.md'
+    )
+    assert f'covers these {len(ci_profiles)} synthetic configurations' in validation, (
+        f'VALIDATION.md profile count text does not match the {len(ci_profiles)}-profile CI matrix'
+    )
     for profile in ci_profiles:
         assert f'`{profile}`' in validation, (
             f'Validation docs missing CI profile {profile}'
