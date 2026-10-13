@@ -243,7 +243,7 @@ downloaded/decoded at a time. Camera sources are separate instances of
 There is **no hard-coded camera count**. ESPHome remote packages allow the same
 file to be listed repeatedly with different `vars`; each instance contributes
 one HA camera attribute subscription, one manual button, one per-source cooldown,
-one per-camera **Alerts** configuration switch, and whichever detector subscriptions are enabled. Practical flash/RAM/API entity
+one per-camera **Camera Alert · <SOURCE>** switch, and whichever detector subscriptions are enabled. Practical flash/RAM/API entity
 limits still apply, but adding a fifth, sixth, or later camera does not require
 editing this repository.
 
@@ -314,7 +314,9 @@ A vehicle-only source does not subscribe to its person entity. A manual-only
 source sets both trigger flags false but still gets its snapshot button.
 
 Every source exposes its own **Camera Alert · <SOURCE>** switch, so automatic alerts are
-enabled or disabled independently per camera. Manual snapshot buttons bypass
+enabled or disabled independently per camera. Turning that switch OFF also drops
+automatic requests still waiting in the queue: the switch is re-checked when a
+queued request's execution starts, not only when it was submitted. Manual snapshot buttons bypass
 that source's automatic-alert switch and cooldown, but retain the readiness/RAM
 safeguards.
 

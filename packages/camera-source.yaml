@@ -29,6 +29,18 @@ text_sensor:
   attribute: entity_picture
   internal: true
 
+esphome:
+  on_boot:
+  - priority: -50
+    then:
+    - lambda: |-
+        // Register with the shared alert engine so a queued request can
+        // re-read this source's enable switch when its execution starts.
+        // The key must match the source_entity passed to camera_alert.
+        id(camera_alert_source_entities).push_back("${camera_entity}");
+        id(camera_alert_enabled_callbacks).push_back(
+            [](){ return id(camera_alerts_enabled_${camera_id}).state; });
+
 globals:
 - id: camera_last_auto_${camera_id}
   type: uint32_t

@@ -316,6 +316,19 @@ globals:
   type: uint32_t
   restore_value: false
   initial_value: '0'
+- id: camera_alert_source_entities
+  # Parallel registry populated by each camera-source instance at boot. A
+  # queued request re-reads the originating source's enable switch when its
+  # execution starts, so a switch turned off while the request waited in the
+  # queue suppresses the alert. Script parameters are captured at enqueue
+  # time, so the state cannot travel through the queue itself.
+  type: std::vector<std::string>
+  restore_value: false
+  initial_value: 'std::vector<std::string>{}'
+- id: camera_alert_enabled_callbacks
+  type: std::vector<std::function<bool()>>
+  restore_value: false
+  initial_value: 'std::vector<std::function<bool()>>{}'
 
 script:
 - id: camera_clear_timer
@@ -477,6 +490,28 @@ script:
               ESP_LOGI("camera_alert",
                        "Dropping stale queued camera request (%u ms old)",
                        (unsigned) age);
+              return false;
+            }
+
+            // Re-read the originating source's enable switch now that this
+            // queued instance is starting. The switch may have been turned
+            // off after the request was submitted, and script parameters
+            // hold enqueue-time values, so consult the boot-time registry.
+            bool source_enabled = true;
+            for (size_t i = 0;
+                 i < id(camera_alert_source_entities).size(); i++) {
+              if (id(camera_alert_source_entities)[i] == source_entity) {
+                source_enabled =
+                    i < id(camera_alert_enabled_callbacks).size() &&
+                    id(camera_alert_enabled_callbacks)[i] &&
+                    id(camera_alert_enabled_callbacks)[i]();
+                break;
+              }
+            }
+            if (!source_enabled) {
+              ESP_LOGI("camera_alert",
+                       "Dropping queued camera request; alerts disabled for %s",
+                       status_label.c_str());
               return false;
             }
           }
