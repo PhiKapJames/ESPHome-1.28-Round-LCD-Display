@@ -177,7 +177,7 @@ For meaningful changes:
 1. run `scripts/check_public.py` and `scripts/check_project.py`;
 2. validate the affected synthetic ESPHome configurations;
 3. compile representative hardware profiles when CI supports them;
-4. for public-repo changes, inspect the 10-profile GitHub Actions matrix and do
+4. for public-repo changes, inspect the 13-profile GitHub Actions matrix and do
    not merge while any required config/compile job is failing;
 5. preserve the CI guard that rejects unresolved-substitution warnings;
 6. test on one physical device before broad rollout when hardware behavior may
@@ -191,7 +191,10 @@ Do not suppress compiler/ESPHome warnings as a substitute for fixing the cause.
   changes.
 - Prefer small, composable package changes over duplicating renderer logic.
 - Keep IDs deterministic and unique after template expansion.
-- Preserve backwards compatibility for established substitutions when practical.
+- Until version 1.0.0 the maintainer is the only user: breaking changes are
+  acceptable, and breaking-change documentation or backwards-compatibility
+  aliases are not required. Documentation and examples must nonetheless always
+  be updated to reference the latest source state in the same change.
 - Update documentation/examples whenever public configuration syntax changes.
 - Update `esphome.project.version` and release notes for a versioned behavioral
   release.

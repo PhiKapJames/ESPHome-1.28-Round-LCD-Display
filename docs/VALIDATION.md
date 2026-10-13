@@ -9,18 +9,26 @@ The repository uses three complementary validation layers:
 3. `.github/workflows/validate.yaml` runs the real ESPHome toolchain on every
    pull request and push to `main`.
 
-The Actions matrix currently covers these 10 synthetic configurations:
+The Actions matrix currently covers these 13 synthetic configurations:
 
 - `esp32-c3`
 - `esp32-c3-camera`
 - `esp32-c3-multi-camera`
 - `esp32-c3-one-metric`
+- `esp32-c3-example`
+- `esp32-c3-example-multi-camera`
 - `esp32-c6`
 - `esp32-c6-camera`
 - `esp32-s3-quad-psram`
 - `esp32-s3-quad-psram-camera`
 - `esp32-s3-home-migration`
 - `esp32-s3-template-pages`
+- `esp32-s3-example-template-pages`
+
+The `*-example*` fixtures are local mirrors of the public `examples/` files;
+`scripts/check_project.py` fails if an example's package files or `vars`
+drift from its mirror, so the documented copy-paste configurations always keep
+compiling against the current template interfaces.
 
 Every matrix job runs both `esphome config` and `esphome compile` using
 `ghcr.io/esphome/esphome:2026.9.0`. The config step additionally fails if
@@ -40,8 +48,8 @@ on the host Python version.
 To run the repository's offline checks locally:
 
 ```sh
-python scripts/check_public.py
-python scripts/check_project.py
+python3 scripts/check_public.py
+python3 scripts/check_project.py
 ```
 
 To run the same real ESPHome toolchain used by CI, from the repository root:

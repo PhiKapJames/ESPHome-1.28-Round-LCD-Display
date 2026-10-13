@@ -4,6 +4,35 @@
 
 - No unreleased changes.
 
+## 0.7.3 — 2026-10-13
+
+- Queued automatic camera alerts now re-check the originating source's
+  `Camera Alert · <source>` enable switch when the queued execution starts.
+  Previously the switch was consulted only when the request was submitted, so
+  turning a camera's alerts off while a request waited in the queue could still
+  display that camera's snapshot.
+- Registered a per-source enable-callback lookup in the shared camera engine so
+  the execution-time check reads the switch's current state (script parameters
+  are captured at enqueue time and cannot carry it).
+- Added local synthetic mirror fixtures for all three public examples
+  (`tests/esp32-c3-example.yaml`, `tests/esp32-c3-example-multi-camera.yaml`,
+  `tests/esp32-s3-example-template-pages.yaml`) and expanded the CI matrix to
+  13 profiles, so the copy-paste examples are validated and compiled against
+  current template interfaces.
+- Replaced the fixed CI-profile-count check with derived consistency checks
+  between the Actions matrix, `tests/` fixtures, and `docs/VALIDATION.md`, and
+  added an offline check that fails if an example's package files/`vars` drift
+  from its mirror or a mirror accumulates unresolved/dangling references.
+- Documented that local offline checks use `python3` (stock Debian/Ubuntu hosts
+  have no unversioned `python`).
+- Corrected stale documentation/examples: the per-camera switch name in
+  `docs/CONFIGURATION.md`, the "Commute Screen" comment in
+  `examples/template-pages.example.yaml`, and the current-version statements in
+  `README.md`/`docs/RELEASE_NOTES.md`.
+- Recorded the pre-1.0.0 policy in `AGENTS.md`: breaking changes and
+  documentation/example updates are expected without compatibility aliases or
+  breaking-change notes until 1.0.0.
+
 ## 0.7.2 — 2026-10-08
 
 - Renamed the shared numeric fonts from `temp_font` / `temp_font_compact` to

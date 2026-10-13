@@ -45,7 +45,7 @@ packages:
           page_color_blue: 91.4%
 
       # Example schedule-only page. Home Assistant / Node-RED can turn its
-      # generated "Commute Screen" switch on only during the commute window.
+      # generated "Screen · Commute" switch on only during the commute window.
       - path: packages/page-numeric.yaml
         vars:
           page_id: commute

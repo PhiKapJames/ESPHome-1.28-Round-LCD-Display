@@ -1,0 +1,50 @@
+# SYNTHETIC CI FIXTURE — local mirror of examples/device.example.yaml.
+# scripts/check_project.py fails when the example's files/vars drift from
+# this mirror. Never install on a real device.
+substitutions:
+  device_name: ci-esp32-c3-example
+  friendly_name: CI Only
+  timezone: Etc/UTC
+  clock_page_duration_ms: '8000'
+  clock_face_style: original
+  camera_max_hold_ms: '30000'
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-c3-camera.yaml
+  page_room: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: room
+      page_label: Room
+      page_entity: sensor.example_metric_1
+      page_duration_ms: '8000'
+      page_order: '10'
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 33.7%
+      page_color_green: 70.6%
+      page_color_blue: 91.4%
+  camera_example: !include
+    file: ../packages/camera-source.yaml
+    vars:
+      camera_id: example
+      camera_entity: camera.example_camera
+      camera_source_label: CAMERA
+      camera_status_label: camera
+      camera_button_name: Show Camera Snapshot
+      camera_trigger_person: 'true'
+      camera_person_entity: binary_sensor.example_person
+      camera_trigger_vehicle: 'false'
+      camera_vehicle_entity: binary_sensor.example_vehicle
+      camera_cooldown_ms: '60000'
+api:
+  encryption:
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+ota:
+- platform: esphome
+  password: not-a-production-password
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password

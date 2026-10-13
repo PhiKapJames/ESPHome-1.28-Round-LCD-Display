@@ -1,0 +1,84 @@
+# SYNTHETIC CI FIXTURE — local mirror of examples/template-pages.example.yaml.
+# scripts/check_project.py fails when the example's files/vars drift from
+# this mirror. Never install on a real device.
+substitutions:
+  device_name: ci-s3-example-template-pages
+  friendly_name: CI Only
+  timezone: Etc/UTC
+  ha_base_url: http://homeassistant.local:8123
+  clock_page_duration_ms: '4000'
+packages:
+  round_minion: !include
+    file: ../profiles/esp32-s3-quad-psram-camera.yaml
+  page_kitchen: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: kitchen
+      page_label: Kitchen
+      page_entity: sensor.example_kitchen_temperature
+      page_duration_ms: '4000'
+      page_order: '10'
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 0%
+      page_color_green: 62%
+      page_color_blue: 45%
+  page_outside: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: outside
+      page_label: Outside
+      page_entity: sensor.example_outside_temperature
+      page_duration_ms: '4000'
+      page_order: '20'
+      page_unit: °F
+      page_suffix: °
+      page_decimals: '1'
+      page_panel_style: '1'
+      page_color_red: 33.7%
+      page_color_green: 70.6%
+      page_color_blue: 91.4%
+  page_commute: !include
+    file: ../packages/page-numeric.yaml
+    vars:
+      page_id: commute
+      page_label: Commute
+      page_entity: sensor.example_commute_minutes
+      page_duration_ms: '4000'
+      page_order: '30'
+      page_enabled_restore_mode: RESTORE_DEFAULT_OFF
+      page_value_font: number_font_compact
+      page_unit: min
+      page_suffix: ' min'
+      page_decimals: '0'
+      page_panel_style: '1'
+      page_color_red: 100%
+      page_color_green: 55%
+      page_color_blue: 0%
+  page_house_battery: !include
+    file: ../packages/page-battery.yaml
+    vars:
+      page_id: house_battery
+      page_label: Battery
+      page_entity: sensor.example_battery
+      page_duration_ms: '4000'
+      page_order: '40'
+  page_driveway_view: !include
+    file: ../packages/page-camera.yaml
+    vars:
+      page_id: driveway_view
+      page_label: DRIVEWAY
+      page_entity: camera.example_driveway
+      page_duration_ms: '5000'
+      page_order: '50'
+api:
+  encryption:
+    key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=
+ota:
+- platform: esphome
+  password: not-a-production-password
+wifi:
+  ssid: ROUND_MINIONS_CI_ONLY
+  password: not-a-real-network-password
