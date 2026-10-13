@@ -1,11 +1,11 @@
 # Release notes and current source state
 
-The current source version is **0.7.2**. The `esphome.project.version` value
+The current source version is **0.7.3**. The `esphome.project.version` value
 describes the source/firmware behavior; it does not by itself imply that a
 matching GitHub release tag exists. For the complete version-by-version history,
 see the [changelog](../CHANGELOG.md).
 
-## Current 0.7.2 architecture
+## Current 0.7.3 architecture
 
 - ESPHome **2026.9.0 or newer** is required. CI is pinned to
   `ghcr.io/esphome/esphome:2026.9.0`.
@@ -58,8 +58,9 @@ configuration has not been confirmed.
 
 ## Validation state
 
-GitHub Actions validates and compiles 10 synthetic profiles across C3, C6, and
-S3. Every matrix job runs the repository privacy/structure checks,
+GitHub Actions validates and compiles 13 synthetic profiles across C3, C6, and
+S3, including local mirrors of every public example. Every matrix job runs the
+repository privacy/structure checks,
 `esphome config`, and a full `esphome compile`. The config step also rejects
 unresolved-substitution warnings.
 
@@ -95,6 +96,10 @@ replace validation of a private device YAML or physical-device testing. See
   `number_font_compact`, and renamed configuration switches to
   `Screen · <page>` / `Camera Alert · <source>` so Home Assistant sorts them
   into visual groups. This is intentionally a breaking naming cleanup.
+- **0.7.3:** queued automatic camera alerts now re-check the originating
+  source's enable switch when the queued execution starts, added public-example
+  mirror fixtures to the CI matrix, made the CI matrix/fixture/docs consistency
+  check derived instead of a fixed count, and corrected stale documentation.
 
 ## Historical v0.1.0 migration note
 
@@ -108,4 +113,4 @@ synthetic CI plus privacy checks.
 That original release note described the repository as a **source migration
 candidate** and explicitly did not claim that offline checks proved an ESPHome
 compile or physical-device pass. Those statements remain historically accurate,
-but they no longer describe the current 0.6.9 feature set or CI coverage.
+but they no longer describe the current 0.7.3 feature set or CI coverage.
