@@ -139,7 +139,7 @@ commit SHA; `refresh: never` is appropriate for an intentionally pinned ref.
 
 ## ESPHome compatibility
 
-The repository currently targets ESPHome 2026.9.0 or newer. Before adopting a
+The repository currently targets ESPHome 2026.9.1 or newer. Before adopting a
 new ESPHome feature or syntax:
 
 1. verify it against current official ESPHome documentation;

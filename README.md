@@ -74,8 +74,8 @@ practical hardware resources are the limit.
 
 ## Installation
 
-Requires **ESPHome 2026.9.0 or newer**. The CI image is pinned to
-`ghcr.io/esphome/esphome:2026.9.0`. ESPHome 2026.9.0 requires Python 3.12+
+Requires **ESPHome 2026.9.1 or newer**. The CI image is pinned to
+`ghcr.io/esphome/esphome:2026.9.1`. ESPHome 2026.9.1 requires Python 3.12+
 when installed natively; using the official ESPHome container avoids depending
 on the host Python version. Newer ESPHome builders should be tested before
 updating all devices.
