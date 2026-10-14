@@ -31,7 +31,7 @@ drift from its mirror, so the documented copy-paste configurations always keep
 compiling against the current template interfaces.
 
 Every matrix job runs both `esphome config` and `esphome compile` using
-`ghcr.io/esphome/esphome:2026.9.0`. The config step additionally fails if
+`ghcr.io/esphome/esphome:2026.9.1`. The config step additionally fails if
 ESPHome emits `Could not resolve substitution variable`, because that warning can
 otherwise coexist with a successful firmware build. The synthetic fixtures
 contain no deployment secrets and are never installed by CI.
@@ -41,7 +41,7 @@ do not replace ESPHome validation. Likewise, this document does not claim that
 an arbitrary commit is green: check the GitHub Actions result for the exact
 commit or pull request you plan to deploy.
 
-ESPHome 2026.9.0 requires Python 3.12+ for a native Python installation. The
+ESPHome 2026.9.1 requires Python 3.12+ for a native Python installation. The
 official Docker image is the recommended way to reproduce CI without depending
 on the host Python version.
 
@@ -55,16 +55,16 @@ python3 scripts/check_project.py
 To run the same real ESPHome toolchain used by CI, from the repository root:
 
 ```sh
-docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.0 \
+docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.1 \
   config tests/esp32-c3-camera.yaml
 
-docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.0 \
+docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.1 \
   compile tests/esp32-c3-camera.yaml
 
-docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.0 \
+docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.1 \
   config tests/esp32-s3-home-migration.yaml
 
-docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.0 \
+docker run --rm -v "$PWD":/config ghcr.io/esphome/esphome:2026.9.1 \
   compile tests/esp32-s3-home-migration.yaml
 ```
 

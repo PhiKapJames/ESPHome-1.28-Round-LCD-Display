@@ -35,7 +35,7 @@ jobs:
           - esp32-s3-template-pages
           - esp32-s3-example-template-pages
     container:
-      image: ghcr.io/esphome/esphome:2026.9.0
+      image: ghcr.io/esphome/esphome:2026.9.1
     steps:
       # actions/checkout v7.0.1 (Node 24), pinned to its commit rather than a moving tag.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1

@@ -7,8 +7,8 @@ see the [changelog](../CHANGELOG.md).
 
 ## Current 0.7.3 architecture
 
-- ESPHome **2026.9.0 or newer** is required. CI is pinned to
-  `ghcr.io/esphome/esphome:2026.9.0`.
+- ESPHome **2026.9.1 or newer** is required. CI is pinned to
+  `ghcr.io/esphome/esphome:2026.9.1`.
 - The project is reusable ESPHome YAML delivered through `packages:`; it is not
   an `external_components:` repository.
 - Private device YAML owns device identity, Home Assistant entity mappings,
