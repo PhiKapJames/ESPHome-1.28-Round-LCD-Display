@@ -9,6 +9,7 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 import re
+import subprocess
 from typing import Any
 import yaml
 from jinja2 import Environment, StrictUndefined
@@ -312,11 +313,25 @@ def test_configs():
     print('PASS weather clock condition/temperature/humidity source wiring')
     # Committed preview renders must cover exactly the supported faces, so a
     # face can be added/renamed/retired only together with its preview image.
+    # Git-tracked status is checked when available: a render present on disk
+    # but ignored by .gitignore passes locally yet fails a fresh CI checkout.
     preview_dir = ROOT/'docs'/'media'/'clock-previews'
+    tracked = None
+    try:
+        tracked = set(subprocess.run(
+            ['git', 'ls-files', '--', 'docs/media/clock-previews'],
+            cwd=ROOT, capture_output=True, text=True, check=True,
+        ).stdout.splitlines())
+    except Exception:
+        pass  # not a git checkout; fall back to on-disk presence
+    def preview_available(name):
+        return (f'docs/media/clock-previews/{name}' in tracked
+                if tracked is not None else (preview_dir/name).is_file())
     for style in supported_clock_styles:
-        assert (preview_dir/f'{style}.png').is_file(), (
-            f'docs/media/clock-previews/{style}.png missing for supported clock style; '
-            'regenerate the host snapshot renders'
+        assert preview_available(f'{style}.png'), (
+            f'docs/media/clock-previews/{style}.png missing (or untracked) for '
+            'supported clock style; regenerate the host snapshot renders and '
+            'ensure .gitignore does not exclude it'
         )
     # fitness_ring is retired: it must not have a current lineup preview.
     assert not (preview_dir/'fitness_ring.png').exists(), (
