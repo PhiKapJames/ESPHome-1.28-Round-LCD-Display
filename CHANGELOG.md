@@ -2,11 +2,28 @@
 
 ## Unreleased
 
+- No unreleased changes.
+
+## 0.8.0 — 2026-10-14
+
+- Added the `weather_station` clock face: a reference-style seven-segment
+  time display with weekday arc, calendar date, live weather-condition icon,
+  temperature, and humidity, sourced from a single Home Assistant `weather.*`
+  entity through `clock_weather_entity`. Metrics and icon degrade to
+  placeholders while the entity is unavailable. The Home Assistant
+  subscriptions are included only when this face is selected, so every other
+  face still requires no weather entity.
+- Redesigned `modern_dashboard` (smartwatch-style minute-progress ring with a
+  large digital time and day/date) and `clean_arc` (oversized minimal digital
+  time and enlarged day/date), and tuned `classic_analog` (longer hour hand,
+  AM/PM indicator instead of a seconds hand).
+- Removed the `fitness_ring` clock face.
+- Added synthetic CI fixture `tests/esp32-c3-weather-clock.yaml`; the Actions
+  matrix and validation docs now cover 14 profiles.
 - Raised the minimum supported ESPHome version to **2026.9.1** and pinned CI
   to `ghcr.io/esphome/esphome:2026.9.1`. This picks up the upstream
   `[mipi_spi] Fix reversion in dc/cs sequence for spi_16` fix relevant to the
-  ESP32-S3 round-display boards. No package behavior changed, so
-  `esphome.project.version` stays at 0.7.3.
+  ESP32-S3 round-display boards.
 
 ## 0.7.3 — 2026-10-13
 

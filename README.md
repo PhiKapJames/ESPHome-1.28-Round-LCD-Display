@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, and API/OTA
 credentials in local ESPHome configuration files.
 
-**Version: 0.7.3 — queued camera alerts honor switch changes, and public examples are CI-mirrored.** GitHub Actions validates and
+**Version: 0.8.0 — a weather-station clock face, redesigned analog/modern/clean faces, and a raised 2026.9.1 toolchain floor.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
