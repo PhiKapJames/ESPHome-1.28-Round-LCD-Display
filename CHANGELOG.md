@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-- No unreleased changes.
+- Raised the minimum supported ESPHome version to **2026.9.1** and pinned CI
+  to `ghcr.io/esphome/esphome:2026.9.1`. This picks up the upstream
+  `[mipi_spi] Fix reversion in dc/cs sequence for spi_16` fix relevant to the
+  ESP32-S3 round-display boards. No package behavior changed, so
+  `esphome.project.version` stays at 0.7.3.
 
 ## 0.7.3 — 2026-10-13
 
