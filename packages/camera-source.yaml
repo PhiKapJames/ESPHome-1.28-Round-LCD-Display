@@ -1,24 +1,26 @@
 # Reusable camera source template.
 # Include this same file once per camera with a unique camera_id.
-substitutions:
-  _person_trigger: !include
-    file: camera-trigger.yaml
+#
+# Select the detector package directly in the !include filename. Keeping the
+# conditional here avoids constructing nested IncludeFile substitutions before
+# this camera instance's vars are in scope, which otherwise produces spurious
+# "Could not resolve substitution variable" warnings in ESPHome 2026.9.
+packages:
+  person_trigger: !include
+    file: ${ "camera-trigger.yaml" if camera_trigger_person | string | lower == "true" else "camera-trigger-unused.yaml" }
     vars:
       camera_id: ${camera_id}
+      camera_entity: ${camera_entity}
       trigger_entity: ${camera_person_entity}
       trigger_code: '1'
-  _vehicle_trigger: !include
-    file: camera-trigger.yaml
+
+  vehicle_trigger: !include
+    file: ${ "camera-trigger.yaml" if camera_trigger_vehicle | string | lower == "true" else "camera-trigger-unused.yaml" }
     vars:
       camera_id: ${camera_id}
+      camera_entity: ${camera_entity}
       trigger_entity: ${camera_vehicle_entity}
       trigger_code: '2'
-  _trigger_unused: !include
-    file: camera-trigger-unused.yaml
-
-packages:
-  person_trigger: ${ _person_trigger if camera_trigger_person | string | lower == 'true' else _trigger_unused }
-  vehicle_trigger: ${ _vehicle_trigger if camera_trigger_vehicle | string | lower == 'true' else _trigger_unused }
 
 text_sensor:
 - platform: homeassistant
@@ -27,9 +29,25 @@ text_sensor:
   attribute: entity_picture
   internal: true
 
+esphome:
+  on_boot:
+  - priority: -50
+    then:
+    - lambda: |-
+        // Register with the shared alert engine so a queued request can
+        // re-read this source's enable switch when its execution starts.
+        // The key must match the source_entity passed to camera_alert.
+        id(camera_alert_source_entities).push_back("${camera_entity}");
+        id(camera_alert_enabled_callbacks).push_back(
+            [](){ return id(camera_alerts_enabled_${camera_id}).state; });
+
 globals:
 - id: camera_last_auto_${camera_id}
   type: uint32_t
+  restore_value: false
+  initial_value: '0'
+- id: camera_detection_mask_${camera_id}
+  type: int
   restore_value: false
   initial_value: '0'
 
@@ -43,11 +61,19 @@ script:
   - if:
       condition:
         lambda: |-
-          if (!id(display_initialized))
+          if (!id(display_initialized) ||
+              !id(lcd_backlight_switch).state)
             return false;
 
           if (!override_request &&
               !id(camera_alerts_enabled_${camera_id}).state)
+            return false;
+
+          // Detector state changes for the camera already on screen are
+          // handled by camera_detection_state; do not queue a duplicate alert.
+          if (!override_request &&
+              id(camera_alert_active) &&
+              id(camera_active_entity) == "${camera_entity}")
             return false;
 
           if (!override_request) {
@@ -84,12 +110,16 @@ script:
             return id(camera_picture_path_${camera_id}).state;
           trigger_code: !lambda return trigger_code;
           override_request: !lambda return override_request;
+          detection_mask: !lambda |-
+            return override_request ? 0 : id(camera_detection_mask_${camera_id});
+          max_hold_ms: !lambda |-
+            return static_cast<int32_t>(${camera_max_hold_ms});
           requested_ms: !lambda return static_cast<int32_t>(millis());
 
 switch:
 - platform: template
   id: camera_alerts_enabled_${camera_id}
-  name: "${camera_source_label} Alerts"
+  name: "Camera Alert · ${camera_source_label}"
   entity_category: config
   icon: mdi:bell
   optimistic: true

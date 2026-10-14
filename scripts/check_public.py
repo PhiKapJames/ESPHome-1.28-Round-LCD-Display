@@ -3,10 +3,28 @@
 """
 from pathlib import Path
 import ipaddress, re, sys
+
 ROOT=Path(__file__).resolve().parents[1]
 IGNORE={'.git','.esphome','.pio','.venv','__pycache__'}
 ALLOWED_TOP={'README.md','LICENSE','CHANGELOG.md','AGENTS.md','.gitignore','.github','docs','examples','hardware',
              'packages','profiles','scripts','tests'}
+
+# Binary/build artifacts remain forbidden everywhere by default. The only
+# exception is intentionally published documentation media under docs/media/.
+BLOCKED_BINARY_SUFFIXES={
+    '.bin','.elf','.jpg','.jpeg','.png','.webp','.mp4',
+    '.ttf','.otf','.woff','.zip','.log'
+}
+PUBLIC_DOC_MEDIA_SUFFIXES={'.jpg','.jpeg','.png','.webp','.mp4'}
+
+def is_public_doc_media(rel: Path) -> bool:
+    return (
+        len(rel.parts) >= 3
+        and rel.parts[0] == 'docs'
+        and rel.parts[1] == 'media'
+        and rel.suffix.lower() in PUBLIC_DOC_MEDIA_SUFFIXES
+    )
+
 errors=[]
 for path in sorted(ROOT.rglob('*')):
     rel=path.relative_to(ROOT)
@@ -14,8 +32,14 @@ for path in sorted(ROOT.rglob('*')):
     if rel.parts[0] not in ALLOWED_TOP: errors.append(f'Unapproved top-level path: {rel}')
     if path.is_symlink(): errors.append(f'Symlink is not publishable: {rel}'); continue
     if not path.is_file(): continue
-    if path.suffix.lower() in {'.bin','.elf','.jpg','.jpeg','.png','.webp','.ttf','.otf','.woff','.zip','.log'}:
-        errors.append(f'Private/binary artifact type: {rel}'); continue
+
+    suffix=path.suffix.lower()
+    if suffix in BLOCKED_BINARY_SUFFIXES:
+        if is_public_doc_media(rel):
+            continue
+        errors.append(f'Private/binary artifact type: {rel}')
+        continue
+
     if path.name in {'secrets.yaml','secrets.yml','.env'}: errors.append(f'Secret file: {rel}')
     try: text=path.read_text(encoding='utf-8')
     except UnicodeDecodeError: errors.append(f'Non-text file: {rel}'); continue
@@ -41,4 +65,4 @@ for path in sorted(ROOT.rglob('*')):
 if errors:
     print('\n'.join(sorted(set(errors))),file=sys.stderr)
     sys.exit(1)
-print('PASS public-source heuristics: no private addresses/entities, secret files, or image/build artifacts')
+print('PASS public-source heuristics: no private addresses/entities, secret files, or unexpected binary/build artifacts')

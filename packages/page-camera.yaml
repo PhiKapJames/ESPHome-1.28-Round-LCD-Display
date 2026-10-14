@@ -7,6 +7,7 @@ substitutions:
   page_entity: camera.example_camera
   page_duration_ms: '8000'
   page_order: '100'
+  page_enabled_restore_mode: RESTORE_DEFAULT_ON
   ha_base_url: http://homeassistant.local:8123
   page_camera_image_width: '200'
   page_camera_image_height: '112'
@@ -21,6 +22,10 @@ esphome:
         id(rotation_pages).push_back(id(rotation_page_${page_id}));
         id(rotation_durations).push_back(${page_duration_ms});
         id(rotation_orders).push_back(${page_order});
+        id(rotation_labels).push_back("${page_label}");
+        id(rotation_enabled_callbacks).push_back([](){
+          return id(rotation_page_enabled_${page_id}).state;
+        });
         id(rotation_enter_callbacks).push_back([](){
           id(rotation_camera_prepare_${page_id}).execute();
         });
@@ -28,6 +33,15 @@ esphome:
           id(rotation_camera_cleanup_${page_id}).execute();
         });
         id(rotation_registry_sorted) = false;
+
+switch:
+- platform: template
+  id: rotation_page_enabled_${page_id}
+  name: "Screen · ${page_label}"
+  entity_category: config
+  icon: mdi:view-carousel
+  optimistic: true
+  restore_mode: ${page_enabled_restore_mode}
 
 text_sensor:
 - platform: homeassistant
@@ -69,14 +83,16 @@ image:
         } else {
           id(rotation_camera_phase_${page_id}) = 3;
         }
-        if (id(main_display).get_active_page() == id(rotation_page_${page_id}))
+        if (id(lcd_backlight_switch).state &&
+            id(main_display).get_active_page() == id(rotation_page_${page_id}))
           id(main_display).update();
   on_error:
     then:
     - lambda: |-
         if (id(rotation_camera_phase_${page_id}) == 2)
           id(rotation_camera_phase_${page_id}) = 4;
-        if (id(main_display).get_active_page() == id(rotation_page_${page_id}))
+        if (id(lcd_backlight_switch).state &&
+            id(main_display).get_active_page() == id(rotation_page_${page_id}))
           id(main_display).update();
 
 script:
@@ -85,6 +101,11 @@ script:
   then:
   - online_image.release: rotation_camera_image_${page_id}
   - lambda: |-
+      if (!id(lcd_backlight_switch).state) {
+        id(rotation_camera_phase_${page_id}) = 0;
+        return;
+      }
+
       id(rotation_camera_phase_${page_id}) = 1;
 
       if (!id(rotation_camera_picture_${page_id}).has_state()) {

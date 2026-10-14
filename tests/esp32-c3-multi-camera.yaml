@@ -22,6 +22,7 @@ packages:
       camera_trigger_vehicle: 'true'
       camera_vehicle_entity: binary_sensor.example_driveway_vehicle
       camera_cooldown_ms: '60000'
+      camera_max_hold_ms: '45000'
 
   parking: !include
     file: ../packages/camera-source.yaml
@@ -92,6 +93,7 @@ packages:
       camera_trigger_vehicle: 'true'
       camera_vehicle_entity: binary_sensor.example_street_vehicle
       camera_cooldown_ms: '30000'
+      camera_max_hold_ms: '0'
 api:
   encryption:
     key: AQIDBAUGBwgJCgsMDQ4PEBESExQVFhcYGRobHB0eHyA=

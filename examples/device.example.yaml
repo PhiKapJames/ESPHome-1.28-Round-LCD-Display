@@ -6,6 +6,9 @@ substitutions:
   clock_page_duration_ms: '8000'
   clock_face_style: original
 
+  # Shared hard maximum for successful automatic detector alerts.
+  camera_max_hold_ms: '30000'
+
 packages:
   round_minion:
     url: https://github.com/PhiKapJames/ESPHome-1.28-Round-LCD-Display
@@ -40,6 +43,9 @@ packages:
           camera_trigger_vehicle: 'false'
           camera_vehicle_entity: binary_sensor.example_vehicle
           camera_cooldown_ms: '60000'
+
+          # Optional per-camera override of the shared value above.
+          # camera_max_hold_ms: '45000'
     refresh: 1d
 
 api:

@@ -2,8 +2,9 @@
 
 All settings below are `substitutions` unless stated otherwise. Real values go
 in your local device/site YAML, outside this repository. `api`, `ota`, and
-`wifi` blocks stay local and reference your existing `!secret` keys. The shared
-packages deliberately contain no `!secret` lookups.
+`wifi` blocks stay local and contain or reference the device's private
+authentication/network settings. The shared packages deliberately contain no
+`!secret` lookups.
 
 ## Package architecture
 
@@ -26,6 +27,7 @@ the page and camera-source templates below.
 | `timezone` | `Etc/UTC` | Device timezone. |
 | `clock_page_duration_ms` | `'8000'` | Clock interstitial duration after every content page. |
 | `clock_face_style` | `original` | Clock renderer: `original`, `classic_analog`, `modern_dashboard`, `clean_arc`, or `weather_station`. |
+| `clock_weather_entity` | `weather.home` | Home Assistant `weather.*` entity for the `weather_station` face. No Home Assistant subscription is created unless that face is selected. |
 
 ## Clock face styles
 
@@ -40,15 +42,18 @@ substitutions:
 Available values:
 
 - `original` — the established nested cyan/blue/purple digital face; this remains the default.
-- `classic_analog` — traditional 12/3/6/9 dial, cyan tick marks, white hour/minute hands, and a red seconds hand.
+- `classic_analog` — traditional 12/3/6/9 dial, cyan tick marks, white hour/minute hands, and an AM/PM indicator.
 - `modern_dashboard` — large digital time/date inside a smartwatch-style minute-progress ring.
 - `clean_arc` — oversized minimal digital time and enlarged day/date.
 - `weather_station` — seven-segment time, weekday/date, live weather icon, temperature, and humidity from `clock_weather_entity`.
 
-The additional faces intentionally require no weather, battery, or other Home
-Assistant entities. This keeps clock selection independent of each site's
-available sensors. A later optional-data layer can enrich individual faces
-without changing the base selector.
+Every face other than `weather_station` intentionally requires no weather,
+battery, or other Home Assistant entities. This keeps clock selection
+independent of each site's available sensors. `weather_station` is the
+exception: it subscribes to the single `weather.*` entity named by
+`clock_weather_entity` and degrades gracefully (placeholder temperature,
+humidity, and icon) while that entity is unavailable. A later optional-data
+layer can enrich individual faces without changing the base selector.
 
 An unknown value displays a visible `CLOCK STYLE / UNKNOWN` diagnostic on the
 device so configuration mistakes are obvious.
@@ -58,8 +63,24 @@ device so configuration mistakes are obvious.
 Version 0.5.0 removes the six-page limit from the rotation engine. The display
 maintains an ordered registry populated by page-template instances at boot.
 Each template has a unique `page_id`, integer `page_order`, and
-`page_duration_ms`. The clock is still inserted automatically after every
-normal content page.
+`page_duration_ms`. Every normal rotation page also exposes a Home Assistant
+configuration switch named **Screen · <page label>**. Turning that switch OFF
+removes the page from rotation; turning it back ON makes it eligible again.
+The clock is still inserted automatically after every enabled normal content
+page.
+
+The `Screen · ` prefix is intentional: Home Assistant presents ESPHome
+configuration entities in one Configuration list, so the prefix keeps all page
+controls together under alphabetical sorting. Camera-source alert switches use
+the matching `Camera Alert · ` prefix; Firmware and built-in entities keep
+their native names.
+
+Page switches default to `RESTORE_DEFAULT_ON` for backward compatibility.
+Use `page_enabled_restore_mode: RESTORE_DEFAULT_OFF` for a schedule-only page
+such as a commute ETA screen. Home Assistant or Node-RED can then call
+`switch.turn_on` and `switch.turn_off` for that page's switch. A state change
+is picked up at the next normal page boundary, so an already-visible page may
+remain for the rest of its configured `page_duration_ms`.
 
 ### Numeric / temperature page
 
@@ -74,9 +95,11 @@ shared-code count limit.
     page_entity: sensor.kitchen_temperature
     page_duration_ms: '4000'
     page_order: '10'
+    page_enabled_restore_mode: RESTORE_DEFAULT_ON
     page_unit: °F
     page_suffix: °
     page_decimals: '1'
+    page_value_font: number_font
     page_panel_style: '1'
     page_color_red: 0%
     page_color_green: 62%
@@ -86,6 +109,26 @@ shared-code count limit.
 `page_unit` is Home Assistant sensor metadata and does not convert values.
 `page_suffix` is the text rendered after the number. Colors are independent
 per page.
+
+`page_value_font` selects the font used for the large numeric value on that
+specific page. It defaults to `number_font` (84 px), preserving existing layouts.
+The shared theme also provides `number_font_compact` (64 px) for longer values,
+for example a commute page rendering `37 min`:
+
+```yaml
+- path: packages/page-numeric.yaml
+  vars:
+    page_id: commute
+    page_label: Commute
+    page_entity: sensor.example_commute_minutes
+    page_value_font: number_font_compact
+    page_suffix: " min"
+    page_decimals: "0"
+```
+
+Any font ID defined in the final ESPHome configuration can be supplied through
+`page_value_font`, so a private device YAML may add its own font and select it
+for only the pages that need it.
 
 Numeric and battery pages do not render history/trend graphs. No graph interval
 or graph-color variables are required in local device YAMLs.
@@ -102,6 +145,7 @@ Include `packages/page-battery.yaml` for each battery percentage page:
     page_entity: sensor.main_battery_percent
     page_duration_ms: '4000'
     page_order: '50'
+    page_enabled_restore_mode: RESTORE_DEFAULT_ON
 ```
 
 The battery renderer keeps the 0–25 red, 25–50 yellow, 50–75 cyan/blue, and
@@ -121,6 +165,7 @@ camera-enabled profile because it reuses that profile's shared HTTP requester.
     page_entity: camera.driveway
     page_duration_ms: '5000'
     page_order: '60'
+    page_enabled_restore_mode: RESTORE_DEFAULT_ON
 ```
 
 The page requests the camera's current `entity_picture` when it enters
@@ -133,28 +178,34 @@ Assistant subscriptions rather than an artificial page-count constant. CI
 includes a synthetic 12-content-page configuration containing 10 numeric pages,
 one battery page, and one camera page.
 
-Numeric and battery pages show a sliding page-position indicator. Up to nine
-page dots are displayed at once. When earlier pages are outside the visible
-window a left chevron is shown; when later pages are outside the visible window
-a right chevron is shown. The active page stays centered when possible. Camera
-rotation pages remain clean full-screen images and do not overlay the indicator.
+Numeric and battery pages show a sliding page-position indicator for enabled
+pages only. Up to nine page dots are displayed at once. Disabled pages do not
+leave placeholder dots. When earlier enabled pages are outside the visible
+window a left chevron is shown; when later enabled pages are outside the visible
+window a right chevron is shown. The active page stays centered when possible.
+Camera rotation pages remain clean full-screen images and do not overlay the
+indicator.
 
 ## Hardware overrides
 
-| Setting | Default |
-| --- | --- |
-| `spi_clk_pin` | `GPIO1` |
-| `spi_mosi_pin` | `GPIO2` |
-| `display_cs_pin` | `GPIO5` |
-| `display_dc_pin` | `GPIO4` |
-| `display_reset_pin` | `GPIO9` |
-| `backlight_pin` | `GPIO6` |
-| `display_rotation_degrees` | `'0'` |
-| `display_spi_rate` | `80MHz` |
-| `battery_outline_quality` | hardware profile | `1` = four-direction C3/C6 keyline; `2` = full eight-direction S3 keyline. |
+| Setting | Default | Notes |
+| --- | --- | --- |
+| `spi_clk_pin` | `GPIO1` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `spi_mosi_pin` | `GPIO2` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `display_cs_pin` | `GPIO5` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `display_dc_pin` | `GPIO4` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `display_reset_pin` | `GPIO9` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `backlight_pin` | `GPIO6` | Shared C3/S3 reference wiring; hardware profiles may override it. |
+| `backlight_restore_mode` | `ALWAYS_ON` | Override to `ALWAYS_OFF` for devices that must boot dark until a private schedule decides otherwise. |
+| `display_rotation_degrees` | `'0'` | LCD rotation in degrees. |
+| `display_spi_rate` | `80MHz` | Lower locally, for example to `40MHz`, only if the physical display is unstable. |
+| `display_profile_warn_ms` | `'50'` | Page-aware profiler threshold for normal rotation updates; at-or-below-threshold results are DEBUG-only. |
+| `battery_outline_quality` | hardware profile | `1` = four-direction C3/C6 keyline; `2` = optimized S3 bold-underlay keyline. |
 
-`display_color_depth`, `display_buffer_size`, and `battery_outline_quality` are supplied by the selected
-hardware profile.
+`display_color_depth`, `display_buffer_size`, and `battery_outline_quality`
+are supplied by the selected hardware profile. The C3/C6 profiles use 8-bit
+color with a 50% framebuffer; the S3 quad-PSRAM profile uses 16-bit color with
+a 100% framebuffer.
 
 For the C6 profile, the public reference pin map is GPIO18 clock, GPIO19 MOSI,
 GPIO20 CS, GPIO21 DC, GPIO22 reset, and GPIO23 backlight. This is deliberately
@@ -163,21 +214,40 @@ strapping pins and GPIO12/13 are native USB Serial/JTAG. Override the C6 pins in
 the private device YAML if the actual PCB uses another map.
 
 Do not copy the S3/full-buffer choice onto a C3 or C6 to silence warnings. Actual free contiguous memory matters for camera allocations.
-Backlight is a manual/HA output switch with `ALWAYS_ON` restore behavior in
-v0.5.1. Quiet-hours automation is not added automatically. Existing per-device
-quiet-hours logic can be kept in a local package when migrating other minions.
+Backlight is a manual/HA output switch. Its default restore behavior is
+`ALWAYS_ON`, controlled by the `backlight_restore_mode` substitution. Devices
+with strict schedules can override it locally, for example
+`backlight_restore_mode: ALWAYS_OFF`, without changing the shared default.
+The `LCD Backlight` switch is also the shared display-enabled gate. When it is
+OFF, normal page rotation stops, no display redraws are requested, camera alert
+requests are ignored, active alert refresh/download state is released, and an
+optional normal-rotation camera page cleans up its image. Home Assistant entity
+subscriptions, Wi-Fi, time, and other non-display services remain active.
+
+Turning `LCD Backlight` ON starts a clean normal rotation from the first
+configured content page. The shared code does not decide *why* the switch is
+turned on or off: schedules and Home Assistant automations can both control the
+same switch. Quiet-hours automation is not added automatically; existing
+per-device schedules can remain local.
+
+The shared display clock uses ESPHome's **Home Assistant time** platform with
+the internal ID `ha_time`; it is not SNTP. Device-specific schedules that must
+continue before or without a Home Assistant connection may add a separate SNTP
+time source in the private device YAML.
 
 ## Optional camera feature
 
 A `*-camera.yaml` profile adds the shared camera engine: HTTP/JPEG download,
-the single decoded alert image buffer, full-screen rendering, timeout/RAM guards,
-and the alert queue. Camera sources are separate
-instances of `packages/camera-source.yaml`.
+full-screen rendering, timeout/RAM guards, and the alert queue. The engine uses
+two decoded-image slots when optional periodic refresh is enabled so the current
+good frame can remain visible while the next frame downloads. Only one JPEG is
+downloaded/decoded at a time. Camera sources are separate instances of
+`packages/camera-source.yaml`.
 
 There is **no hard-coded camera count**. ESPHome remote packages allow the same
 file to be listed repeatedly with different `vars`; each instance contributes
 one HA camera attribute subscription, one manual button, one per-source cooldown,
-one per-camera **Alerts** configuration switch, and whichever detector subscriptions are enabled. Practical flash/RAM/API entity
+one per-camera **Camera Alert · <SOURCE>** switch, and whichever detector subscriptions are enabled. Practical flash/RAM/API entity
 limits still apply, but adding a fifth, sixth, or later camera does not require
 editing this repository.
 
@@ -192,13 +262,38 @@ Shared engine substitutions:
 | `ha_base_url` | `http://homeassistant.local:8123` | HA origin reachable by the device; same HA that supplies camera attributes. |
 | `camera_image_width` | `'200'` | Maximum decoded source width. |
 | `camera_image_height` | `'112'` | Maximum decoded source height; the renderer center-crops to fill 240×240. |
-| `camera_hold_time` | `15s` | Display time after a successful decode. |
+| `camera_hold_time` | `15s` | Fixed display time for a successful **manual** snapshot request. |
+| `camera_min_hold_time` | `7s` | Minimum display time for a successful automatic person/vehicle alert. |
+| `camera_clear_delay` | `2s` | After the minimum, all enabled detectors for that camera must remain continuously OFF for this long before rotation resumes. |
+| `camera_max_hold_ms` | `'30000'` | Hard maximum for a successful automatic alert's hold/follow phase, measured from the first successful image. `0` disables the hard cap. A camera-source file entry can override this value for that source. |
+| `camera_refresh_interval_ms` | `'0'` | Optional alert-image refresh interval in milliseconds; `0` keeps the established single-snapshot behavior. A value such as `'1000'` requests a new still about once per second, never overlapping downloads. |
 | `camera_download_timeout` | `20s` | Whole-download cooperative backstop. |
 | `camera_error_hold_time` | `4s` | Failure-screen duration. |
 | `camera_queue_expire_ms` | `'60000'` | Drop stale automatic requests that waited this long. |
 | `camera_queue_max_runs` | `'20'` | Maximum active+queued alert operations; this limits backlog, **not camera count**. |
 | `camera_min_free_heap` | `'100000'` | Preflight free-heap threshold. |
 | `camera_min_largest_block` | `'60000'` | Preflight largest-contiguous-block threshold. |
+
+When `camera_refresh_interval_ms` is greater than zero, the alert renderer uses
+a ping-pong pair of image slots. The last successfully decoded frame remains on
+screen while the inactive slot downloads the next JPEG. A failed or timed-out
+refresh keeps the last good frame visible.
+
+Automatic person/vehicle alerts are detector-driven. They remain visible for at
+least `camera_min_hold_time`, continue while any enabled detector for that
+camera is ON, then require every enabled detector to remain continuously OFF for
+`camera_clear_delay`. If a detector turns back ON during the clear delay, that
+delay is cancelled and restarts after the next clear transition.
+
+A successful automatic alert is also bounded by `camera_max_hold_ms`, measured
+from the first successfully decoded image. The default is 30 seconds. The hard
+maximum wins even if a detector is still ON or the clear-delay tail has not
+completed. Set it to `0` to disable the cap. A camera can override the shared
+value by supplying `camera_max_hold_ms` in that camera-source entry's `vars`.
+
+Manual snapshot requests do not follow detector state and retain the fixed
+`camera_hold_time`. The display-off gate still cancels either kind of alert
+immediately.
 
 Each `packages/camera-source.yaml` instance requires these variables:
 
@@ -214,13 +309,18 @@ Each `packages/camera-source.yaml` instance requires these variables:
 | `camera_trigger_vehicle` | `'true'` | Include a vehicle detector subscription. |
 | `camera_vehicle_entity` | `binary_sensor.driveway_vehicle` | Vehicle entity; supply a valid placeholder even if the trigger is false. |
 | `camera_cooldown_ms` | `'60000'` | Automatic cooldown for only this source. |
+| `camera_max_hold_ms` | omitted | Optional per-source override of the shared `camera_max_hold_ms`. Example: `'45000'` for 45 seconds, or `'0'` for no hard cap. |
 
-When person and vehicle are both enabled on one source, they are **OR** triggers.
+When person and vehicle are both enabled on one source, they are **OR** triggers
+both for starting the alert and for keeping it visible: the alert remains active
+until both detectors are OFF and the configured clear delay has elapsed.
 A vehicle-only source does not subscribe to its person entity. A manual-only
 source sets both trigger flags false but still gets its snapshot button.
 
-Every source exposes its own **<SOURCE> Alerts** switch, so automatic alerts are
-enabled or disabled independently per camera. Manual snapshot buttons bypass
+Every source exposes its own **Camera Alert · <SOURCE>** switch, so automatic alerts are
+enabled or disabled independently per camera. Turning that switch OFF also drops
+automatic requests still waiting in the queue: the switch is re-checked when a
+queued request's execution starts, not only when it was submitted. Manual snapshot buttons bypass
 that source's automatic-alert switch and cooldown, but retain the readiness/RAM
 safeguards.
 
@@ -251,6 +351,8 @@ packages:
           camera_trigger_vehicle: 'true'
           camera_vehicle_entity: binary_sensor.driveway_vehicle
           camera_cooldown_ms: '60000'
+          # Optional: override the shared 30-second maximum for this camera.
+          camera_max_hold_ms: '45000'
 
       - path: packages/camera-source.yaml
         vars:
@@ -300,12 +402,43 @@ Version 0.4.0 precomputes the static metric and clock arc coordinates and the
 60 minute-marker positions. This removes runtime sine/cosine calculations from
 normal metric/clock drawing without changing those coordinates.
 
+Version 0.6.8 reduces repeated framebuffer writes on page transitions without
+lowering the configured display color depth, buffer size, or SPI rate:
+
+- rounded metric/battery panels use one horizontal span per scanline instead of
+  overlapping two filled rectangles and four filled circles;
+- repeated radius-2/radius-3 arc markers use non-overlapping scanline shapes
+  instead of `filled_circle()`'s duplicate border/span writes;
+- the S3/high-quality battery percentage keyline uses one bold black underlay
+  plus the regular white value instead of eight offset renders of the 84 px font;
+- the original clock face clears only the ring pixels that cross behind its
+  large hour/minute text instead of repainting large black rectangles.
+
 The display still refreshes on each normal page transition. The previous extra
 full redraw at every minute boundary was removed because normal pages already
 rotate every few seconds; Home Assistant time synchronization can still request
 a refresh when time first becomes valid.
 
 C3 and the 4 MB/no-PSRAM C6 profile keep the 50% framebuffer to preserve
-camera RAM headroom and use the four-direction battery percentage keyline.
-S3 quad-PSRAM keeps its 100% framebuffer and full eight-direction keyline. This is an intentional
-hardware-performance difference, not a layout/theme difference.
+camera RAM headroom and use the established four-direction battery percentage
+keyline. S3 quad-PSRAM keeps its 100% framebuffer and uses the optimized bold
+underlay keyline. This is an intentional hardware-performance difference, not a
+layout/theme change.
+
+Version 0.6.9 adds page-aware display profiling for normal rotation. The physical
+`main_display.update()` is deferred onto the MIPI display component, so ESPHome's
+own blocking warning is attributed to the display rather than to
+`display_rotation`. The shared profiler measures the complete render + LCD flush
+duration and emits a warning such as:
+
+```text
+[W][round_minion.display]: page=Battery render+flush=90 ms (threshold=50 ms)
+```
+
+The default profiler threshold is `display_profile_warn_ms: '50'`. Faster
+updates are logged at DEBUG only. Numeric, battery, and optional rotation-camera
+templates register their `page_label`; the shared clock reports as `clock`.
+The profiler covers normal rotation updates and measures the whole display
+update; it does not currently split framebuffer render time from SPI transfer
+time. Camera-alert pages use the camera engine's own update/status path rather
+than the normal-rotation profiler.

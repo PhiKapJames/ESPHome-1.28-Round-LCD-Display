@@ -2,21 +2,44 @@
 
 Reusable ESPHome packages for 240 × 240 GC9A01A round displays connected to
 Home Assistant. Keep shared display code here; keep actual device names,
-entity mappings, Home Assistant origins, Wi-Fi credentials, API keys, and OTA
-passwords in local ESPHome configuration files.
+entity mappings, Home Assistant origins, Wi-Fi credentials, and API/OTA
+credentials in local ESPHome configuration files.
 
-**Version: 0.6.1 — selectable clock faces.** GitHub Actions validates and
+**Version: 0.7.3 — queued camera alerts honor switch changes, and public examples are CI-mirrored.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
 
+## Screenshots and demo
+
+<p align="center">
+  <a href="docs/media/readme-demo.mp4">
+    <img src="docs/media/readme-hero.jpg" alt="HA ESP Round Minion showing the Kitchen numeric page" width="360">
+  </a>
+</p>
+
+Real photos of the round Minion hardware running the shared ESPHome layouts.
+
+<p align="center">
+  <img src="docs/media/minion-clock.jpg" alt="Clock face on the round Minion display" width="240">
+  <img src="docs/media/minion-kitchen.jpg" alt="Kitchen numeric page on the round Minion display" width="240">
+  <img src="docs/media/minion-battery.jpg" alt="Battery page on the round Minion display" width="240">
+</p>
+
+The gallery shows the shared clock face, a numeric/temperature page, and the
+battery page. Click the hero image to open the muted, cropped
+[demo video](docs/media/readme-demo.mp4).
+
 ## What it displays
 
 - Any number of reusable numeric/temperature and battery-percentage rotation
-  pages, ordered with `page_order`.
+  pages, ordered with `page_order`. Every normal page exposes its own
+  Home Assistant **Screen · <page label>** configuration switch, so Home Assistant
+  or Node-RED can include or exclude individual pages on a schedule.
 - Large centered readings, rounded panels, location accents, and a sliding
-  page-position indicator. Trend/history graphs are intentionally omitted. Up to nine dots are shown at once;
-  left/right chevrons indicate additional pages before or after the visible window.
+  page-position indicator. Numeric pages can override the large value font per
+  page while retaining the established 84 px default. Trend/history graphs are intentionally omitted. Up to nine enabled-page dots are shown at once;
+  left/right chevrons indicate additional enabled pages before or after the visible window.
 - A shared clock between each enabled content page, with selectable `original`, `classic_analog`, `modern_dashboard`, `clean_arc`, and `weather_station` renderers.
 - A horizontal battery silhouette filled from the reported percentage, with
   red/yellow/cyan/green charge bands and a high-contrast outlined value.
@@ -27,25 +50,40 @@ rollout. See [validation](docs/VALIDATION.md).
   treated the same; configure the HA camera entity whose image you want.
   Alert snapshots never join the regular playlist unless a separate
   `page-camera.yaml` rotation-page template is explicitly configured.
+  Optional periodic refresh can request successive stills during an alert while
+  keeping the last good frame visible if a refresh fails. Automatic person/vehicle
+  alerts can remain visible while any enabled detector for that camera is active,
+  then stay visible for a configurable clear delay after all detectors turn off.
+  A shared hard maximum prevents a stuck detector from monopolizing the display,
+  and that maximum can be overridden per camera.
 - An optional normal-rotation camera-page template for deliberately putting a
   camera view into the playlist.
-- A manual/automation snapshot button and independent Alerts switch for every
+- A manual/automation snapshot button and independent **Camera Alert · <source>** switch for every
   configured camera source.
   Overrides bypass automatic enable/cooldown, not readiness or RAM checks.
 - Alerts save the current page and its remaining duration, then resume afterward.
+- The `LCD Backlight` switch is the shared display-enabled gate: when OFF,
+  rotation/redraws stop and camera requests are ignored/released while Wi-Fi,
+  Home Assistant, time, and other non-display services remain connected.
 
-Version 0.5.0 replaces the fixed six-slot scheduler with one ordered runtime
-page registry. Pages are explicit template instances: `page-numeric.yaml`,
-`page-battery.yaml`, and optionally `page-camera.yaml`. There is no fixed
-numeric/battery page count in shared code; practical hardware resources are the
-limit.
+The current architecture, introduced in version 0.5.0, uses one ordered runtime
+page registry instead of the former fixed six-slot scheduler. Pages are explicit
+template instances: `page-numeric.yaml`, `page-battery.yaml`, and optionally
+`page-camera.yaml`. There is no fixed numeric/battery page count in shared code;
+practical hardware resources are the limit.
 
 ## Installation
 
-Requires **ESPHome 2026.9.0 or newer**. The initial CI image is pinned to
-`ghcr.io/esphome/esphome:2026.9.0`. Newer builders should be tested before updating
-all devices. Packages are downloaded by the builder at build time; devices do
-not pull YAML from GitHub and do not update merely because this repo changes.
+Requires **ESPHome 2026.9.0 or newer**. The CI image is pinned to
+`ghcr.io/esphome/esphome:2026.9.0`. ESPHome 2026.9.0 requires Python 3.12+
+when installed natively; using the official ESPHome container avoids depending
+on the host Python version. Newer ESPHome builders should be tested before
+updating all devices.
+
+For local validation/compile commands using the same pinned Docker image as CI,
+see [validation](docs/VALIDATION.md). Packages are downloaded by the builder at
+build time; devices do not pull YAML from GitHub and do not update merely
+because this repo changes.
 
 ### ESPHome package architecture
 
@@ -71,7 +109,7 @@ checks.
 1. Copy [the example](examples/device.example.yaml) into your **local** ESPHome
    configuration directory. Do not enter real settings in the public example.
 2. Set the hardware profile and actual entities in that local file.
-3. Preserve the existing device `name`, API key, and OTA password during migration.
+3. Preserve the existing device `name` and existing API/OTA authentication during migration.
 4. Run ESPHome **Validate**, then compile and install on one device first.
 5. Test every enabled metric, battery fill, clock, snapshot override, detection,
    failed download, and return to the interrupted page.
@@ -121,7 +159,7 @@ real credentials must stay private.
 | `profiles/esp32-c3-camera.yaml` | Same C3 settings | Included |
 | `profiles/esp32-c6.yaml` | C6, 160 MHz, 4 MB flash, no PSRAM; 8-bit / 50% buffer; native USB logging; C6-safe reference GC9A01 pins | Omitted |
 | `profiles/esp32-c6-camera.yaml` | Same C6 settings | Included |
-| `profiles/esp32-s3-quad-psram.yaml` | S3, 240 MHz, 4 MB flash, confirmed quad PSRAM at 80 MHz; 16-bit / full buffer; full 8-direction battery keyline | Omitted |
+| `profiles/esp32-s3-quad-psram.yaml` | S3, 240 MHz, 4 MB flash, confirmed quad PSRAM at 80 MHz; 16-bit / full buffer; optimized high-quality bold-underlay battery keyline | Omitted |
 | `profiles/esp32-s3-quad-psram-camera.yaml` | Same S3 quad-PSRAM settings | Included |
 
 The S3 profiles are **not** for every S3 module. Confirm flash capacity, PSRAM
@@ -147,7 +185,22 @@ never stored here.
 
 The default LCD SPI rate is 80 MHz, preserving the established device setting.
 If the display corrupts, override `display_spi_rate: 40MHz` locally. PSRAM speed
-and LCD SPI speed are separate settings. Never hide timing warnings as a fix.
+and LCD SPI speed are separate settings. Version 0.6.8 reduces renderer CPU/
+framebuffer work without lowering the S3's 16-bit/full-buffer display quality:
+rounded panels are filled once per scanline, repeated arc dots avoid duplicate
+circle writes, the S3 battery keyline uses one bold underlay instead of eight
+offset large-font renders, and the original clock erases only ring crossings
+behind its large digits.
+
+Version 0.6.9 adds a page-aware profiler for normal rotation. Slow updates log
+the page label and total render+flush time under `round_minion.display`, while
+the physical update is deferred onto the MIPI display component so ESPHome's
+stock blocking warning no longer blames `display_rotation`. Numeric, battery,
+and explicit rotation-camera pages use their configured `page_label`; the shared
+clock reports as `clock`. The default page-aware warning threshold is 50 ms and
+can be changed with `display_profile_warn_ms`. This profiler covers normal
+rotation updates; camera-alert rendering continues to use the camera engine's
+own status/logging path. Never hide timing warnings as a fix.
 
 ## Clock faces
 
@@ -161,7 +214,7 @@ current appearance unless a different style is explicitly selected.
 | `clock_face_style` | Description |
 | --- | --- |
 | `original` | Established stacked digital face with cyan/blue rings, purple orbit accents, and a moving minute marker. |
-| `classic_analog` | Traditional analog dial with 12/3/6/9 numerals, minute ticks, white hour/minute hands, and a red seconds hand. |
+| `classic_analog` | Traditional analog dial with 12/3/6/9 numerals, minute ticks, white hour/minute hands, and an AM/PM indicator. |
 | `modern_dashboard` | Smartwatch-style minute-progress ring with a large digital time and large centered day/date. |
 | `clean_arc` | Very large stripped-back digital time with an enlarged day/date and no decorative status elements. |
 | `weather_station` | Reference-style seven-segment clock with weekday arc, date, live weather condition icon, temperature, and humidity from one Home Assistant `weather.*` entity. |
@@ -194,9 +247,11 @@ Changing the clock face is a build-time configuration change. Run ESPHome
 **Validate**, then compile and install the firmware again. It is not currently a
 runtime Home Assistant selector.
 
-The built-in clock faces require no additional Home Assistant weather, battery,
-temperature, or humidity entities. They use the Home Assistant time source
-already provided by the shared package.
+All built-in clock faces except `weather_station` require no additional Home
+Assistant weather, battery, temperature, or humidity entities. They use the
+Home Assistant time source already provided by the shared package.
+`weather_station` additionally subscribes to one `weather.*` entity, selected
+with the `clock_weather_entity` substitution.
 
 If a newly merged package change is not being picked up while testing with
 `ref: main`, remember that the remote package may be cached according to its
@@ -226,8 +281,16 @@ Home Assistant must supply values in the intended units.
 
 Camera snapshots use the camera entity's `entity_picture` attribute and its
 rotating token. Set `ha_base_url` to the same Home Assistant instance importing
-that attribute. Each accepted trigger requests a still; it is not a live stream
-or necessarily the exact frame that caused detection. Only the expected camera
+that attribute. By default each accepted trigger requests one still. Setting
+`camera_refresh_interval_ms` above zero requests successive stills serially
+during the alert window. Automatic detector alerts show for at least
+`camera_min_hold_time`, continue while any enabled person/vehicle detector for
+that camera remains active, and normally end after all enabled detectors stay
+clear for `camera_clear_delay`. The shared `camera_max_hold_ms` (30 seconds by
+default) provides a hard bound and may be overridden in an individual
+camera-source entry. Manual snapshot buttons continue to use the fixed
+`camera_hold_time`. This is still not a live stream and a still is not
+necessarily the exact frame that caused detection. Only the expected camera
 proxy path and configured origin are accepted. Token-bearing URLs are not logged
 by the project's own logs, and potentially URL-bearing component logs are muted.
 Do not enable verbose logging and publish it without redaction.
@@ -256,7 +319,7 @@ This repository contains shared source and synthetic examples only. It does not
 contain a particular installation's device YAML, real entity mappings, camera
 origin, Wi-Fi credentials, or API/OTA secrets. Keep those in local ESPHome files.
 
-Version 0.6.1 is validated by the repository's synthetic ESPHome CI matrix but
+Version 0.7.3 is validated by the repository's synthetic ESPHome CI matrix but
 is not, by itself, a claim that every hardware/profile combination has been
 physically validated. Check the Actions results for the exact commit
 before deploying. No release tag is implied by the project version. A deployed

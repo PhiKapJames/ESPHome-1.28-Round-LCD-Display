@@ -1,5 +1,167 @@
 # Changelog
 
+## Unreleased
+
+- No unreleased changes.
+
+## 0.7.3 — 2026-10-13
+
+- Queued automatic camera alerts now re-check the originating source's
+  `Camera Alert · <source>` enable switch when the queued execution starts.
+  Previously the switch was consulted only when the request was submitted, so
+  turning a camera's alerts off while a request waited in the queue could still
+  display that camera's snapshot.
+- Registered a per-source enable-callback lookup in the shared camera engine so
+  the execution-time check reads the switch's current state (script parameters
+  are captured at enqueue time and cannot carry it).
+- Added local synthetic mirror fixtures for all three public examples
+  (`tests/esp32-c3-example.yaml`, `tests/esp32-c3-example-multi-camera.yaml`,
+  `tests/esp32-s3-example-template-pages.yaml`) and expanded the CI matrix to
+  13 profiles, so the copy-paste examples are validated and compiled against
+  current template interfaces.
+- Replaced the fixed CI-profile-count check with derived consistency checks
+  between the Actions matrix, `tests/` fixtures, and `docs/VALIDATION.md`, and
+  added an offline check that fails if an example's package files/`vars` drift
+  from its mirror or a mirror accumulates unresolved/dangling references.
+- Documented that local offline checks use `python3` (stock Debian/Ubuntu hosts
+  have no unversioned `python`).
+- Corrected stale documentation/examples: the per-camera switch name in
+  `docs/CONFIGURATION.md`, the "Commute Screen" comment in
+  `examples/template-pages.example.yaml`, and the current-version statements in
+  `README.md`/`docs/RELEASE_NOTES.md`.
+- Recorded the pre-1.0.0 policy in `AGENTS.md`: breaking changes and
+  documentation/example updates are expected without compatibility aliases or
+  breaking-change notes until 1.0.0.
+
+## 0.7.2 — 2026-10-08
+
+- Renamed the shared numeric fonts from `temp_font` / `temp_font_compact` to
+  `number_font` / `number_font_compact`. No compatibility aliases are kept;
+  private YAML using the old font IDs must be updated.
+- Changed normal page configuration-switch names from `<page> Screen` to
+  `Screen · <page>` so Home Assistant's alphabetical Configuration list keeps
+  all page controls together.
+- Changed per-camera automatic alert-switch names from `<SOURCE> Alerts` to
+  `Camera Alert · <SOURCE>` so camera alert controls sort together.
+- Kept Firmware and other built-in configuration entities unchanged.
+- Added regression coverage for the new font IDs and grouped Home Assistant
+  configuration names.
+
+## 0.7.1 — 2026-10-08
+
+- Added `page_value_font` to `page-numeric.yaml`, allowing each numeric page
+  to select its own value font while preserving `temp_font` as the default.
+- Added shared `temp_font_compact` at 64 px for longer values such as commute
+  durations rendered with a ` min` suffix.
+- Updated numeric width measurement, vertical centering, and rendering to use
+  the selected per-page font consistently.
+- Added synthetic regression coverage for an explicit compact-font page and
+  updated the public Commute example and configuration documentation.
+
+## 0.7.0 — 2026-10-08
+
+- Added one Home Assistant configuration switch per normal rotation page:
+  `<page label> Screen`.
+- Added `page_enabled_restore_mode` to numeric, battery, and rotation-camera
+  templates. The backward-compatible default is `RESTORE_DEFAULT_ON`;
+  schedule-only pages can use `RESTORE_DEFAULT_OFF`.
+- Rotation now skips disabled pages while preserving configured page order and
+  duration for enabled pages.
+- Camera-alert resume no longer restores a normal page that was disabled while
+  the alert was active.
+- Numeric and battery page indicators now count enabled pages only, so disabled
+  pages do not leave ghost dots.
+- Added synthetic and structural regression coverage for per-page switches,
+  default-off configuration, scheduler filtering, and enabled-only indicators.
+
+- Audited all repository Markdown against the current 0.6.9 packages, hardware
+  profiles, and CI workflow.
+- Corrected S3 battery-keyline wording to match the optimized bold-underlay
+  renderer introduced in 0.6.8.
+- Fixed the hardware-override table shape and documented the normal-rotation
+  display profiler threshold and scope consistently.
+- Expanded validation documentation with the exact 10-profile matrix and current
+  physical-test checklist.
+- Reworked release notes so the current 0.6.9 source state is primary while the
+  original v0.1.0 migration-candidate note is retained as historical context.
+- Standardized API/OTA wording around private authentication/credentials rather
+  than assuming password-based OTA.
+
+## 0.6.9 — 2026-09-26
+
+- Added page-aware profiling for normal rotation display updates.
+- Numeric, battery, and optional rotation-camera templates now register their `page_label` alongside the ordered page registry; the shared clock reports as `clock`.
+- Added `display_profile_warn_ms` with a default of `50` ms. Slow updates log the page name and complete render+flush duration under `round_minion.display`; faster updates are DEBUG-only.
+- Moved normal-rotation `main_display.update()` work into a defer owned by the display component, so ESPHome's stock blocking warning is attributed to the MIPI display rather than `display_rotation`.
+- Preserved page-duration semantics by waiting for the deferred display update to finish before starting each page's visible-duration timer.
+- Display suspension and camera takeover cancel any pending profiled normal-page update so a stale deferred render cannot overwrite the new display state.
+- Added regression coverage for profiler registration, page-label alignment, deferred display ownership, and camera-takeover cancellation.
+
+## 0.6.8 — 2026-09-26
+
+- Reduced display-render framebuffer work without lowering S3 color depth, full-buffer mode, or 80 MHz LCD SPI rate.
+- Replaced overlapping rounded-box construction on numeric/battery pages with single-pass scanline fills.
+- Replaced frequent small filled-circle arc markers with equivalent non-overlapping scanline dots.
+- Reworked the S3/high-quality battery value keyline from eight offset 84 px font renders to one glyph-restricted bold underlay plus the regular white value.
+- Reworked the original clock's large digit cleanup to erase only ring pixels crossing the text fields instead of filling large black rectangles.
+- Preserved C3/C6 four-direction battery keyline behavior.
+- Added structural regression checks for the optimized renderer paths.
+
+## 0.6.7 — 2026-09-26
+
+- Added a shared automatic-alert hard maximum through `camera_max_hold_ms`, defaulting to `30000` ms.
+- The maximum is measured from the first successful image/hold phase, so initial download time does not consume the visible hold budget.
+- Individual camera-source entries can override the shared maximum by supplying `camera_max_hold_ms` in that entry's `vars`.
+- A per-camera value of `0` disables the hard cap for that source.
+- The hard maximum wins over a detector that remains ON or a clear-delay tail that would otherwise extend past the limit.
+- Manual snapshot duration remains controlled only by `camera_hold_time`.
+- Added an INFO log when an automatic alert ends because its maximum hold was reached.
+- Added CI coverage for inherited, overridden, and unlimited per-camera maximum values.
+
+## 0.6.6 — 2026-09-26
+
+- Reworked optional camera detector package selection to use ESPHome's supported conditional `!include` filename pattern.
+- Removed the intermediate `_person_trigger` / `_vehicle_trigger` IncludeFile substitutions that produced spurious unresolved-variable warnings during config parsing and remote builds.
+- Preserved existing behavior: disabled detector types still create no Home Assistant subscription, and enabled detectors retain the same press/release lifetime tracking.
+- Added structural coverage for dynamic package include filenames.
+- GitHub Actions now fails the config-validation step if ESPHome reports `Could not resolve substitution variable`, preventing this warning class from silently returning.
+
+## 0.6.5 — 2026-09-26
+
+- Renamed the shared Home Assistant time component ID from the misleading `sntp_time` to `ha_time`; the time platform remains Home Assistant.
+- Added `backlight_restore_mode` with the existing `ALWAYS_ON` default, allowing scheduled devices to opt into `ALWAYS_OFF` privately.
+- Documented the intentional direct use of the public ESP-IDF heap-capability API for camera RAM guards and heap diagnostics.
+- Clarified that ESPHome 2026.9.0 requires Python 3.12+ for native installs and that the pinned Docker image avoids host-Python coupling.
+- Updated validation documentation to describe the current 10-profile GitHub Actions config/compile matrix instead of retired six-slot-era checks.
+- Added regression coverage for the Home Assistant time ID and backlight restore-mode override.
+
+## 0.6.4 — 2026-09-25
+
+- Added per-camera detector state tracking for automatic person/vehicle alerts.
+- Automatic alerts now remain visible for at least `camera_min_hold_time` (default `7s`), continue while any enabled detector for that camera is ON, then remain visible until every enabled detector has stayed OFF for `camera_clear_delay` (default `2s`).
+- Detector reactivation during the clear delay cancels the pending exit and restarts the clear delay after the next OFF transition.
+- Person + vehicle sources use combined OR lifetime semantics: either active detector keeps the alert visible.
+- Manual snapshot requests retain the existing fixed `camera_hold_time` behavior.
+- Display OFF still cancels alerts immediately and releases camera resources.
+
+## 0.6.3 — 2026-09-25
+
+- Made the shared `LCD Backlight` switch the authoritative display-enabled gate, independent of whether Home Assistant or a local schedule changes it.
+- Stopped page rotation and display redraw activity while the backlight switch is OFF; turning it ON starts a clean normal rotation.
+- Added an extensible display-suspend callback path so optional feature packages can release resources without making the base profile depend on them.
+- Camera alerts and manual snapshot requests are ignored while the display is OFF.
+- Turning the display OFF during an active camera alert stops the alert/refresh scripts and releases both decoded image slots.
+- Optional normal-rotation camera pages now avoid redraws/download startup while the display is OFF.
+- Wi-Fi, Home Assistant subscriptions, time, Tailscale/other networking, and diagnostics remain active; this is display suspension, not deep sleep.
+
+## 0.6.2 — 2026-09-25
+
+- Added optional periodic alert-camera refresh through `camera_refresh_interval_ms`; the default `'0'` preserves existing single-snapshot behavior.
+- Added ping-pong decoded-image slots so the current good frame remains visible while the next still downloads.
+- Kept JPEG requests strictly serial with no overlapping downloads.
+- Refresh errors and timeouts now keep the last good frame on screen instead of replacing it with an error screen.
+- Intended 1 Hz usage on PSRAM-equipped S3 devices can be enabled privately with `camera_refresh_interval_ms: '1000'`.
+
 ## 0.6.1 — 2026-09-24
 
 - Fixed the clock renderer so `clock_face_style` is actually expanded by ESPHome instead of being escaped as a literal.

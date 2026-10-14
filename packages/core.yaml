@@ -3,6 +3,7 @@ esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
   min_version: 2026.9.0
+  # Public ESP-IDF heap-capability API used by camera RAM guards and diagnostics.
   includes:
   - <esp_heap_caps.h>
   on_boot:
@@ -11,10 +12,14 @@ esphome:
     - delay: 1s
     - lambda: !lambda |-
         id(display_initialized) = true;
-    - script.execute: display_rotation
+    - if:
+        condition:
+          lambda: return id(lcd_backlight_switch).state;
+        then:
+        - script.execute: display_rotation
   project:
     name: phikapjames.round-minions
-    version: 0.6.1
+    version: 0.7.3
 
 logger:
   level: INFO
@@ -25,7 +30,7 @@ spi:
 
 time:
 - platform: homeassistant
-  id: sntp_time
+  id: ha_time
   timezone: ${timezone}
   on_time_sync:
     then:
@@ -52,6 +57,22 @@ globals:
   type: std::vector<int>
   restore_value: false
   initial_value: 'std::vector<int>{}'
+- id: rotation_labels
+  type: std::vector<std::string>
+  restore_value: false
+  initial_value: 'std::vector<std::string>{}'
+- id: rotation_enabled_callbacks
+  type: std::vector<std::function<bool()>>
+  restore_value: false
+  initial_value: 'std::vector<std::function<bool()>>{}'
+- id: rotation_enabled_count
+  type: int
+  restore_value: false
+  initial_value: '0'
+- id: active_rotation_position
+  type: int
+  restore_value: false
+  initial_value: '-1'
 - id: rotation_enter_callbacks
   type: std::vector<std::function<void()>>
   restore_value: false
@@ -92,12 +113,140 @@ globals:
   type: bool
   restore_value: false
   initial_value: 'false'
+- id: display_profile_update_done
+  type: bool
+  restore_value: false
+  initial_value: 'true'
+- id: display_profile_last_ms
+  type: uint32_t
+  restore_value: false
+  initial_value: '0'
+- id: display_profile_last_page
+  type: std::string
+  restore_value: false
+  initial_value: '"none"'
 - id: camera_alert_active
   type: bool
   restore_value: false
   initial_value: 'false'
+- id: display_suspend_callbacks
+  type: std::vector<std::function<void()>>
+  restore_value: false
+  initial_value: 'std::vector<std::function<void()>>{}'
 
 script:
+- id: suspend_display
+  mode: restart
+  then:
+  - script.stop: display_rotation
+  - script.stop: profiled_display_update
+  - lambda: |-
+      id(main_display).cancel_defer("round_minion_profile_update");
+      id(display_profile_update_done) = true;
+
+      // Exit the active normal content page once so page-specific resources
+      // (for example an optional camera rotation page) can clean themselves up.
+      // Camera alerts already ran the normal page's exit callback before taking
+      // over the display, so do not call it a second time during an alert.
+      if (!id(camera_alert_active) && !id(normal_is_clock)) {
+        const int index = id(active_rotation_index);
+        if (index >= 0 &&
+            static_cast<size_t>(index) < id(rotation_exit_callbacks).size() &&
+            id(rotation_exit_callbacks)[index]) {
+          id(rotation_exit_callbacks)[index]();
+        }
+      }
+
+      // Feature packages can register additional cleanup without making the
+      // base profile depend on those optional components.
+      for (auto &callback : id(display_suspend_callbacks)) {
+        if (callback)
+          callback();
+      }
+
+      // Resume from a clean rotation when the display is explicitly enabled.
+      id(rotation_resume_pending) = false;
+      id(rotation_content_index) = 0;
+      id(active_rotation_index) = -1;
+      id(active_rotation_position) = -1;
+      id(rotation_enabled_count) = 0;
+      id(normal_page) = nullptr;
+      id(normal_is_clock) = false;
+      id(normal_remaining_ms) = 1;
+      id(normal_started_ms) = millis();
+
+- id: resume_display
+  mode: restart
+  then:
+  - if:
+      condition:
+        lambda: |-
+          return id(display_initialized) &&
+                 id(lcd_backlight_switch).state;
+      then:
+      - script.stop: display_rotation
+      - lambda: |-
+          id(rotation_resume_pending) = false;
+          id(rotation_content_index) = 0;
+          id(active_rotation_index) = -1;
+          id(active_rotation_position) = -1;
+          id(rotation_enabled_count) = 0;
+          id(normal_page) = nullptr;
+          id(normal_is_clock) = false;
+          id(normal_remaining_ms) = 1;
+          id(normal_started_ms) = millis();
+      - script.execute: display_rotation
+
+
+- id: profiled_display_update
+  # Run the physical display update as work owned by main_display rather than
+  # by display_rotation. ESPHome's stock blocking warning is therefore
+  # attributed to the MIPI display component, while this profiler records
+  # the specific page that was being rendered.
+  mode: single
+  then:
+  - lambda: |-
+      std::string page_name = "unknown";
+      if (id(normal_is_clock)) {
+        page_name = "clock";
+      } else {
+        const int index = id(active_rotation_index);
+        if (index >= 0 &&
+            static_cast<size_t>(index) < id(rotation_labels).size()) {
+          page_name = id(rotation_labels)[index];
+        } else if (index >= 0) {
+          page_name = "content-" + std::to_string(index);
+        }
+      }
+
+      id(display_profile_update_done) = false;
+      id(display_profile_last_page) = page_name;
+
+      id(main_display).defer("round_minion_profile_update", [page_name]() {
+        const uint32_t started_ms = millis();
+        id(main_display).update();
+        const uint32_t elapsed_ms = millis() - started_ms;
+
+        id(display_profile_last_ms) = elapsed_ms;
+        id(display_profile_last_page) = page_name;
+        id(display_profile_update_done) = true;
+
+        if (elapsed_ms > ${display_profile_warn_ms}) {
+          ESP_LOGW("round_minion.display",
+                   "page=%s render+flush=%u ms (threshold=${display_profile_warn_ms} ms)",
+                   page_name.c_str(), (unsigned) elapsed_ms);
+        } else {
+          ESP_LOGD("round_minion.display",
+                   "page=%s render+flush=%u ms",
+                   page_name.c_str(), (unsigned) elapsed_ms);
+        }
+      });
+  - wait_until:
+      condition:
+        lambda: |-
+          return id(display_profile_update_done) ||
+                 !id(lcd_backlight_switch).state;
+
 - id: refresh_visible_time
   mode: single
   then:
@@ -107,14 +256,15 @@ script:
           return !id(camera_alert_active) &&
                  id(lcd_backlight_switch).state;
       then:
-      - component.update: main_display
+      - script.execute: profiled_display_update
+      - script.wait: profiled_display_update
 
 - id: display_rotation
   mode: single
   then:
   - while:
       condition:
-        lambda: return true;
+        lambda: return id(lcd_backlight_switch).state;
       then:
       - lambda: !lambda |-
           if (!id(rotation_registry_sorted)) {
@@ -129,6 +279,10 @@ script:
                 std::swap(id(rotation_pages)[i], id(rotation_pages)[best]);
                 std::swap(id(rotation_durations)[i], id(rotation_durations)[best]);
                 std::swap(id(rotation_orders)[i], id(rotation_orders)[best]);
+                if (id(rotation_labels).size() == count)
+                  std::swap(id(rotation_labels)[i], id(rotation_labels)[best]);
+                if (id(rotation_enabled_callbacks).size() == count)
+                  std::swap(id(rotation_enabled_callbacks)[i], id(rotation_enabled_callbacks)[best]);
                 std::swap(id(rotation_enter_callbacks)[i], id(rotation_enter_callbacks)[best]);
                 std::swap(id(rotation_exit_callbacks)[i], id(rotation_exit_callbacks)[best]);
               }
@@ -136,22 +290,64 @@ script:
             id(rotation_registry_sorted) = true;
           }
 
-          if (id(rotation_resume_pending) && id(normal_page) != nullptr) {
+          const size_t count = id(rotation_pages).size();
+          const bool enabled_registry_aligned =
+              id(rotation_enabled_callbacks).size() == count;
+
+          auto page_enabled = [&](size_t index) -> bool {
+            if (!enabled_registry_aligned)
+              return true;
+            auto &callback = id(rotation_enabled_callbacks)[index];
+            return !callback || callback();
+          };
+
+          size_t enabled_count = 0;
+          for (size_t i = 0; i < count; i++) {
+            if (page_enabled(i))
+              enabled_count++;
+          }
+          id(rotation_enabled_count) = static_cast<int>(enabled_count);
+
+          auto enabled_position = [&](size_t index) -> int {
+            int position = 0;
+            for (size_t i = 0; i < index; i++) {
+              if (page_enabled(i))
+                position++;
+            }
+            return position;
+          };
+
+          bool can_resume =
+              id(rotation_resume_pending) && id(normal_page) != nullptr;
+          if (can_resume && !id(normal_is_clock)) {
+            const int index = id(active_rotation_index);
+            if (index < 0 ||
+                static_cast<size_t>(index) >= count ||
+                !page_enabled(static_cast<size_t>(index))) {
+              can_resume = false;
+            }
+          }
+
+          if (can_resume) {
             id(rotation_resume_pending) = false;
             const int index = id(active_rotation_index);
             if (!id(normal_is_clock) &&
                 index >= 0 &&
-                static_cast<size_t>(index) < id(rotation_enter_callbacks).size() &&
-                id(rotation_enter_callbacks)[index]) {
-              id(rotation_enter_callbacks)[index]();
+                static_cast<size_t>(index) < id(rotation_enter_callbacks).size()) {
+              id(active_rotation_position) =
+                  enabled_position(static_cast<size_t>(index));
+              if (id(rotation_enter_callbacks)[index])
+                id(rotation_enter_callbacks)[index]();
+            } else {
+              id(active_rotation_position) = -1;
             }
             id(main_display).show_page(id(normal_page));
           } else {
             id(rotation_resume_pending) = false;
-            const size_t count = id(rotation_pages).size();
 
-            if (count == 0) {
+            if (count == 0 || enabled_count == 0) {
               id(active_rotation_index) = -1;
+              id(active_rotation_position) = -1;
               id(normal_is_clock) = true;
               id(normal_page) = id(page_clock);
               id(normal_remaining_ms) = ${clock_page_duration_ms};
@@ -160,8 +356,18 @@ script:
               if (id(rotation_content_index) >= count)
                 id(rotation_content_index) = 0;
 
-              const size_t index = id(rotation_content_index);
+              size_t index = id(rotation_content_index);
+              for (size_t attempt = 0; attempt < count; attempt++) {
+                const size_t candidate =
+                    (id(rotation_content_index) + attempt) % count;
+                if (page_enabled(candidate)) {
+                  index = candidate;
+                  break;
+                }
+              }
+
               id(active_rotation_index) = static_cast<int>(index);
+              id(active_rotation_position) = enabled_position(index);
               id(active_content_duration_ms) = id(rotation_durations)[index];
               id(normal_remaining_ms) = id(rotation_durations)[index];
               id(normal_page) = id(rotation_pages)[index];
@@ -176,7 +382,8 @@ script:
             }
           }
 
-      - component.update: main_display
+      - script.execute: profiled_display_update
+      - script.wait: profiled_display_update
       - lambda: id(normal_started_ms) = millis();
       - delay: !lambda |-
           return id(normal_remaining_ms);
@@ -197,7 +404,8 @@ script:
               id(normal_page) = id(page_clock);
               id(normal_remaining_ms) = ${clock_page_duration_ms};
               id(main_display).show_page(id(page_clock));
-          - component.update: main_display
+          - script.execute: profiled_display_update
+          - script.wait: profiled_display_update
           - lambda: id(normal_started_ms) = millis();
           - delay: !lambda |-
               return id(normal_remaining_ms);
@@ -227,7 +435,11 @@ switch:
   name: LCD Backlight
   id: lcd_backlight_switch
   output: lcd_backlight
-  restore_mode: ALWAYS_ON
+  restore_mode: ${backlight_restore_mode}
+  on_turn_off:
+  - script.execute: suspend_display
+  on_turn_on:
+  - script.execute: resume_display
 
 sensor:
 - platform: template

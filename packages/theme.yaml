@@ -3,9 +3,12 @@ font:
 - id: title_font
   file: gfonts://Roboto
   size: 44
-- id: temp_font
+- id: number_font
   file: gfonts://Roboto
   size: 84
+- id: number_font_compact
+  file: gfonts://Roboto
+  size: 64
 - id: time_font
   file: gfonts://Roboto
   size: 36
@@ -48,6 +51,13 @@ font:
 - id: clock_tiny_font
   file: gfonts://Roboto
   size: 18
+- id: battery_outline_font
+  file:
+    type: gfonts
+    family: Roboto
+    weight: bold
+  size: 84
+  glyphs: "0123456789%-"
 color:
 - id: color_clock_ring_outer
   red: 0%

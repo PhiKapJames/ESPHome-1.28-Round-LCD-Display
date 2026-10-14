@@ -69,6 +69,13 @@ def scalar_defaults(path):
     raw=load(path); env={}
     for p in raw.get('packages',{}).values():
         if isinstance(p,Tagged) and p.tag=='!include':
+            spec=p.value
+            include_file=spec if isinstance(spec,str) else spec.get('file','')
+            # Dynamic include filenames depend on the package instance's vars,
+            # which are not available during this preliminary defaults walk.
+            # They are resolved later by expand() with the correct context.
+            if isinstance(include_file,str) and '${' in include_file:
+                continue
             dest,_=include_parts(p,Path(path).parent)
             env.update(scalar_defaults(dest))
     env.update({k:v for k,v in raw.get('substitutions',{}).items() if not isinstance(v,Tagged)})
@@ -117,7 +124,18 @@ def expand_file(path,overrides=None):
         assembled={}
         for package in raw.get('packages',{}).values():
             if isinstance(package,Tagged):
-                dest,params=include_parts(package,path.parent)
+                # ESPHome supports substitution expressions in !include
+                # filenames. Resolve that filename in the package instance's
+                # current vars before locating the selected file.
+                resolved_package=package
+                if package.tag=='!include':
+                    spec=deepcopy(package.value)
+                    if isinstance(spec,str):
+                        spec=render(spec,env,path.parent)
+                    else:
+                        spec['file']=render(spec['file'],env,path.parent)
+                    resolved_package=Tagged('!include',spec)
+                dest,params=include_parts(resolved_package,path.parent)
                 incoming=expand(dest,{**env,**render(params,env,path.parent)})
             else:
                 resolved=render(package,env,path.parent)
@@ -181,8 +199,20 @@ def test_configs():
         assert 'MAX_VISIBLE_DOTS = 9' in page_raw
         assert 'more_before' in page_raw and 'more_after' in page_raw
         assert 'it.line(' in page_raw
+        assert 'duplicate PSRAM framebuffer writes' in page_raw
+        assert 'draw_arc_dot' in page_raw
+        assert 'it.horizontal_line(x + inset, y + row, span, color)' in page_raw
+        # The optimized rounded box must not regress to overlapping full
+        # rectangles plus four filled-circle corners.
+        assert 'it.filled_rectangle(x + radius, y, width - 2 * radius, height, color)' not in page_raw
     time_cfg=core_raw['time'][0]
+    assert time_cfg['platform'] == 'homeassistant'
+    assert time_cfg['id'] == 'ha_time'
     assert 'on_time' not in time_cfg
+    assert 'sntp_time' not in (ROOT/'packages'/'core.yaml').read_text(encoding='utf-8')
+    assert 'sntp_time' not in metric_raw
+    assert 'sntp_time' not in battery_raw
+    assert 'sntp_time' not in clock_raw
     c3_hw=load(ROOT/'hardware'/'esp32-c3-gc9a01.yaml')['substitutions']
     c6_raw=load(ROOT/'hardware'/'esp32-c6-4mb-gc9a01.yaml')
     c6_hw=c6_raw['substitutions']
@@ -196,6 +226,19 @@ def test_configs():
     assert c6_raw['esp32']['variant'] == 'esp32c6'
     assert c6_raw['esp32']['flash_size'] == '4MB'
     assert 'psram' not in c6_raw
+    theme_raw=(ROOT/'packages'/'theme.yaml').read_text(encoding='utf-8')
+    assert 'id: battery_outline_font' in theme_raw
+    assert 'weight: bold' in theme_raw
+    assert 'glyphs: "0123456789%-"' in theme_raw
+    assert 'battery_outline_font' in battery_raw
+    assert 'id(number_font)' in battery_raw
+    assert 'temp_font' not in battery_raw
+    assert 'DIAGONAL_OFFSETS' not in battery_raw
+    assert 'eight separate' in battery_raw
+    assert 'start_clipping(display::Rect(field_x, field_y, field_w, field_h))' in clock_raw
+    assert 'Only erase the ring pixels crossing the text field' in clock_raw
+    print('PASS scanline renderer optimizations and S3 two-render battery keyline')
+    print('PASS original clock clears only ring crossings behind large digits')
     print('PASS renderer performance invariants and hardware quality split')
 
     # Clock-style regression coverage. The package must default to the original
@@ -210,6 +253,8 @@ def test_configs():
     )
     defaults = load(ROOT/'packages'/'defaults.yaml')['substitutions']
     assert defaults['clock_face_style'] == 'original'
+    assert defaults['backlight_restore_mode'] == 'ALWAYS_ON'
+    assert str(defaults['display_profile_warn_ms']) == '50'
 
     clock_source = (ROOT/'packages'/'clock-page.yaml').read_text(encoding='utf-8')
     for style in supported_clock_styles:
@@ -265,6 +310,18 @@ def test_configs():
     assert any(item.get('entity_id') == 'weather.example_home' and 'attribute' not in item
                for item in weather_text)
     print('PASS weather clock condition/temperature/humidity source wiring')
+    backlight_cfg, backlight_env = expand_file(
+        ROOT/'tests'/'esp32-c3-one-metric.yaml',
+        {'backlight_restore_mode': 'ALWAYS_OFF'},
+    )
+    assert backlight_env['backlight_restore_mode'] == 'ALWAYS_OFF'
+    backlight_switch = next(
+        item for item in backlight_cfg['switch']
+        if item.get('id') == 'lcd_backlight_switch'
+    )
+    assert backlight_switch['restore_mode'] == 'ALWAYS_OFF'
+    print('PASS configurable backlight restore mode with ALWAYS_ON default')
+
     profiles=('esp32-c3','esp32-c3-camera','esp32-c3-multi-camera',
               'esp32-c6','esp32-c6-camera',
               'esp32-s3-quad-psram','esp32-s3-quad-psram-camera',
@@ -288,10 +345,96 @@ def test_configs():
         assert ('image' in config)==camera
         assert ('http_request' in config)==camera
         assert ('camera_alert' in ids)==camera
+        if camera:
+            image_ids=[x.get('id') for x in config.get('image',[]) if isinstance(x,dict)]
+            assert image_ids.count('camera_snapshot')==1
+            assert image_ids.count('camera_snapshot_next')==1
+            assert 'camera_refresh_loop' in ids
         assert ('psram' in config)==('s3' in name)
-        assert [f['size'] for f in config['font'][:5]]==[44,84,36,92,92]
+        assert [f['size'] for f in config['font'][:6]]==[44,84,64,36,92,92]
         assert 'rotation_pages' in ids and 'rotation_orders' in ids
+        assert 'rotation_labels' in ids
+        assert 'profiled_display_update' in ids
         print(f'PASS {name}: includes/substitutions/IDs/features')
+
+    # Public examples are the documented install path and must always match
+    # current template interfaces. Each example has a local synthetic mirror
+    # fixture that CI compiles, and this check fails if the example's
+    # files/vars ever drift from its mirror.
+    example_mirrors = (
+        ('examples/device.example.yaml',
+         'tests/esp32-c3-example.yaml'),
+        ('examples/multi-camera.example.yaml',
+         'tests/esp32-c3-example-multi-camera.yaml'),
+        ('examples/template-pages.example.yaml',
+         'tests/esp32-s3-example-template-pages.yaml'),
+    )
+
+    def example_entries(path):
+        raw = load(ROOT/path)
+        entries = []
+        for item in raw['packages']['round_minion']['files']:
+            if isinstance(item, str):
+                entries.append((item, {}))
+            else:
+                entries.append((item['path'],
+                                {k: str(v) for k, v in item.get('vars', {}).items()}))
+        return raw, entries
+
+    def mirror_entries(path):
+        raw = load(ROOT/path)
+        entries = []
+        for package in raw['packages'].values():
+            assert isinstance(package, Tagged) and package.tag == '!include'
+            spec = package.value
+            if isinstance(spec, str):
+                spec = {'file': spec}
+            target = spec['file']
+            if target.startswith('../profiles/'):
+                entries.insert(0, (target[len('../'):], {}))
+                continue
+            assert target.startswith('../packages/'), \
+                f'Unexpected mirror package path in {path}: {target}'
+            entries.append((target[len('../'):],
+                            {k: str(v) for k, v in spec.get('vars', {}).items()}))
+        return raw, entries
+
+    for example_path, mirror_path in example_mirrors:
+        example_raw, example_files = example_entries(example_path)
+        mirror_raw, mirror_files = mirror_entries(mirror_path)
+        assert example_files == mirror_files, (
+            f'{example_path} files/vars no longer match mirror {mirror_path}. '
+            'Update the mirror fixture so CI keeps validating the public example.'
+        )
+        example_subs = {k: str(v) for k, v in example_raw.get('substitutions', {}).items()}
+        mirror_subs = {k: str(v) for k, v in mirror_raw.get('substitutions', {}).items()}
+        assert set(mirror_subs) == set(example_subs), (
+            f'{mirror_path} substitutions {sorted(mirror_subs)} diverged from '
+            f'{example_path} {sorted(example_subs)}'
+        )
+        for key, value in example_subs.items():
+            if key in ('device_name', 'friendly_name'):
+                continue
+            assert mirror_subs[key] == value, (
+                f'{mirror_path} substitution {key} no longer matches '
+                f'{example_path}: {mirror_subs[key]!r} != {value!r}'
+            )
+        # Expand each mirror so interface drift (renamed/retired vars,
+        # dangling id() references) fails here as well as in esphome config.
+        config, _ = expand_file(ROOT/mirror_path)
+        mirror_ids = definition_ids(config)
+        assert len(mirror_ids) == len(set(mirror_ids)), \
+            f'Duplicate component IDs mirroring {example_path}'
+        mirror_strings = list(all_strings(config))
+        assert not any('${' in s for s in mirror_strings), \
+            f'Unresolved substitution mirroring {example_path}'
+        mirror_refs = set(re.findall(
+            r'\bid\(([A-Za-z_][A-Za-z0-9_]*)\)', '\n'.join(mirror_strings)))
+        assert mirror_refs <= set(mirror_ids), (
+            f'Missing IDs {sorted(mirror_refs - set(mirror_ids))} '
+            f'mirroring {example_path}'
+        )
+    print('PASS public examples mirror fixtures track current template interfaces')
 
     # Reusable-camera regression: six instances exceed the former four-source design.
     # Driveway = person OR vehicle; parking = vehicle only; garage = manual only.
@@ -302,6 +445,7 @@ def test_configs():
         assert f'show_camera_snapshot_{source}' in multi_ids
         assert f'camera_source_request_{source}' in multi_ids
         assert f'camera_last_auto_{source}' in multi_ids
+        assert f'camera_detection_mask_{source}' in multi_ids
         assert f'camera_alerts_enabled_{source}' in multi_ids
     assert 'camera_detector_driveway_1' in multi_ids
     assert 'camera_detector_driveway_2' in multi_ids
@@ -312,7 +456,35 @@ def test_configs():
     assert 'camera_detector_garage_1' not in multi_ids
     assert 'camera_detector_garage_2' not in multi_ids
     assert len([x for x in multi_ids if x.startswith('camera_picture_path_')]) == 6
+
+    multi_strings=list(all_strings(multi))
+    multi_switches={s.get('id'): s for s in multi.get('switch',[]) if isinstance(s,dict)}
+    assert multi_switches['camera_alerts_enabled_driveway']['name']=='Camera Alert · DRIVEWAY'
+    assert any('static_cast<int32_t>(45000)' in text for text in multi_strings)
+    assert any('static_cast<int32_t>(30000)' in text for text in multi_strings)
+    assert any('static_cast<int32_t>(0)' in text for text in multi_strings)
     print('PASS six reusable camera instances and independent detector routing')
+    print('PASS global camera max hold plus per-source override and unlimited override')
+
+    camera_alert_raw=(ROOT/'packages'/'camera-alerts.yaml').read_text(encoding='utf-8')
+    assert "camera_refresh_interval_ms: '0'" in camera_alert_raw
+    assert 'camera_snapshot_next' in camera_alert_raw
+    assert 'Camera refresh timed out; keeping last good frame' in camera_alert_raw
+    assert 'id(display_suspend_callbacks).push_back' in camera_alert_raw
+    assert 'Suspended: display off' in camera_alert_raw
+    assert '!id(lcd_backlight_switch).state' in camera_alert_raw
+    assert 'camera_min_hold_time: 7s' in camera_alert_raw
+    assert 'camera_clear_delay: 2s' in camera_alert_raw
+    assert "camera_max_hold_ms: '30000'" in camera_alert_raw
+    assert 'max_hold_ms: int' in camera_alert_raw
+    assert 'Maximum alert hold reached' in camera_alert_raw
+    assert 'id: camera_clear_timer' in camera_alert_raw
+    assert 'id: camera_detection_state' in camera_alert_raw
+    assert 'camera_detection_clear_ready' in camera_alert_raw
+    assert 'id(camera_active_detection_mask)' in camera_alert_raw
+    print('PASS optional ping-pong camera refresh defaults off and preserves last good frame')
+    print('PASS automatic camera alerts follow detector state with minimum hold and clear delay')
+    print('PASS camera alerts stop and release resources when the display switch is off')
 
     assert 'last_camera_alert' in multi_ids
     last_alert=next(x for x in multi['text_sensor'] if x.get('id')=='last_camera_alert')
@@ -328,15 +500,32 @@ def test_configs():
     for i in range(1,11):
         assert f'rotation_page_numeric_{i}' in template_ids
         assert f'rotation_sensor_numeric_{i}' in template_ids
+        assert f'rotation_page_enabled_numeric_{i}' in template_ids
     assert 'rotation_page_battery_main' in template_ids
+    assert 'rotation_page_enabled_battery_main' in template_ids
     assert 'rotation_battery_sensor_battery_main' in template_ids
     assert 'rotation_page_camera_front' in template_ids
+    assert 'rotation_page_enabled_camera_front' in template_ids
     assert 'rotation_camera_picture_camera_front' in template_ids
     assert 'rotation_camera_image_camera_front' in template_ids
+    template_switches={s.get('id'): s for s in template_cfg.get('switch',[]) if isinstance(s,dict)}
+    assert template_switches['rotation_page_enabled_numeric_10']['restore_mode']=='RESTORE_DEFAULT_OFF'
+    assert template_switches['rotation_page_enabled_numeric_10']['name']=='Screen · Metric 10'
+    assert template_switches['rotation_page_enabled_battery_main']['name']=='Screen · Battery'
+    assert template_switches['rotation_page_enabled_camera_front']['name']=='Screen · FRONT'
+    template_strings='\n'.join(all_strings(template_cfg))
+    assert 'id(number_font_compact)->measure' in template_strings
+    assert 'id(number_font_compact)->get_capheight()' in template_strings
     camera_page_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
     assert 'MAX_VISIBLE_DOTS' not in camera_page_raw
+    assert camera_page_raw.count('id(lcd_backlight_switch).state') >= 3
     print('PASS 10 numeric + battery + camera rotation template stress fixture')
     print('PASS sliding nine-dot indicator with overflow chevrons; camera page stays clean')
+
+    home_fixture_raw=(ROOT/'tests'/'esp32-s3-home-migration.yaml').read_text(encoding='utf-8')
+    assert 'sntp_time' not in home_fixture_raw
+    assert '!extend ha_time' in home_fixture_raw
+    assert 'id(ha_time).now()' in home_fixture_raw
 
     home_cfg,_=expand_file(ROOT/'tests/esp32-s3-home-migration.yaml')
     home_ids=set(definition_ids(home_cfg))
@@ -359,10 +548,167 @@ def test_configs():
     core_text=(ROOT/'packages'/'core.yaml').read_text(encoding='utf-8')
     assert 'rotation_pages' in core_text
     assert 'rotation_orders' in core_text
+    assert 'rotation_labels' in core_text
+    assert 'rotation_enabled_callbacks' in core_text
+    assert 'rotation_enabled_count' in core_text
+    assert 'active_rotation_position' in core_text
     assert 'rotation_enter_callbacks' in core_text
     assert 'rotation_exit_callbacks' in core_text
-    assert 'if (count == 0)' in core_text
+    assert 'if (count == 0 || enabled_count == 0)' in core_text
+    assert 'id: suspend_display' in core_text
+    assert 'id: resume_display' in core_text
+    assert 'display_suspend_callbacks' in core_text
+    assert 'lambda: return id(lcd_backlight_switch).state;' in core_text
+    assert 'on_turn_off:' in core_text and 'script.execute: suspend_display' in core_text
+    assert 'on_turn_on:' in core_text and 'script.execute: resume_display' in core_text
+    assert 'restore_mode: ${backlight_restore_mode}' in core_text
+    assert 'id: profiled_display_update' in core_text
+    assert 'defer("round_minion_profile_update"' in core_text
+    assert '"round_minion.display"' in core_text
+    assert 'render+flush=%u ms' in core_text
+    assert '${display_profile_warn_ms}' in core_text
+    assert 'component.update: main_display' not in core_text
+    assert '<esp_heap_caps.h>' in core_text
+    assert 'Public ESP-IDF heap-capability API' in core_text
+
+    numeric_source_raw=(ROOT/'packages'/'page-numeric.yaml').read_text(encoding='utf-8')
+    assert 'page_value_font: number_font' in numeric_source_raw
+    assert 'id(${page_value_font})->measure' in numeric_source_raw
+    assert 'id(${page_value_font})->get_capheight()' in numeric_source_raw
+    assert 'id(${page_value_font}), Color::WHITE' in numeric_source_raw
+    assert 'id: number_font' in theme_raw
+    assert 'id: number_font_compact' in theme_raw
+    assert 'temp_font' not in theme_raw
+    assert 'size: 64' in theme_raw
+    battery_source_raw=(ROOT/'packages'/'page-battery.yaml').read_text(encoding='utf-8')
+    page_camera_source_raw=(ROOT/'packages'/'page-camera.yaml').read_text(encoding='utf-8')
+    for page_source_raw in (numeric_source_raw, battery_source_raw, page_camera_source_raw):
+        assert 'id(rotation_labels).push_back("${page_label}")' in page_source_raw
+        assert 'id(rotation_enabled_callbacks).push_back' in page_source_raw
+        assert 'id: rotation_page_enabled_${page_id}' in page_source_raw
+        assert 'name: "Screen · ${page_label}"' in page_source_raw
+        assert 'restore_mode: ${page_enabled_restore_mode}' in page_source_raw
+    for indicator_source_raw in (numeric_source_raw, battery_source_raw):
+        assert 'id(rotation_enabled_count)' in indicator_source_raw
+        assert 'id(active_rotation_position)' in indicator_source_raw
+    assert 'std::swap(id(rotation_labels)[i], id(rotation_labels)[best])' in core_text
+    assert 'std::swap(id(rotation_enabled_callbacks)[i], id(rotation_enabled_callbacks)[best])' in core_text
+    assert 'enabled_count == 0' in core_text
+    assert '!page_enabled(static_cast<size_t>(index))' in core_text
+    print('PASS page-aware profiler, per-page controls, enabled-only indicators, and alert-resume filtering')
+
+    camera_source_raw=(ROOT/'packages'/'camera-source.yaml').read_text(encoding='utf-8')
+    assert 'name: "Camera Alert · ${camera_source_label}"' in camera_source_raw
+    assert '!id(lcd_backlight_switch).state' in camera_source_raw
+    assert 'camera_detection_mask_${camera_id}' in camera_source_raw
+    assert 'detection_mask: !lambda' in camera_source_raw
+    assert 'max_hold_ms: !lambda' in camera_source_raw
+    assert 'camera_max_hold_ms' in camera_source_raw
+    assert 'do not queue a duplicate alert' in camera_source_raw
+    assert '_person_trigger' not in camera_source_raw
+    assert '_vehicle_trigger' not in camera_source_raw
+    assert 'file: ${ "camera-trigger.yaml" if camera_trigger_person' in camera_source_raw
+    assert 'file: ${ "camera-trigger.yaml" if camera_trigger_vehicle' in camera_source_raw
+
+    camera_alert_raw=(ROOT/'packages'/'camera-alerts.yaml').read_text(encoding='utf-8')
+    assert 'script.stop: profiled_display_update' in camera_alert_raw
+    assert 'cancel_defer("round_minion_profile_update")' in camera_alert_raw
+    assert 'display_profile_update_done' in camera_alert_raw
+    # Queued alerts re-read the originating source's enable switch when the
+    # queued execution starts; enqueue-time bools would freeze the old state.
+    assert 'id: camera_alert_source_entities' in camera_alert_raw
+    assert 'id: camera_alert_enabled_callbacks' in camera_alert_raw
+    assert 'Dropping queued camera request; alerts disabled for %s' in camera_alert_raw
+    assert 'source_enabled:' not in camera_source_raw, (
+        'camera-source must not pass an enqueue-time enable bool to camera_alert'
+    )
+    assert 'id(camera_alert_source_entities).push_back' in camera_source_raw
+    assert 'id(camera_alert_enabled_callbacks).push_back' in camera_source_raw
+
+    camera_trigger_raw=(ROOT/'packages'/'camera-trigger.yaml').read_text(encoding='utf-8')
+    assert 'on_press:' in camera_trigger_raw
+    assert 'on_release:' in camera_trigger_raw
+    assert 'camera_detection_state' in camera_trigger_raw
+    assert '|=' in camera_trigger_raw and '&=' in camera_trigger_raw
     print('PASS dynamic rotation registry and empty-registry clock fallback')
+    print('PASS LCD Backlight is the shared gate for rotation and camera requests')
+    print('PASS camera detector press/release events maintain per-source active masks')
+    print('PASS active-camera detector changes do not queue duplicate alerts')
+
+    # Documentation consistency. Keep current-state docs tied to the actual
+    # project version and CI matrix, while allowing historical changelog text.
+    project_version=str(core_raw['esphome']['project']['version'])
+    readme=(ROOT/'README.md').read_text(encoding='utf-8')
+    agents=(ROOT/'AGENTS.md').read_text(encoding='utf-8')
+    configuration=(ROOT/'docs'/'CONFIGURATION.md').read_text(encoding='utf-8')
+    validation=(ROOT/'docs'/'VALIDATION.md').read_text(encoding='utf-8')
+    release_notes=(ROOT/'docs'/'RELEASE_NOTES.md').read_text(encoding='utf-8')
+
+    assert f'**Version: {project_version} —' in readme
+    assert f'current source version is **{project_version}**' in release_notes
+    assert 'display_profile_warn_ms' in readme
+    assert 'display_profile_warn_ms' in configuration
+    assert 'optimized S3 bold-underlay keyline' in configuration
+    assert 'profiled_display_update' in agents
+    assert 'three complementary validation layers' in validation
+
+    workflow=load(ROOT/'.github'/'workflows'/'validate.yaml')
+    ci_profiles=workflow['jobs']['build']['strategy']['matrix']['profile']
+    # tests/ holds one file per matrix profile plus shared fragments that are
+    # included by those profiles. Derive the fragments from the actual
+    # !include references instead of hard-coding a second list.
+    fragments = set()
+    tests_dir = (ROOT/'tests').resolve()
+    for fixture_path in (ROOT/'tests').glob('*.yaml'):
+        for include in load(fixture_path).get('packages', {}).values():
+            if not (isinstance(include, Tagged) and include.tag == '!include'):
+                continue
+            spec = include.value
+            target = spec if isinstance(spec, str) else spec.get('file', '')
+            if not isinstance(target, str) or '${' in target:
+                continue
+            resolved = (fixture_path.parent / target).resolve()
+            # Only local helpers living in tests/ are fragments; includes that
+            # point at profiles/ or packages/ are real component sources.
+            if resolved.parent == tests_dir:
+                fragments.add(resolved.stem)
+    fixture_profiles = sorted(
+        p.stem for p in (ROOT/'tests').glob('*.yaml') if p.stem not in fragments
+    )
+    assert sorted(ci_profiles) == fixture_profiles, (
+        f'CI matrix {sorted(ci_profiles)} no longer matches tests/ fixtures '
+        f'{fixture_profiles}: add/remove matrix entries and update VALIDATION.md'
+    )
+    assert f'covers these {len(ci_profiles)} synthetic configurations' in validation, (
+        f'VALIDATION.md profile count text does not match the {len(ci_profiles)}-profile CI matrix'
+    )
+    for profile in ci_profiles:
+        assert f'`{profile}`' in validation, (
+            f'Validation docs missing CI profile {profile}'
+        )
+
+    markdown_paths=(
+        ROOT/'README.md',
+        ROOT/'AGENTS.md',
+        ROOT/'CHANGELOG.md',
+        ROOT/'docs'/'CONFIGURATION.md',
+        ROOT/'docs'/'VALIDATION.md',
+        ROOT/'docs'/'RELEASE_NOTES.md',
+    )
+    link_pattern=re.compile(r'\[[^\]]+\]\(([^)]+)\)')
+    for markdown_path in markdown_paths:
+        markdown=markdown_path.read_text(encoding='utf-8')
+        for link in link_pattern.findall(markdown):
+            if link.startswith(('http://','https://','#','mailto:')):
+                continue
+            relative=link.split('#',1)[0]
+            if not relative:
+                continue
+            target=(markdown_path.parent/relative).resolve()
+            assert target.is_file(), (
+                f'Broken Markdown link in {markdown_path.relative_to(ROOT)}: {link}'
+            )
+    print('PASS Markdown current-version, CI-matrix, and relative-link consistency')
 
 if __name__=='__main__':
     test_configs()
