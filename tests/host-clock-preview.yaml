@@ -1,0 +1,99 @@
+# SYNTHETIC CI FIXTURE. Never install on a real device.
+#
+# Real-pixel clock preview harness. Renders packages/clock-page.yaml through
+# the actual ESPHome display engine (host platform + snapshot display + real
+# gfonts) and writes one 240x240 BMP, so clock faces can be reviewed exactly
+# as a device would show them without flashing hardware.
+#
+# Not part of the ESP32 CI matrix: the derived matrix-consistency check in
+# scripts/check_project.py treats this file as a fragment because the
+# tests/preview/<style>.yaml harnesses include it.
+#
+# Each fragment selects one clock_face_style and compiles a standalone host
+# binary that renders one frame, writes it, and exits:
+#   docker run --rm -v "$PWD":/config -w /config ghcr.io/esphome/esphome:2026.9.1 \
+#     compile tests/preview/original.yaml
+#   tests/preview/.esphome/build/clock-preview-<style>/
+#     .pioenvs/clock-preview-<style>/program
+# writes tests/preview/.esphome/snapshots/clock-preview-<style>/
+#   preview-<style>.bmp
+#
+# The draw path deliberately matches firmware: the shared page_clock is the
+# display's active page, and one explicit update() renders it before capture.
+
+substitutions:
+  # Each tests/preview/<style>.yaml fragment overrides clock_face_style.
+  clock_face_style: original
+  # Build/hostname for the snapshot tree. Audit builds override this (plus
+  # preview_weather_condition) so several conditions of one face can coexist.
+  preview_name: clock-preview-${clock_face_style}
+  # Demo weather rendered by weather_station and modern_dashboard. The real
+  # faces fill these globals from Home Assistant subscriptions; the harness
+  # seeds plausible values so the frames show the populated layouts.
+  preview_weather_condition: partlycloudy
+  preview_weather_temp: '71.4'
+  preview_weather_humidity: '46.0'
+  # Real installs take this from packages/defaults.yaml, which this harness
+  # does not include. The subscription never runs, but the config must resolve.
+  clock_weather_entity: weather.example_home
+
+# In ESPHome 2026.x the host target is selected by the top-level `host:`
+# component rather than by esphome.platform. Defaults are enough here.
+host:
+
+esphome:
+  # Keep the prefix short: the longest face name (weather_station) must still
+  # fit the 31-character hostname limit. Condition-audit builds (same face,
+  # different preview_weather_condition) override preview_name to keep every
+  # build directory and hostname unique.
+  name: ${preview_name}
+  includes:
+  # snapshot::SnapshotAction is instantiated by hand in on_boot below. Angle
+  # brackets request a system include, as packages/core.yaml does for
+  # esp_heap_caps.h; a bare path would be resolved next to this YAML.
+  - <esphome/components/snapshot/snapshot.h>
+  on_boot:
+    then:
+    - lambda: |
+        // weather_station and modern_dashboard read these globals; the real
+        // device fills them from Home Assistant subscriptions.
+        id(clock_weather_condition_value) = std::string("${preview_weather_condition}");
+        id(clock_weather_temperature_unit_value) = std::string("°F");
+        id(clock_weather_temperature_value) = ${preview_weather_temp};
+        id(clock_weather_humidity_value) = ${preview_weather_humidity};
+        // Render the shared clock page exactly like firmware does.
+        id(main_display).update();
+    - snapshot.take:
+        id: main_display
+        filename: preview-${clock_face_style}.bmp
+    # One frame is all this harness produces; exit so the binary terminates.
+    - lambda: exit(0);
+
+# The shared clock lambda reads ha_time; the host time source provides it.
+# Frames show the host wall clock (UTC inside the pinned container), which is
+# fine for design review while exercising the firmware renderer unchanged.
+time:
+- platform: host
+  id: ha_time
+
+# The modern_dashboard and weather_station faces select
+# packages/clock-weather-source.yaml, whose Home Assistant sensors require
+# the api component. The harness never talks to Home Assistant: on_boot
+# seeds the weather globals with demo values, so the subscriptions stay idle.
+api:
+
+# Base display that packages/clock-page.yaml extends with page_clock. With
+# update_interval: never, nothing draws until on_boot asks for one update.
+display:
+- platform: snapshot
+  id: main_display
+  update_interval: never
+  dimensions:
+    width: 240
+    height: 240
+
+packages:
+  theme: !include
+    file: ../packages/theme.yaml
+  clock_page: !include
+    file: ../packages/clock-page.yaml

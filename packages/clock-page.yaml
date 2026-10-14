@@ -1,5 +1,36 @@
 # Configurable clock renderer.
-# clock_face_style: original | classic_analog | modern_dashboard | fitness_ring | clean_arc
+# clock_face_style: original | classic_analog | modern_dashboard | fitness_ring
+#                   | clean_arc | minimalist | weather_station
+
+# modern_dashboard and weather_station need a Home Assistant weather entity.
+# Select the source package directly in the !include filename (same pattern as
+# packages/camera-source.yaml) so every other face keeps working with no
+# weather.* entity present. ESPHome processes later-declared packages first,
+# so clock_face_style from defaults.yaml is already in scope here; building
+# nested IncludeFile substitutions instead would risk "Could not resolve
+# substitution variable" warnings.
+packages:
+  weather_source: !include
+    file: ${ "clock-weather-source.yaml" if clock_face_style | string | lower in ("modern_dashboard", "weather_station") else "clock-weather-unused.yaml" }
+
+globals:
+- id: clock_weather_condition_value
+  type: std::string
+  restore_value: false
+  initial_value: '"unknown"'
+- id: clock_weather_temperature_unit_value
+  type: std::string
+  restore_value: false
+  initial_value: '"°"'
+- id: clock_weather_temperature_value
+  type: float
+  restore_value: false
+  initial_value: 'NAN'
+- id: clock_weather_humidity_value
+  type: float
+  restore_value: false
+  initial_value: 'NAN'
+
 display:
 - id: !extend main_display
   pages:
@@ -41,6 +72,14 @@ display:
       const Color red(245, 45, 45);
       const Color green(20, 230, 90);
       const Color yellow(255, 190, 20);
+
+      // Shared weather palette and icon library: used by weather_station
+      // and by modern_dashboard's live complication.
+      const Color orange(255, 92, 0);
+      const Color amber(255, 180, 0);
+      const Color weather_white(245, 245, 245);
+      const Color weather_blue(80, 180, 255);
+      const Color weather_gray(150, 150, 160);
 
       // 60 points around the face, starting at 12 o'clock.
       // Shared by minute markers and analog hand geometry.
@@ -94,6 +133,93 @@ display:
           it.line(120 + offset, 120, x + offset, y, color);
           if (offset != 0)
             it.line(120, 120 + offset, x, y + offset, color);
+        }
+      };
+
+
+
+      // Weather condition icon drawn around (cx, cy). All positions derive
+      // from the center so both faces can place the same icon anywhere.
+      auto draw_sun = [&](int cx, int cy) {
+        it.filled_circle(cx, cy, 8, amber);
+        it.line(cx, cy - 14, cx, cy - 11, amber);
+        it.line(cx, cy + 11, cx, cy + 14, amber);
+        it.line(cx - 14, cy, cx - 11, cy, amber);
+        it.line(cx + 11, cy, cx + 14, cy, amber);
+        it.line(cx - 10, cy - 10, cx - 8, cy - 8, amber);
+        it.line(cx + 8, cy - 8, cx + 10, cy - 10, amber);
+        it.line(cx - 10, cy + 10, cx - 8, cy + 8, amber);
+        it.line(cx + 8, cy + 8, cx + 10, cy + 10, amber);
+      };
+
+      auto draw_cloud = [&](int cx, int cy) {
+        it.filled_circle(cx - 8, cy + 2, 7, weather_white);
+        it.filled_circle(cx, cy - 3, 10, weather_white);
+        it.filled_circle(cx + 9, cy + 2, 7, weather_white);
+        it.filled_rectangle(cx - 14, cy + 2, 28, 8, weather_white);
+      };
+
+      auto draw_rain = [&](int cx, int cy, bool heavy) {
+        const int drop = heavy ? 7 : 5;
+        it.line(cx - 9, cy + 12, cx - 12, cy + 12 + drop, weather_blue);
+        it.line(cx, cy + 12, cx - 3, cy + 12 + drop, weather_blue);
+        it.line(cx + 9, cy + 12, cx + 6, cy + 12 + drop, weather_blue);
+      };
+
+      auto draw_condition_icon = [&](int cx, int cy) {
+        const std::string condition = id(clock_weather_condition_value);
+
+        if (condition == "sunny") {
+          draw_sun(cx, cy);
+        } else if (condition == "clear-night") {
+          it.filled_circle(cx, cy, 12, weather_white);
+          it.filled_circle(cx + 6, cy - 5, 11, background);
+        } else if (condition == "partlycloudy") {
+          draw_sun(cx - 9, cy - 7);
+          draw_cloud(cx + 3, cy + 3);
+        } else if (condition == "cloudy") {
+          draw_cloud(cx, cy);
+        } else if (condition == "rainy" || condition == "pouring") {
+          draw_cloud(cx, cy - 7);
+          draw_rain(cx, cy - 7, condition == "pouring");
+        } else if (condition == "lightning" ||
+                   condition == "lightning-rainy") {
+          draw_cloud(cx, cy - 9);
+          it.line(cx + 2, cy, cx - 4, cy + 10, amber);
+          it.line(cx - 4, cy + 10, cx + 3, cy + 8, amber);
+          it.line(cx + 3, cy + 8, cx - 2, cy + 17, amber);
+          if (condition == "lightning-rainy")
+            draw_rain(cx, cy - 9, false);
+        } else if (condition == "snowy" ||
+                   condition == "snowy-rainy") {
+          draw_cloud(cx, cy - 9);
+          for (int dx : {-10, 0, 10}) {
+            it.line(cx + dx - 3, cy + 6, cx + dx + 3, cy + 12, weather_white);
+            it.line(cx + dx + 3, cy + 6, cx + dx - 3, cy + 12, weather_white);
+          }
+          if (condition == "snowy-rainy")
+            draw_rain(cx, cy - 9, false);
+        } else if (condition == "hail") {
+          draw_cloud(cx, cy - 9);
+          it.filled_circle(cx - 10, cy + 9, 2, weather_white);
+          it.filled_circle(cx, cy + 11, 2, weather_white);
+          it.filled_circle(cx + 10, cy + 9, 2, weather_white);
+        } else if (condition == "fog") {
+          it.line(cx - 16, cy - 7, cx + 16, cy - 7, weather_gray);
+          it.line(cx - 21, cy, cx + 12, cy, weather_gray);
+          it.line(cx - 12, cy + 7, cx + 21, cy + 7, weather_gray);
+        } else if (condition == "windy" ||
+                   condition == "windy-variant") {
+          it.line(cx - 20, cy - 7, cx + 12, cy - 7, weather_white);
+          it.line(cx - 12, cy, cx + 21, cy, weather_white);
+          it.line(cx - 22, cy + 7, cx + 6, cy + 7, weather_white);
+          if (condition == "windy-variant")
+            it.filled_circle(cx + 16, cy - 9, 4, weather_gray);
+        } else if (condition == "exceptional") {
+          it.line(cx, cy - 12, cx, cy + 5, amber);
+          it.filled_circle(cx, cy + 11, 2, amber);
+        } else {
+          draw_centered(cx, cy, id(clock_small_font), weather_gray, "?");
         }
       };
 
@@ -175,7 +301,7 @@ display:
       }
 
       // -------------------------------------------------------------------
-      // CLASSIC ANALOG — traditional 12/3/6/9 face with red seconds hand.
+      // CLASSIC ANALOG — traditional 12/3/6/9 face with hour/minute hands.
       // -------------------------------------------------------------------
       if (clock_style == "classic_analog") {
         it.fill(background);
@@ -184,7 +310,7 @@ display:
         for (int i = 0; i < 60; i++) {
           const auto &p = MINUTE_MARKER_POINTS[i];
           if (i % 5 == 0)
-            draw_dot3(p[0], p[1], cyan);
+            it.filled_circle(p[0], p[1], 3, cyan);
           else
             it.filled_circle(p[0], p[1], 1, gray);
         }
@@ -197,20 +323,19 @@ display:
         if (now.is_valid()) {
           const int minute_index = now.minute % 60;
           const int hour_index = ((now.hour % 12) * 5 + now.minute / 12) % 60;
-          const int second_index = now.second % 60;
-          draw_hand(hour_index, 0.46f, white, 5);
+          draw_hand(hour_index, 0.54f, white, 5);
           draw_hand(minute_index, 0.68f, white, 3);
-          draw_hand(second_index, 0.78f, red, 1);
           it.filled_circle(120, 120, 7, white);
           it.filled_circle(120, 120, 3, cyan);
-          draw_centered(163, 82, id(clock_tiny_font), white, ampm_text);
+          draw_centered(120, 165, id(clock_small_font), white, ampm_text);
         }
 
         return;
       }
 
+
       // -------------------------------------------------------------------
-      // MODERN DASHBOARD — large digital time with asymmetric data accents.
+      // MODERN DASHBOARD — large digital time with live weather complication.
       // -------------------------------------------------------------------
       if (clock_style == "modern_dashboard") {
         it.fill(background);
@@ -227,23 +352,22 @@ display:
           }
         }
 
-        draw_centered(116, 103, id(clock_digital_font), white, digital_time);
+        // Live weather complication above the time; a dim "?" shows while the
+        // Home Assistant weather entity is unavailable. Icon center is chosen
+        // so even the tallest variants (partlycloudy rays reach cy-21, the
+        // lightning bolt reaches cy+17) keep clear air above the time's cap
+        // line at y=75.
+        draw_condition_icon(120, 50);
+
+        draw_centered(120, 103, id(clock_digital_font), white, digital_time);
         draw_centered(120, 157, id(clock_small_font), cyan, date_text);
         draw_centered(120, 184, id(clock_tiny_font), gray, ampm_text);
-
-        it.filled_circle(54, 153, 8, yellow);
-        it.filled_circle(48, 162, 7, white);
-        it.filled_circle(59, 164, 9, white);
-
-        it.filled_ring(185, 154, 18, 15, green);
-        it.filled_rectangle(179, 148, 12, 12, background);
-        it.filled_rectangle(188, 153, 5, 3, green);
 
         return;
       }
 
       // -------------------------------------------------------------------
-      // FITNESS RING — bold smartwatch-style progress ring and digital center.
+      // FITNESS RING — smartwatch minute-progress ring with digital center.
       // -------------------------------------------------------------------
       if (clock_style == "fitness_ring") {
         it.fill(background);
@@ -255,20 +379,28 @@ display:
           const bool active = i <= progress;
           if (active) {
             if (i % 5 == 0)
-              it.filled_circle(p[0], p[1], 5, purple);
-            else
               draw_dot3(p[0], p[1], purple);
+            else
+              it.filled_circle(p[0], p[1], 1, purple);
           } else if (i % 5 == 0) {
             draw_dot2(p[0], p[1], gray);
+          } else {
+            it.filled_circle(p[0], p[1], 1, dim_gray);
           }
         }
 
-        draw_centered(120, 103, id(clock_digital_font), white, digital_time);
-        draw_centered(120, 153, id(clock_small_font), white, date_text);
-        draw_centered(120, 182, id(clock_tiny_font), purple, ampm_text);
+        // White head marker on the current minute.
+        if (now.is_valid()) {
+          const auto &head = MINUTE_MARKER_POINTS[now.minute % 60];
+          draw_dot3(head[0], head[1], white);
+        }
 
-        it.filled_ring(120, 210, 15, 12, purple);
-        it.filled_circle(120, 210, 4, white);
+        // Fonts are deliberately oversized (96/42 like the minimalist face,
+        // scaled to leave air inside the ring): measured ink of the widest
+        // lines stays at r<=87 while the ring inner edge sits at r≈107.
+        draw_centered(120, 98, id(clock_minimal_time_font), white, digital_time);
+        draw_centered(120, 157, id(clock_minimal_date_font), white, date_text);
+        draw_centered(120, 187, id(clock_small_font), purple, ampm_text);
 
         return;
       }
@@ -306,6 +438,134 @@ display:
           if (filled > 0)
             it.filled_rectangle(93, 35, filled, 4, green);
         }
+
+        return;
+      }
+
+      // -------------------------------------------------------------------
+      // MINIMALIST — oversized digital time and day/date, nothing else.
+      // -------------------------------------------------------------------
+      if (clock_style == "minimalist") {
+        it.fill(background);
+
+        draw_centered(120, 82, id(clock_minimal_time_font), white, digital_time);
+        draw_centered(120, 174, id(clock_minimal_date_font), gray, date_text);
+
+        return;
+      }
+
+      // -------------------------------------------------------------------
+      // WEATHER STATION — seven-segment clock with live HA weather data.
+      // One vertical rhythm; every element shares the x=120 center line.
+      // -------------------------------------------------------------------
+      if (clock_style == "weather_station") {
+        const Color ghost(72, 36, 6);  // dark warm "off segment" tone
+
+        it.fill(background);
+        it.circle(120, 120, 106, orange);
+        it.circle(120, 120, 102, ghost);
+
+        // One weekday abbreviation, orange like the numerals, centered at the
+        // top. The seven-label arc crowded the bezel for six days a week; one
+        // word in the shared Oswald reads cleanly and leaves air everywhere.
+        static const char *WEATHER_DAYS[] = {
+          "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"
+        };
+        const char *weather_day = "---";
+        if (now.is_valid() && now.day_of_week >= 1 && now.day_of_week <= 7)
+          weather_day = WEATHER_DAYS[now.day_of_week - 1];
+        draw_centered(120, 35, id(clock_weather_metric_font),
+                      orange, weather_day);
+
+        // Calendar date centered below the weekday, one size larger and
+        // higher than before: Roboto 24 (cap 17) measures ink y 51..68,
+        // versus Roboto 17 ink y 57..69 previously.
+        char weather_date[12] = "--/--";
+        if (now.is_valid())
+          snprintf(weather_date, sizeof(weather_date), "%02d/%02d",
+                   now.month, now.day_of_month);
+        draw_centered(120, 60, id(clock_small_font),
+                      weather_white, weather_date);
+
+        // True seven-segment numerals as one block centered on x=120:
+        // digit width 32, pairs at 43/79 and 129/165, span 43..197. Every
+        // digit first paints all seven segments in the ghost tone, like the
+        // dead segments of a real LCD watch, then lights the active ones.
+        constexpr int SEG_W = 32;
+        constexpr int SEG_H = 58;
+        constexpr int SEG_T = 6;
+        constexpr int SEG_HALF = SEG_H / 2;
+        static constexpr uint8_t SEG_MASKS[10] = {
+          0x3F, 0x06, 0x5B, 0x4F, 0x66,
+          0x6D, 0x7D, 0x07, 0x7F, 0x6F
+        };
+
+        auto draw_segment_mask = [&](int x, int y, uint8_t mask, Color color) {
+          // a
+          if (mask & 0x01) it.filled_rectangle(x + SEG_T, y, SEG_W - 2*SEG_T, SEG_T, color);
+          // b
+          if (mask & 0x02) it.filled_rectangle(x + SEG_W - SEG_T, y + SEG_T, SEG_T, SEG_HALF - SEG_T, color);
+          // c
+          if (mask & 0x04) it.filled_rectangle(x + SEG_W - SEG_T, y + SEG_HALF, SEG_T, SEG_HALF - SEG_T, color);
+          // d
+          if (mask & 0x08) it.filled_rectangle(x + SEG_T, y + SEG_H - SEG_T, SEG_W - 2*SEG_T, SEG_T, color);
+          // e
+          if (mask & 0x10) it.filled_rectangle(x, y + SEG_HALF, SEG_T, SEG_HALF - SEG_T, color);
+          // f
+          if (mask & 0x20) it.filled_rectangle(x, y + SEG_T, SEG_T, SEG_HALF - SEG_T, color);
+          // g
+          if (mask & 0x40) it.filled_rectangle(x + SEG_T, y + SEG_HALF - SEG_T/2,
+                                                SEG_W - 2*SEG_T, SEG_T, color);
+        };
+
+        auto draw_segment_digit = [&](int x, int y, int digit) {
+          draw_segment_mask(x, y, 0x7F, ghost);
+          if (digit >= 0 && digit <= 9)
+            draw_segment_mask(x, y, SEG_MASKS[digit], orange);
+        };
+
+        int h24 = now.is_valid() ? now.hour : 0;
+        int minute = now.is_valid() ? now.minute : 0;
+        draw_segment_digit(43, 76, now.is_valid() ? h24 / 10 : 8);
+        draw_segment_digit(79, 76, now.is_valid() ? h24 % 10 : 8);
+        it.filled_circle(120, 95, 4, orange);
+        it.filled_circle(120, 115, 4, orange);
+        draw_segment_digit(129, 76, now.is_valid() ? minute / 10 : 8);
+        draw_segment_digit(165, 76, now.is_valid() ? minute % 10 : 8);
+
+        // Condition icon centered under the time. The partlycloudy sun rays
+        // reach y=141 (icon top), eight pixels below the segment bottom.
+        draw_condition_icon(120, 162);
+
+        // Entity-backed metrics moved up the lower diagonals into the open
+        // side space: the old y=196 baseline pushed "100°F"-width strings to
+        // r≈99.7, grazing the r=102 hairline. At (70/170, 176) the worst
+        // corner measures r≤96, and the x-bands stay clear of the icon
+        // column (measured leftmost icon pixel x=97, rightmost x≈141).
+        // Temperature burns amber and humidity weather_blue, matching the
+        // icon palette; missing values fall back to weather_gray.
+        char weather_temp[20] = "--°";
+        char weather_humidity[16] = "--%";
+
+        const float temp = id(clock_weather_temperature_value);
+        const float humidity = id(clock_weather_humidity_value);
+        const std::string &temp_unit = id(clock_weather_temperature_unit_value);
+
+        if (std::isfinite(temp)) {
+          snprintf(weather_temp, sizeof(weather_temp), "%.0f%s",
+                   temp, temp_unit.empty() ? "°" : temp_unit.c_str());
+        }
+        if (std::isfinite(humidity)) {
+          snprintf(weather_humidity, sizeof(weather_humidity),
+                   "%.0f%%", humidity);
+        }
+
+        draw_centered(70, 176, id(clock_weather_metric_font),
+                      std::isfinite(temp) ? amber : weather_gray,
+                      weather_temp);
+        draw_centered(170, 176, id(clock_weather_metric_font),
+                      std::isfinite(humidity) ? weather_blue : weather_gray,
+                      weather_humidity);
 
         return;
       }

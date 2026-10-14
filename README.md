@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, and API/OTA
 credentials in local ESPHome configuration files.
 
-**Version: 0.7.3 — queued camera alerts honor switch changes, and public examples are CI-mirrored.** GitHub Actions validates and
+**Version: 0.8.0 — a seven-face clock lineup with a live-weather modern_dashboard, a rebuilt weather_station, and a raised 2026.9.1 toolchain floor.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
@@ -40,7 +40,7 @@ battery page. Click the hero image to open the muted, cropped
   page-position indicator. Numeric pages can override the large value font per
   page while retaining the established 84 px default. Trend/history graphs are intentionally omitted. Up to nine enabled-page dots are shown at once;
   left/right chevrons indicate additional enabled pages before or after the visible window.
-- A shared clock between each enabled content page, with selectable `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and `clean_arc` renderers.
+- A shared clock between each enabled content page, with selectable `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, `clean_arc`, `minimalist`, and `weather_station` renderers.
 - A horizontal battery silhouette filled from the reported percentage, with
   red/yellow/cyan/green charge bands and a high-contrast outlined value.
 - Optional detection-only camera snapshots from reusable camera-source package
@@ -209,15 +209,19 @@ rotation pages. Its appearance is selected per device with the
 `clock_face_style` substitution in the private device YAML.
 
 The established clock remains the default, so existing devices keep their
-current appearance unless a different style is explicitly selected.
+current appearance unless a different style is explicitly selected. See the
+committed [preview renders](docs/media/clock-previews/README.md) for what each
+face actually looks like at 240x240.
 
 | `clock_face_style` | Description |
 | --- | --- |
 | `original` | Established stacked digital face with cyan/blue rings, purple orbit accents, and a moving minute marker. |
-| `classic_analog` | Traditional analog dial with 12/3/6/9 numerals, minute ticks, white hour/minute hands, and a red seconds hand. |
-| `modern_dashboard` | Large digital time with date, AM/PM, colored perimeter markers, and asymmetric smartwatch-style status accents. |
-| `fitness_ring` | Large digital time with a bold outer minute-progress ring and compact date/status details. |
-| `clean_arc` | Minimal centered digital time with cyan/red side arcs, date, AM/PM, and a small minute-progress bar. |
+| `classic_analog` | Traditional analog dial with 12/3/6/9 numerals, minute ticks, white hour/minute hands, and an AM/PM indicator. |
+| `modern_dashboard` | Large digital time with day/date, colored perimeter markers, and a live weather condition icon above the time. |
+| `fitness_ring` | Smartwatch minute-progress ring around a large digital time with day/date and AM/PM. |
+| `clean_arc` | Large centered time with cyan/red side arcs, day/date, AM/PM, and a minute-progress bar. |
+| `minimalist` | Oversized digital time and enlarged day/date — nothing else. |
+| `weather_station` | Seven-segment time with ghosted off-segments, weekday abbreviation, date, live weather condition icon, and temperature/humidity up the lower diagonals, all from one Home Assistant `weather.*` entity. |
 
 ### Selecting a clock face
 
@@ -247,9 +251,12 @@ Changing the clock face is a build-time configuration change. Run ESPHome
 **Validate**, then compile and install the firmware again. It is not currently a
 runtime Home Assistant selector.
 
-The built-in clock faces require no additional Home Assistant weather, battery,
-temperature, or humidity entities. They use the Home Assistant time source
-already provided by the shared package.
+All built-in clock faces except `modern_dashboard` and `weather_station`
+require no additional Home Assistant weather, battery, temperature, or
+humidity entities. They use the Home Assistant time source already provided by
+the shared package. `modern_dashboard` and `weather_station` subscribe to one
+`weather.*` entity, selected with the `clock_weather_entity` substitution; no
+subscription is created for any other face.
 
 If a newly merged package change is not being picked up while testing with
 `ref: main`, remember that the remote package may be cached according to its

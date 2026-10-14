@@ -33,6 +33,11 @@ build/
 *.jpeg
 *.png
 *.webp
+# Exception: intentionally committed documentation media (mirrors the
+# scripts/check_public.py docs/media allow-list). Clock preview renders live
+# under docs/media/clock-previews/.
+!docs/media/*.png
+!docs/media/**/*.png
 *.ttf
 *.woff
 *.woff2

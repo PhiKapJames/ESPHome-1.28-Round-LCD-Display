@@ -1,11 +1,11 @@
 # Release notes and current source state
 
-The current source version is **0.7.3**. The `esphome.project.version` value
+The current source version is **0.8.0**. The `esphome.project.version` value
 describes the source/firmware behavior; it does not by itself imply that a
 matching GitHub release tag exists. For the complete version-by-version history,
 see the [changelog](../CHANGELOG.md).
 
-## Current 0.7.3 architecture
+## Current 0.8.0 architecture
 
 - ESPHome **2026.9.1 or newer** is required. CI is pinned to
   `ghcr.io/esphome/esphome:2026.9.1`.
@@ -19,9 +19,16 @@ see the [changelog](../CHANGELOG.md).
   shared code. Every registered normal page has its own Home Assistant config
   switch and can be excluded from rotation without removing its YAML instance;
   `page_enabled_restore_mode` controls the switch's boot/restore behavior.
-- The clock remains a shared interstitial page with five selectable renderers:
-  `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, and
-  `clean_arc`.
+- The clock remains a shared interstitial page with seven selectable renderers:
+  `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`,
+  `clean_arc`, `minimalist`, and `weather_station`. `modern_dashboard` and
+  `weather_station` are the only faces that subscribe to an additional Home
+  Assistant entity: the `weather.*` entity named by `clock_weather_entity`
+  (condition state plus temperature, temperature_unit, and humidity
+  attributes), included via a conditional package so other faces create no
+  weather subscriptions. `modern_dashboard` uses the condition as a live
+  complication above the time; `weather_station` builds its whole layout
+  around the weather data.
 - Numeric and battery pages intentionally omit trend/history graphs. Numeric
   pages use the shared 84 px `number_font` by default and may select a different
   value font per page through `page_value_font`; the shared theme includes a
@@ -58,7 +65,7 @@ configuration has not been confirmed.
 
 ## Validation state
 
-GitHub Actions validates and compiles 13 synthetic profiles across C3, C6, and
+GitHub Actions validates and compiles 14 synthetic profiles across C3, C6, and
 S3, including local mirrors of every public example. Every matrix job runs the
 repository privacy/structure checks,
 `esphome config`, and a full `esphome compile`. The config step also rejects

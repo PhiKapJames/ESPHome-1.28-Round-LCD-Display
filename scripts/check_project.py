@@ -9,6 +9,7 @@ from __future__ import annotations
 from copy import deepcopy
 from pathlib import Path
 import re
+import subprocess
 from typing import Any
 import yaml
 from jinja2 import Environment, StrictUndefined
@@ -250,6 +251,8 @@ def test_configs():
         'modern_dashboard',
         'fitness_ring',
         'clean_arc',
+        'minimalist',
+        'weather_station',
     )
     defaults = load(ROOT/'packages'/'defaults.yaml')['substitutions']
     assert defaults['clock_face_style'] == 'original'
@@ -281,6 +284,85 @@ def test_configs():
         for value in all_strings(default_cfg)
     )
     print('PASS all selectable clock styles, private overrides, and original default')
+    weather_cfg, weather_env = expand_file(ROOT/'tests'/'esp32-c3-weather-clock.yaml')
+    weather_ids = set(definition_ids(weather_cfg))
+    assert weather_env['clock_face_style'] == 'weather_station'
+    assert weather_env['clock_weather_entity'] == 'weather.example_home'
+    for weather_id in (
+        'clock_weather_condition_source',
+        'clock_weather_temperature_unit_source',
+        'clock_weather_temperature_source',
+        'clock_weather_humidity_source',
+        'clock_weather_condition_value',
+        'clock_weather_temperature_unit_value',
+        'clock_weather_temperature_value',
+        'clock_weather_humidity_value',
+    ):
+        assert weather_id in weather_ids
+    weather_numeric = [
+        item for item in weather_cfg.get('sensor', [])
+        if item.get('platform') == 'homeassistant'
+    ]
+    weather_text = [
+        item for item in weather_cfg.get('text_sensor', [])
+        if item.get('platform') == 'homeassistant'
+    ]
+    assert any(item.get('attribute') == 'temperature' for item in weather_numeric)
+    assert any(item.get('attribute') == 'humidity' for item in weather_numeric)
+    assert any(item.get('attribute') == 'temperature_unit' for item in weather_text)
+    assert any(item.get('entity_id') == 'weather.example_home' and 'attribute' not in item
+               for item in weather_text)
+    print('PASS weather clock condition/temperature/humidity source wiring')
+    # modern_dashboard's live complication subscribes too; faces without
+    # weather must keep zero weather subscriptions.
+    md_cfg, md_env = expand_file(ROOT/'tests'/'esp32-c3.yaml')
+    assert md_env['clock_face_style'] == 'modern_dashboard'
+    assert 'clock_weather_temperature_source' in set(definition_ids(md_cfg)), (
+        'modern_dashboard must subscribe to the weather entity'
+    )
+    plain_cfg, _ = expand_file(ROOT/'tests'/'esp32-c3-one-metric.yaml')
+    assert 'clock_weather_temperature_source' not in set(definition_ids(plain_cfg)), (
+        'non-weather faces must not create weather subscriptions'
+    )
+    print('PASS modern_dashboard weather subscription; plain faces stay entity-free')
+    # Committed preview renders must cover exactly the supported faces, so a
+    # face can be added/renamed/retired only together with its preview image.
+    # Git-tracked status is checked when available: a render present on disk
+    # but ignored by .gitignore passes locally yet fails a fresh CI checkout.
+    preview_dir = ROOT/'docs'/'media'/'clock-previews'
+    tracked = None
+    try:
+        tracked = set(subprocess.run(
+            ['git', 'ls-files', '--', 'docs/media/clock-previews'],
+            cwd=ROOT, capture_output=True, text=True, check=True,
+        ).stdout.splitlines())
+    except Exception:
+        pass  # not a git checkout; fall back to on-disk presence
+    def preview_available(name):
+        return (f'docs/media/clock-previews/{name}' in tracked
+                if tracked is not None else (preview_dir/name).is_file())
+    for style in supported_clock_styles:
+        assert preview_available(f'{style}.png'), (
+            f'docs/media/clock-previews/{style}.png missing (or untracked) for '
+            'supported clock style; regenerate the host snapshot renders and '
+            'ensure .gitignore does not exclude it'
+        )
+    print('PASS clock preview renders cover exactly the supported faces')
+    # Host preview harnesses must keep expanding (catches substitution drift;
+    # the files are fragments, so CI never compiles them).
+    for style in supported_clock_styles:
+        preview_cfg, preview_env = expand_file(
+            ROOT/'tests'/'preview'/f'{style}.yaml')
+        assert preview_env['clock_face_style'] == style
+        preview_display = next(
+            item for item in preview_cfg['display']
+            if item.get('id') == 'main_display'
+        )
+        assert preview_display.get('platform') == 'snapshot'
+        assert preview_display.get('dimensions', {}).get('width') == 240
+        assert any(p.get('id') == 'page_clock'
+                   for p in preview_display.get('pages', []))
+    print('PASS host clock-preview fragments expand with snapshot display + page_clock')
     backlight_cfg, backlight_env = expand_file(
         ROOT/'tests'/'esp32-c3-one-metric.yaml',
         {'backlight_restore_mode': 'ALWAYS_OFF'},
@@ -310,7 +392,13 @@ def test_configs():
         assert references<=set(ids),f'Missing IDs {references-set(ids)} in {name}'
         assert len(config['display'])==1
         imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
-        assert len(imported)==1
+        # Every profile imports its one page sensor; the modern_dashboard
+        # profile additionally imports the weather temperature/humidity pair.
+        weather_faces=('modern_dashboard','weather_station')
+        expected_imported=3 if env['clock_face_style'] in weather_faces else 1
+        assert len(imported)==expected_imported, (
+            f'{name}: expected {expected_imported} imported HA sensors, got {len(imported)}'
+        )
         assert len(config.get('graph',[]))==0
         camera=('camera' in name)
         assert ('image' in config)==camera
@@ -630,7 +718,7 @@ def test_configs():
     # !include references instead of hard-coding a second list.
     fragments = set()
     tests_dir = (ROOT/'tests').resolve()
-    for fixture_path in (ROOT/'tests').glob('*.yaml'):
+    for fixture_path in (ROOT/'tests').rglob('*.yaml'):
         for include in load(fixture_path).get('packages', {}).values():
             if not (isinstance(include, Tagged) and include.tag == '!include'):
                 continue
@@ -643,6 +731,8 @@ def test_configs():
             # point at profiles/ or packages/ are real component sources.
             if resolved.parent == tests_dir:
                 fragments.add(resolved.stem)
+    # Only top-level tests/*.yaml are matrix fixtures. Files in tests/
+    # subdirectories are harnesses/fragments and are never CI profiles.
     fixture_profiles = sorted(
         p.stem for p in (ROOT/'tests').glob('*.yaml') if p.stem not in fragments
     )

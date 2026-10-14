@@ -26,7 +26,8 @@ the page and camera-source templates below.
 | `friendly_name` | `Round Minion` | User-facing device name. |
 | `timezone` | `Etc/UTC` | Device timezone. |
 | `clock_page_duration_ms` | `'8000'` | Clock interstitial duration after every content page. |
-| `clock_face_style` | `original` | Clock renderer: `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, or `clean_arc`. |
+| `clock_face_style` | `original` | Clock renderer: `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, `clean_arc`, `minimalist`, or `weather_station`. |
+| `clock_weather_entity` | `weather.home` | Home Assistant `weather.*` entity for the `modern_dashboard` and `weather_station` faces. No Home Assistant subscription is created for any other face. |
 
 ## Clock face styles
 
@@ -38,18 +39,29 @@ substitutions:
   clock_face_style: modern_dashboard
 ```
 
+Real 240x240 preview renders of every face (produced by the host snapshot
+harness, no hardware required) are committed under
+[`docs/media/clock-previews/`](media/clock-previews/README.md); see
+[validation](VALIDATION.md#clock-face-preview-renders) for how they are made.
+
 Available values:
 
 - `original` — the established nested cyan/blue/purple digital face; this remains the default.
-- `classic_analog` — traditional 12/3/6/9 dial, cyan tick marks, white hour/minute hands, and a red seconds hand.
-- `modern_dashboard` — large digital time, date, colored perimeter markers, and asymmetric status motifs.
-- `fitness_ring` — large digital time with a bold minute-progress outer ring.
-- `clean_arc` — centered digital time with cyan/red side arcs and a compact progress bar.
+- `classic_analog` — traditional 12/3/6/9 dial, cyan tick marks, white hour/minute hands, and an AM/PM indicator.
+- `modern_dashboard` — large digital time with day/date and colored perimeter markers, plus a live weather condition icon above the time.
+- `fitness_ring` — smartwatch minute-progress ring around a large digital time with day/date and AM/PM.
+- `clean_arc` — large centered time with cyan/red side arcs, day/date, AM/PM, and a minute-progress bar.
+- `minimalist` — oversized minimal digital time and enlarged day/date, nothing else.
+- `weather_station` — seven-segment time with ghosted off-segments, weekday abbreviation, larger date, live weather icon, and temperature/humidity placed up the lower diagonals, all from `clock_weather_entity`.
 
-The additional faces intentionally require no weather, battery, or other Home
-Assistant entities. This keeps clock selection independent of each site's
-available sensors. A later optional-data layer can enrich individual faces
-without changing the base selector.
+Every face other than `modern_dashboard` and `weather_station` intentionally
+requires no weather, battery, or other Home Assistant entities. This keeps
+clock selection independent of each site's available sensors. `modern_dashboard`
+and `weather_station` are the exceptions: they subscribe to the single
+`weather.*` entity named by `clock_weather_entity` and degrade gracefully
+(placeholder temperature, humidity, and icon) while that entity is unavailable.
+A later optional-data
+layer can enrich individual faces without changing the base selector.
 
 An unknown value displays a visible `CLOCK STYLE / UNKNOWN` diagnostic on the
 device so configuration mistakes are obvious.

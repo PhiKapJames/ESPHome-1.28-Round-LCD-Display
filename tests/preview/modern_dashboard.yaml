@@ -1,0 +1,10 @@
+# SYNTHETIC CI FIXTURE. Never install on a real device.
+#
+# Renders one clock face through the host-platform snapshot harness in
+# tests/host-clock-preview.yaml. See that file for the render instructions.
+substitutions:
+  clock_face_style: modern_dashboard
+
+packages:
+  preview: !include
+    file: ../host-clock-preview.yaml

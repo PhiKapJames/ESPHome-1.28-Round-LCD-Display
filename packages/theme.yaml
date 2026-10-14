@@ -21,9 +21,18 @@ font:
 - id: clock_digital_font
   file: gfonts://Oswald
   size: 66
+- id: clock_minimal_time_font
+  file: gfonts://Oswald
+  size: 96
+- id: clock_minimal_date_font
+  file: gfonts://Roboto
+  size: 42
+- id: clock_weather_metric_font
+  file: gfonts://Oswald
+  size: 24
 - id: clock_cardinal_font
   file: gfonts://Oswald
-  size: 34
+  size: 38
 - id: clock_small_font
   file: gfonts://Roboto
   size: 24
