@@ -12,6 +12,9 @@ runs.
   `weather_station.png` — individual current renders.
 - `face-off-0.7.3-vs-0.8.0.png` — main 0.7.3 designs next to the 0.8.0 faces
   for the faces that existed in 0.7.3, showing what changed.
+- `condition-audit.png` — the weather complication under several conditions
+  (including the tallest glyphs: partlycloudy rays, lightning bolt) used to
+  verify the icons never collide with the time.
 
 These images are documentation snapshots, not golden-image tests; regenerate
 them whenever a face changes (commands in `docs/VALIDATION.md`).
