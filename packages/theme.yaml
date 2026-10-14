@@ -27,12 +27,6 @@ font:
 - id: clock_minimal_date_font
   file: gfonts://Roboto
   size: 42
-- id: clock_weather_weekday_font
-  file: gfonts://Roboto
-  size: 13
-- id: clock_weather_date_font
-  file: gfonts://Roboto
-  size: 17
 - id: clock_weather_metric_font
   file: gfonts://Oswald
   size: 24

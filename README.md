@@ -221,7 +221,7 @@ face actually looks like at 240x240.
 | `fitness_ring` | Smartwatch minute-progress ring around a large digital time with day/date and AM/PM. |
 | `clean_arc` | Large centered time with cyan/red side arcs, day/date, AM/PM, and a minute-progress bar. |
 | `minimalist` | Oversized digital time and enlarged day/date — nothing else. |
-| `weather_station` | Seven-segment time with weekday arc, date, live weather condition icon, temperature, and humidity from one Home Assistant `weather.*` entity. |
+| `weather_station` | Seven-segment time with ghosted off-segments, weekday abbreviation, date, live weather condition icon, and temperature/humidity up the lower diagonals, all from one Home Assistant `weather.*` entity. |
 
 ### Selecting a clock face
 

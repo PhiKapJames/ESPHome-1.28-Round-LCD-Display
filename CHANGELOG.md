@@ -9,11 +9,12 @@
 - Clock face lineup is now seven faces: `original`, `classic_analog`,
   `modern_dashboard`, `fitness_ring`, `clean_arc`, `minimalist`, and
   `weather_station`.
-- Added the `weather_station` face: a seven-segment time with a true weekday
-  arc, calendar date, live weather-condition icon, and temperature/humidity,
-  all on one centered vertical rhythm, driven by a single Home Assistant
-  `weather.*` entity through `clock_weather_entity`. Metrics and icon degrade
-  to placeholders while the entity is unavailable.
+- Added the `weather_station` face: a seven-segment time with dark "off
+  segment" ghosts, a centered weekday abbreviation, calendar date, live
+  weather-condition icon, and temperature/humidity placed up the lower
+  diagonals, all driven by a single Home Assistant `weather.*` entity through
+  `clock_weather_entity`. Metrics and icon degrade to placeholders while the
+  entity is unavailable.
 - Reworked `modern_dashboard` around a cleaned-up dashboard layout with a
   **live** weather-condition icon above the time; it now subscribes to
   `clock_weather_entity` like `weather_station`. The weather source package is

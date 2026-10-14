@@ -219,8 +219,7 @@ display:
           it.line(cx, cy - 12, cx, cy + 5, amber);
           it.filled_circle(cx, cy + 11, 2, amber);
         } else {
-          draw_centered(cx, cy, id(clock_weather_date_font),
-                        weather_gray, "?");
+          draw_centered(cx, cy, id(clock_small_font), weather_gray, "?");
         }
       };
 
@@ -466,35 +465,26 @@ display:
         it.circle(120, 120, 106, orange);
         it.circle(120, 120, 102, ghost);
 
-        // Weekday arc: seven labels on a true circle (radius 86, 15 degree
-        // steps around 12 o'clock). Precomputed points keep trigonometry out
-        // of the renderer, like MINUTE_MARKER_POINTS. Today burns orange like
-        // the numerals; the other days recede in weather_gray.
+        // One weekday abbreviation, orange like the numerals, centered at the
+        // top. The seven-label arc crowded the bezel for six days a week; one
+        // word in the shared Oswald reads cleanly and leaves air everywhere.
         static const char *WEATHER_DAYS[] = {
-          "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"
+          "SUN", "MON", "TUE", "WED", "THU", "FRI", "SAT"
         };
-        static constexpr int DAY_POS[][2] = {
-          {59,59},{77,46},{98,37},{120,34},{142,37},{163,46},{181,59}
-        };
+        const char *weather_day = "---";
+        if (now.is_valid() && now.day_of_week >= 1 && now.day_of_week <= 7)
+          weather_day = WEATHER_DAYS[now.day_of_week - 1];
+        draw_centered(120, 35, id(clock_weather_metric_font),
+                      orange, weather_day);
 
-        int active_day = -1;
-        if (now.is_valid()) {
-          active_day = now.day_of_week == 1 ? 6 : now.day_of_week - 2;
-        }
-
-        for (int i = 0; i < 7; i++) {
-          draw_centered(DAY_POS[i][0], DAY_POS[i][1],
-                        id(clock_weather_weekday_font),
-                        i == active_day ? orange : weather_gray,
-                        WEATHER_DAYS[i]);
-        }
-
-        // Calendar date centered below the arc.
+        // Calendar date centered below the weekday, one size larger and
+        // higher than before: Roboto 24 (cap 17) measures ink y 51..68,
+        // versus Roboto 17 ink y 57..69 previously.
         char weather_date[12] = "--/--";
         if (now.is_valid())
           snprintf(weather_date, sizeof(weather_date), "%02d/%02d",
                    now.month, now.day_of_month);
-        draw_centered(120, 63, id(clock_weather_date_font),
+        draw_centered(120, 60, id(clock_small_font),
                       weather_white, weather_date);
 
         // True seven-segment numerals as one block centered on x=120:
@@ -547,10 +537,13 @@ display:
         // reach y=141 (icon top), eight pixels below the segment bottom.
         draw_condition_icon(120, 162);
 
-        // Entity-backed metrics: symmetric about x=120 and safely inside the
-        // ring circle (corner radius ~99 of 106). Temperature burns amber
-        // and humidity weather_blue, matching the icon palette; missing
-        // values fall back to weather_gray.
+        // Entity-backed metrics moved up the lower diagonals into the open
+        // side space: the old y=196 baseline pushed "100°F"-width strings to
+        // r≈99.7, grazing the r=102 hairline. At (70/170, 176) the worst
+        // corner measures r≤96, and the x-bands stay clear of the icon
+        // column (measured leftmost icon pixel x=97, rightmost x≈141).
+        // Temperature burns amber and humidity weather_blue, matching the
+        // icon palette; missing values fall back to weather_gray.
         char weather_temp[20] = "--°";
         char weather_humidity[16] = "--%";
 
@@ -567,11 +560,10 @@ display:
                    "%.0f%%", humidity);
         }
 
-        draw_centered(78, 196, id(clock_weather_metric_font),
+        draw_centered(70, 176, id(clock_weather_metric_font),
                       std::isfinite(temp) ? amber : weather_gray,
                       weather_temp);
-        it.filled_circle(120, 195, 2, weather_gray);
-        draw_centered(162, 196, id(clock_weather_metric_font),
+        draw_centered(170, 176, id(clock_weather_metric_font),
                       std::isfinite(humidity) ? weather_blue : weather_gray,
                       weather_humidity);
 

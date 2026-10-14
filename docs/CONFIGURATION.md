@@ -52,7 +52,7 @@ Available values:
 - `fitness_ring` — smartwatch minute-progress ring around a large digital time with day/date and AM/PM.
 - `clean_arc` — large centered time with cyan/red side arcs, day/date, AM/PM, and a minute-progress bar.
 - `minimalist` — oversized minimal digital time and enlarged day/date, nothing else.
-- `weather_station` — seven-segment time, weekday arc/date, live weather icon, temperature, and humidity from `clock_weather_entity`.
+- `weather_station` — seven-segment time with ghosted off-segments, weekday abbreviation, larger date, live weather icon, and temperature/humidity placed up the lower diagonals, all from `clock_weather_entity`.
 
 Every face other than `modern_dashboard` and `weather_station` intentionally
 requires no weather, battery, or other Home Assistant entities. This keeps
