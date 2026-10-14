@@ -27,10 +27,10 @@ font:
 - id: clock_modern_date_font
   file: gfonts://Roboto
   size: 34
-- id: clock_clean_time_font
+- id: clock_minimal_time_font
   file: gfonts://Oswald
   size: 96
-- id: clock_clean_date_font
+- id: clock_minimal_date_font
   file: gfonts://Roboto
   size: 42
 - id: clock_weather_weekday_font
@@ -41,7 +41,7 @@ font:
   size: 17
 - id: clock_weather_metric_font
   file: gfonts://Oswald
-  size: 27
+  size: 24
 - id: clock_cardinal_font
   file: gfonts://Oswald
   size: 38

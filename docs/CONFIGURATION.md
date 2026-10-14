@@ -26,8 +26,8 @@ the page and camera-source templates below.
 | `friendly_name` | `Round Minion` | User-facing device name. |
 | `timezone` | `Etc/UTC` | Device timezone. |
 | `clock_page_duration_ms` | `'8000'` | Clock interstitial duration after every content page. |
-| `clock_face_style` | `original` | Clock renderer: `original`, `classic_analog`, `modern_dashboard`, `clean_arc`, or `weather_station`. |
-| `clock_weather_entity` | `weather.home` | Home Assistant `weather.*` entity for the `weather_station` face. No Home Assistant subscription is created unless that face is selected. |
+| `clock_face_style` | `original` | Clock renderer: `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, `clean_arc`, `minimalist`, or `weather_station`. |
+| `clock_weather_entity` | `weather.home` | Home Assistant `weather.*` entity for the `modern_dashboard` and `weather_station` faces. No Home Assistant subscription is created for any other face. |
 
 ## Clock face styles
 
@@ -48,16 +48,19 @@ Available values:
 
 - `original` — the established nested cyan/blue/purple digital face; this remains the default.
 - `classic_analog` — traditional 12/3/6/9 dial, cyan tick marks, white hour/minute hands, and an AM/PM indicator.
-- `modern_dashboard` — large digital time/date inside a smartwatch-style minute-progress ring.
-- `clean_arc` — oversized minimal digital time and enlarged day/date.
-- `weather_station` — seven-segment time, weekday/date, live weather icon, temperature, and humidity from `clock_weather_entity`.
+- `modern_dashboard` — large digital time with day/date and colored perimeter markers, plus a live weather condition icon above the time.
+- `fitness_ring` — smartwatch minute-progress ring around a large digital time with day/date and AM/PM.
+- `clean_arc` — large centered time with cyan/red side arcs, day/date, AM/PM, and a minute-progress bar.
+- `minimalist` — oversized minimal digital time and enlarged day/date, nothing else.
+- `weather_station` — seven-segment time, weekday arc/date, live weather icon, temperature, and humidity from `clock_weather_entity`.
 
-Every face other than `weather_station` intentionally requires no weather,
-battery, or other Home Assistant entities. This keeps clock selection
-independent of each site's available sensors. `weather_station` is the
-exception: it subscribes to the single `weather.*` entity named by
-`clock_weather_entity` and degrades gracefully (placeholder temperature,
-humidity, and icon) while that entity is unavailable. A later optional-data
+Every face other than `modern_dashboard` and `weather_station` intentionally
+requires no weather, battery, or other Home Assistant entities. This keeps
+clock selection independent of each site's available sensors. `modern_dashboard`
+and `weather_station` are the exceptions: they subscribe to the single
+`weather.*` entity named by `clock_weather_entity` and degrade gracefully
+(placeholder temperature, humidity, and icon) while that entity is unavailable.
+A later optional-data
 layer can enrich individual faces without changing the base selector.
 
 An unknown value displays a visible `CLOCK STYLE / UNKNOWN` diagnostic on the

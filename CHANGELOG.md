@@ -6,18 +6,23 @@
 
 ## 0.8.0 — 2026-10-14
 
-- Added the `weather_station` clock face: a reference-style seven-segment
-  time display with weekday arc, calendar date, live weather-condition icon,
-  temperature, and humidity, sourced from a single Home Assistant `weather.*`
-  entity through `clock_weather_entity`. Metrics and icon degrade to
-  placeholders while the entity is unavailable. The Home Assistant
-  subscriptions are included only when this face is selected, so every other
-  face still requires no weather entity.
-- Redesigned `modern_dashboard` (smartwatch-style minute-progress ring with a
-  large digital time and day/date) and `clean_arc` (oversized minimal digital
-  time and enlarged day/date), and tuned `classic_analog` (longer hour hand,
-  AM/PM indicator instead of a seconds hand).
-- Removed the `fitness_ring` clock face.
+- Clock face lineup is now seven faces: `original`, `classic_analog`,
+  `modern_dashboard`, `fitness_ring`, `clean_arc`, `minimalist`, and
+  `weather_station`.
+- Added the `weather_station` face: a seven-segment time with a true weekday
+  arc, calendar date, live weather-condition icon, and temperature/humidity,
+  all on one centered vertical rhythm, driven by a single Home Assistant
+  `weather.*` entity through `clock_weather_entity`. Metrics and icon degrade
+  to placeholders while the entity is unavailable.
+- Reworked `modern_dashboard` around a cleaned-up dashboard layout with a
+  **live** weather-condition icon above the time; it now subscribes to
+  `clock_weather_entity` like `weather_station`. The weather source package is
+  included only for these two faces, so every other face still needs no
+  weather entity.
+- Brought `fitness_ring` back as a refined smartwatch minute-progress ring,
+  and added `minimalist` (oversized digital time and day/date). `clean_arc`
+  is restored to its established cyan/red side-arc design; `original` and
+  `classic_analog` are unchanged.
 - Added synthetic CI fixture `tests/esp32-c3-weather-clock.yaml`; the Actions
   matrix and validation docs now cover 14 profiles.
 - Added a host-platform snapshot preview harness (`tests/host-clock-preview.yaml`

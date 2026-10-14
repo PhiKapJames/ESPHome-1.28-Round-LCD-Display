@@ -112,7 +112,7 @@ commit SHA; `refresh: never` is appropriate for an intentionally pinned ref.
   Use `number_font` as the default; shared alternate
   fonts such as `number_font_compact` should be defined once in `theme.yaml` rather than duplicated per page.
 - The clock remains an interstitial page managed by shared code.
-- Preserve `clock_face_style` as the per-device selector. Supported values are `original`, `classic_analog`, `modern_dashboard`, `clean_arc`, and `weather_station`; `original` must remain the backward-compatible default unless explicitly changed.
+- Preserve `clock_face_style` as the per-device selector. Supported values are `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`, `clean_arc`, `minimalist`, and `weather_station`; `original` must remain the backward-compatible default unless explicitly changed.
 - Camera alerts interrupt rotation and are not normal rotation pages unless
   `packages/page-camera.yaml` is explicitly instantiated.
 - Trend lines/sparklines are intentionally removed. Do not reintroduce them

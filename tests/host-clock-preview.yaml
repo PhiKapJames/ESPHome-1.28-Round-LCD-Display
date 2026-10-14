@@ -24,9 +24,9 @@
 substitutions:
   # Each tests/preview/<style>.yaml fragment overrides clock_face_style.
   clock_face_style: original
-  # Demo weather rendered by the weather_station face. The real face fills
-  # these globals from Home Assistant; the harness seeds plausible values so
-  # the frame shows the populated layout.
+  # Demo weather rendered by weather_station and modern_dashboard. The real
+  # faces fill these globals from Home Assistant subscriptions; the harness
+  # seeds plausible values so the frames show the populated layouts.
   preview_weather_condition: partlycloudy
   preview_weather_temp: '71.4'
   preview_weather_humidity: '46.0'
@@ -50,8 +50,8 @@ esphome:
   on_boot:
     then:
     - lambda: |
-        // The weather_station face reads these globals; the real device
-        // fills them from Home Assistant subscriptions.
+        // weather_station and modern_dashboard read these globals; the real
+        // device fills them from Home Assistant subscriptions.
         id(clock_weather_condition_value) = std::string("${preview_weather_condition}");
         id(clock_weather_temperature_unit_value) = std::string("°F");
         id(clock_weather_temperature_value) = ${preview_weather_temp};
@@ -71,10 +71,10 @@ time:
 - platform: host
   id: ha_time
 
-# The weather_station face selects packages/clock-weather-source.yaml, whose
-# Home Assistant sensors require the api component. The harness never talks
-# to Home Assistant: on_boot seeds the weather globals with demo values, so
-# the subscriptions stay idle.
+# The modern_dashboard and weather_station faces select
+# packages/clock-weather-source.yaml, whose Home Assistant sensors require
+# the api component. The harness never talks to Home Assistant: on_boot
+# seeds the weather globals with demo values, so the subscriptions stay idle.
 api:
 
 # Base display that packages/clock-page.yaml extends with page_clock. With

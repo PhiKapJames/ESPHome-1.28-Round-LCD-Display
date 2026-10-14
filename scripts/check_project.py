@@ -249,7 +249,9 @@ def test_configs():
         'original',
         'classic_analog',
         'modern_dashboard',
+        'fitness_ring',
         'clean_arc',
+        'minimalist',
         'weather_station',
     )
     defaults = load(ROOT/'packages'/'defaults.yaml')['substitutions']
@@ -311,6 +313,18 @@ def test_configs():
     assert any(item.get('entity_id') == 'weather.example_home' and 'attribute' not in item
                for item in weather_text)
     print('PASS weather clock condition/temperature/humidity source wiring')
+    # modern_dashboard's live complication subscribes too; faces without
+    # weather must keep zero weather subscriptions.
+    md_cfg, md_env = expand_file(ROOT/'tests'/'esp32-c3.yaml')
+    assert md_env['clock_face_style'] == 'modern_dashboard'
+    assert 'clock_weather_temperature_source' in set(definition_ids(md_cfg)), (
+        'modern_dashboard must subscribe to the weather entity'
+    )
+    plain_cfg, _ = expand_file(ROOT/'tests'/'esp32-c3-one-metric.yaml')
+    assert 'clock_weather_temperature_source' not in set(definition_ids(plain_cfg)), (
+        'non-weather faces must not create weather subscriptions'
+    )
+    print('PASS modern_dashboard weather subscription; plain faces stay entity-free')
     # Committed preview renders must cover exactly the supported faces, so a
     # face can be added/renamed/retired only together with its preview image.
     # Git-tracked status is checked when available: a render present on disk
@@ -333,10 +347,6 @@ def test_configs():
             'supported clock style; regenerate the host snapshot renders and '
             'ensure .gitignore does not exclude it'
         )
-    # fitness_ring is retired: it must not have a current lineup preview.
-    assert not (preview_dir/'fitness_ring.png').exists(), (
-        'docs/media/clock-previews/fitness_ring.png must be removed with the retired face'
-    )
     print('PASS clock preview renders cover exactly the supported faces')
     # Host preview harnesses must keep expanding (catches substitution drift;
     # the files are fragments, so CI never compiles them).
@@ -382,7 +392,13 @@ def test_configs():
         assert references<=set(ids),f'Missing IDs {references-set(ids)} in {name}'
         assert len(config['display'])==1
         imported=[s for s in config['sensor'] if s['platform']=='homeassistant']
-        assert len(imported)==1
+        # Every profile imports its one page sensor; the modern_dashboard
+        # profile additionally imports the weather temperature/humidity pair.
+        weather_faces=('modern_dashboard','weather_station')
+        expected_imported=3 if env['clock_face_style'] in weather_faces else 1
+        assert len(imported)==expected_imported, (
+            f'{name}: expected {expected_imported} imported HA sensors, got {len(imported)}'
+        )
         assert len(config.get('graph',[]))==0
         camera=('camera' in name)
         assert ('image' in config)==camera

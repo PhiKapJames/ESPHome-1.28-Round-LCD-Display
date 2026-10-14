@@ -19,13 +19,16 @@ see the [changelog](../CHANGELOG.md).
   shared code. Every registered normal page has its own Home Assistant config
   switch and can be excluded from rotation without removing its YAML instance;
   `page_enabled_restore_mode` controls the switch's boot/restore behavior.
-- The clock remains a shared interstitial page with five selectable renderers:
-  `original`, `classic_analog`, `modern_dashboard`, `clean_arc`, and
-  `weather_station`. `weather_station` is the only face that subscribes to an
-  additional Home Assistant entity: the `weather.*` entity named by
-  `clock_weather_entity` (condition state plus temperature, temperature_unit,
-  and humidity attributes), included via a conditional package so other faces
-  create no weather subscriptions. The `fitness_ring` face was removed.
+- The clock remains a shared interstitial page with seven selectable renderers:
+  `original`, `classic_analog`, `modern_dashboard`, `fitness_ring`,
+  `clean_arc`, `minimalist`, and `weather_station`. `modern_dashboard` and
+  `weather_station` are the only faces that subscribe to an additional Home
+  Assistant entity: the `weather.*` entity named by `clock_weather_entity`
+  (condition state plus temperature, temperature_unit, and humidity
+  attributes), included via a conditional package so other faces create no
+  weather subscriptions. `modern_dashboard` uses the condition as a live
+  complication above the time; `weather_station` builds its whole layout
+  around the weather data.
 - Numeric and battery pages intentionally omit trend/history graphs. Numeric
   pages use the shared 84 px `number_font` by default and may select a different
   value font per page through `page_value_font`; the shared theme includes a
