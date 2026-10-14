@@ -24,6 +24,9 @@
 substitutions:
   # Each tests/preview/<style>.yaml fragment overrides clock_face_style.
   clock_face_style: original
+  # Build/hostname for the snapshot tree. Audit builds override this (plus
+  # preview_weather_condition) so several conditions of one face can coexist.
+  preview_name: clock-preview-${clock_face_style}
   # Demo weather rendered by weather_station and modern_dashboard. The real
   # faces fill these globals from Home Assistant subscriptions; the harness
   # seeds plausible values so the frames show the populated layouts.
@@ -40,8 +43,10 @@ host:
 
 esphome:
   # Keep the prefix short: the longest face name (weather_station) must still
-  # fit the 31-character hostname limit.
-  name: clock-preview-${clock_face_style}
+  # fit the 31-character hostname limit. Condition-audit builds (same face,
+  # different preview_weather_condition) override preview_name to keep every
+  # build directory and hostname unique.
+  name: ${preview_name}
   includes:
   # snapshot::SnapshotAction is instantiated by hand in on_boot below. Angle
   # brackets request a system include, as packages/core.yaml does for

@@ -354,8 +354,11 @@ display:
         }
 
         // Live weather complication above the time; a dim "?" shows while the
-        // Home Assistant weather entity is unavailable.
-        draw_condition_icon(120, 58);
+        // Home Assistant weather entity is unavailable. Icon center is chosen
+        // so even the tallest variants (partlycloudy rays reach cy-21, the
+        // lightning bolt reaches cy+17) keep clear air above the time's cap
+        // line at y=75.
+        draw_condition_icon(120, 50);
 
         draw_centered(120, 103, id(clock_digital_font), white, digital_time);
         draw_centered(120, 157, id(clock_small_font), cyan, date_text);
@@ -393,9 +396,12 @@ display:
           draw_dot3(head[0], head[1], white);
         }
 
-        draw_centered(120, 103, id(clock_digital_font), white, digital_time);
-        draw_centered(120, 152, id(clock_small_font), white, date_text);
-        draw_centered(120, 180, id(clock_tiny_font), purple, ampm_text);
+        // Fonts are deliberately oversized (96/42 like the minimalist face,
+        // scaled to leave air inside the ring): measured ink of the widest
+        // lines stays at r<=87 while the ring inner edge sits at r≈107.
+        draw_centered(120, 98, id(clock_minimal_time_font), white, digital_time);
+        draw_centered(120, 157, id(clock_minimal_date_font), white, date_text);
+        draw_centered(120, 187, id(clock_small_font), purple, ampm_text);
 
         return;
       }
@@ -454,12 +460,16 @@ display:
       // One vertical rhythm; every element shares the x=120 center line.
       // -------------------------------------------------------------------
       if (clock_style == "weather_station") {
+        const Color ghost(72, 36, 6);  // dark warm "off segment" tone
+
         it.fill(background);
         it.circle(120, 120, 106, orange);
+        it.circle(120, 120, 102, ghost);
 
         // Weekday arc: seven labels on a true circle (radius 86, 15 degree
         // steps around 12 o'clock). Precomputed points keep trigonometry out
-        // of the renderer, like MINUTE_MARKER_POINTS.
+        // of the renderer, like MINUTE_MARKER_POINTS. Today burns orange like
+        // the numerals; the other days recede in weather_gray.
         static const char *WEATHER_DAYS[] = {
           "MON", "TUE", "WED", "THU", "FRI", "SAT", "SUN"
         };
@@ -475,7 +485,7 @@ display:
         for (int i = 0; i < 7; i++) {
           draw_centered(DAY_POS[i][0], DAY_POS[i][1],
                         id(clock_weather_weekday_font),
-                        i == active_day ? orange : weather_white,
+                        i == active_day ? orange : weather_gray,
                         WEATHER_DAYS[i]);
         }
 
@@ -484,55 +494,63 @@ display:
         if (now.is_valid())
           snprintf(weather_date, sizeof(weather_date), "%02d/%02d",
                    now.month, now.day_of_month);
-        draw_centered(120, 64, id(clock_weather_date_font),
+        draw_centered(120, 63, id(clock_weather_date_font),
                       weather_white, weather_date);
 
         // True seven-segment numerals as one block centered on x=120:
-        // digit width 32, pairs at 43/79 and 129/165, span 43..197.
-        auto draw_segment_digit = [&](int x, int y, int digit, Color color) {
-          static constexpr uint8_t MASKS[10] = {
-            0x3F, 0x06, 0x5B, 0x4F, 0x66,
-            0x6D, 0x7D, 0x07, 0x7F, 0x6F
-          };
-          if (digit < 0 || digit > 9) return;
+        // digit width 32, pairs at 43/79 and 129/165, span 43..197. Every
+        // digit first paints all seven segments in the ghost tone, like the
+        // dead segments of a real LCD watch, then lights the active ones.
+        constexpr int SEG_W = 32;
+        constexpr int SEG_H = 58;
+        constexpr int SEG_T = 6;
+        constexpr int SEG_HALF = SEG_H / 2;
+        static constexpr uint8_t SEG_MASKS[10] = {
+          0x3F, 0x06, 0x5B, 0x4F, 0x66,
+          0x6D, 0x7D, 0x07, 0x7F, 0x6F
+        };
 
-          const uint8_t mask = MASKS[digit];
-          constexpr int W = 32;
-          constexpr int H = 58;
-          constexpr int T = 6;
-          constexpr int HALF = H / 2;
-
+        auto draw_segment_mask = [&](int x, int y, uint8_t mask, Color color) {
           // a
-          if (mask & 0x01) it.filled_rectangle(x + T, y, W - 2*T, T, color);
+          if (mask & 0x01) it.filled_rectangle(x + SEG_T, y, SEG_W - 2*SEG_T, SEG_T, color);
           // b
-          if (mask & 0x02) it.filled_rectangle(x + W - T, y + T, T, HALF - T, color);
+          if (mask & 0x02) it.filled_rectangle(x + SEG_W - SEG_T, y + SEG_T, SEG_T, SEG_HALF - SEG_T, color);
           // c
-          if (mask & 0x04) it.filled_rectangle(x + W - T, y + HALF, T, HALF - T, color);
+          if (mask & 0x04) it.filled_rectangle(x + SEG_W - SEG_T, y + SEG_HALF, SEG_T, SEG_HALF - SEG_T, color);
           // d
-          if (mask & 0x08) it.filled_rectangle(x + T, y + H - T, W - 2*T, T, color);
+          if (mask & 0x08) it.filled_rectangle(x + SEG_T, y + SEG_H - SEG_T, SEG_W - 2*SEG_T, SEG_T, color);
           // e
-          if (mask & 0x10) it.filled_rectangle(x, y + HALF, T, HALF - T, color);
+          if (mask & 0x10) it.filled_rectangle(x, y + SEG_HALF, SEG_T, SEG_HALF - SEG_T, color);
           // f
-          if (mask & 0x20) it.filled_rectangle(x, y + T, T, HALF - T, color);
+          if (mask & 0x20) it.filled_rectangle(x, y + SEG_T, SEG_T, SEG_HALF - SEG_T, color);
           // g
-          if (mask & 0x40) it.filled_rectangle(x + T, y + HALF - T/2,
-                                                W - 2*T, T, color);
+          if (mask & 0x40) it.filled_rectangle(x + SEG_T, y + SEG_HALF - SEG_T/2,
+                                                SEG_W - 2*SEG_T, SEG_T, color);
+        };
+
+        auto draw_segment_digit = [&](int x, int y, int digit) {
+          draw_segment_mask(x, y, 0x7F, ghost);
+          if (digit >= 0 && digit <= 9)
+            draw_segment_mask(x, y, SEG_MASKS[digit], orange);
         };
 
         int h24 = now.is_valid() ? now.hour : 0;
         int minute = now.is_valid() ? now.minute : 0;
-        draw_segment_digit(43, 78, now.is_valid() ? h24 / 10 : 8, orange);
-        draw_segment_digit(79, 78, now.is_valid() ? h24 % 10 : 8, orange);
-        it.filled_circle(120, 97, 4, orange);
-        it.filled_circle(120, 117, 4, orange);
-        draw_segment_digit(129, 78, now.is_valid() ? minute / 10 : 8, orange);
-        draw_segment_digit(165, 78, now.is_valid() ? minute % 10 : 8, orange);
+        draw_segment_digit(43, 76, now.is_valid() ? h24 / 10 : 8);
+        draw_segment_digit(79, 76, now.is_valid() ? h24 % 10 : 8);
+        it.filled_circle(120, 95, 4, orange);
+        it.filled_circle(120, 115, 4, orange);
+        draw_segment_digit(129, 76, now.is_valid() ? minute / 10 : 8);
+        draw_segment_digit(165, 76, now.is_valid() ? minute % 10 : 8);
 
-        // Condition icon centered under the time.
-        draw_condition_icon(120, 157);
+        // Condition icon centered under the time. The partlycloudy sun rays
+        // reach y=141 (icon top), eight pixels below the segment bottom.
+        draw_condition_icon(120, 162);
 
         // Entity-backed metrics: symmetric about x=120 and safely inside the
-        // ring circle (corner radius ~99 of 106).
+        // ring circle (corner radius ~99 of 106). Temperature burns amber
+        // and humidity weather_blue, matching the icon palette; missing
+        // values fall back to weather_gray.
         char weather_temp[20] = "--°";
         char weather_humidity[16] = "--%";
 
@@ -550,9 +568,12 @@ display:
         }
 
         draw_centered(78, 196, id(clock_weather_metric_font),
-                      weather_white, weather_temp);
+                      std::isfinite(temp) ? amber : weather_gray,
+                      weather_temp);
+        it.filled_circle(120, 195, 2, weather_gray);
         draw_centered(162, 196, id(clock_weather_metric_font),
-                      weather_white, weather_humidity);
+                      std::isfinite(humidity) ? weather_blue : weather_gray,
+                      weather_humidity);
 
         return;
       }
