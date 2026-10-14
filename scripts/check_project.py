@@ -310,6 +310,34 @@ def test_configs():
     assert any(item.get('entity_id') == 'weather.example_home' and 'attribute' not in item
                for item in weather_text)
     print('PASS weather clock condition/temperature/humidity source wiring')
+    # Committed preview renders must cover exactly the supported faces, so a
+    # face can be added/renamed/retired only together with its preview image.
+    preview_dir = ROOT/'docs'/'media'/'clock-previews'
+    for style in supported_clock_styles:
+        assert (preview_dir/f'{style}.png').is_file(), (
+            f'docs/media/clock-previews/{style}.png missing for supported clock style; '
+            'regenerate the host snapshot renders'
+        )
+    # fitness_ring is retired: it must not have a current lineup preview.
+    assert not (preview_dir/'fitness_ring.png').exists(), (
+        'docs/media/clock-previews/fitness_ring.png must be removed with the retired face'
+    )
+    print('PASS clock preview renders cover exactly the supported faces')
+    # Host preview harnesses must keep expanding (catches substitution drift;
+    # the files are fragments, so CI never compiles them).
+    for style in supported_clock_styles:
+        preview_cfg, preview_env = expand_file(
+            ROOT/'tests'/'preview'/f'{style}.yaml')
+        assert preview_env['clock_face_style'] == style
+        preview_display = next(
+            item for item in preview_cfg['display']
+            if item.get('id') == 'main_display'
+        )
+        assert preview_display.get('platform') == 'snapshot'
+        assert preview_display.get('dimensions', {}).get('width') == 240
+        assert any(p.get('id') == 'page_clock'
+                   for p in preview_display.get('pages', []))
+    print('PASS host clock-preview fragments expand with snapshot display + page_clock')
     backlight_cfg, backlight_env = expand_file(
         ROOT/'tests'/'esp32-c3-one-metric.yaml',
         {'backlight_restore_mode': 'ALWAYS_OFF'},
@@ -659,7 +687,7 @@ def test_configs():
     # !include references instead of hard-coding a second list.
     fragments = set()
     tests_dir = (ROOT/'tests').resolve()
-    for fixture_path in (ROOT/'tests').glob('*.yaml'):
+    for fixture_path in (ROOT/'tests').rglob('*.yaml'):
         for include in load(fixture_path).get('packages', {}).values():
             if not (isinstance(include, Tagged) and include.tag == '!include'):
                 continue
@@ -672,6 +700,8 @@ def test_configs():
             # point at profiles/ or packages/ are real component sources.
             if resolved.parent == tests_dir:
                 fragments.add(resolved.stem)
+    # Only top-level tests/*.yaml are matrix fixtures. Files in tests/
+    # subdirectories are harnesses/fragments and are never CI profiles.
     fixture_profiles = sorted(
         p.stem for p in (ROOT/'tests').glob('*.yaml') if p.stem not in fragments
     )

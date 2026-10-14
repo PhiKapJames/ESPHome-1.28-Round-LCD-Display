@@ -39,6 +39,11 @@ substitutions:
   clock_face_style: modern_dashboard
 ```
 
+Real 240x240 preview renders of every face (produced by the host snapshot
+harness, no hardware required) are committed under
+[`docs/media/clock-previews/`](media/clock-previews/README.md); see
+[validation](VALIDATION.md#clock-face-preview-renders) for how they are made.
+
 Available values:
 
 - `original` — the established nested cyan/blue/purple digital face; this remains the default.

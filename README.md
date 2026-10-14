@@ -209,7 +209,9 @@ rotation pages. Its appearance is selected per device with the
 `clock_face_style` substitution in the private device YAML.
 
 The established clock remains the default, so existing devices keep their
-current appearance unless a different style is explicitly selected.
+current appearance unless a different style is explicitly selected. See the
+committed [preview renders](docs/media/clock-previews/README.md) for what each
+face actually looks like at 240x240.
 
 | `clock_face_style` | Description |
 | --- | --- |

@@ -20,6 +20,10 @@
 - Removed the `fitness_ring` clock face.
 - Added synthetic CI fixture `tests/esp32-c3-weather-clock.yaml`; the Actions
   matrix and validation docs now cover 14 profiles.
+- Added a host-platform snapshot preview harness (`tests/host-clock-preview.yaml`
+  + `tests/preview/<style>.yaml`) that renders any clock face to a real 240x240
+  image without hardware, and committed the resulting review images under
+  `docs/media/clock-previews/` (lineup plus a 0.7.3-vs-0.8.0 face-off sheet).
 - Raised the minimum supported ESPHome version to **2026.9.1** and pinned CI
   to `ghcr.io/esphome/esphome:2026.9.1`. This picks up the upstream
   `[mipi_spi] Fix reversion in dc/cs sequence for spi_16` fix relevant to the

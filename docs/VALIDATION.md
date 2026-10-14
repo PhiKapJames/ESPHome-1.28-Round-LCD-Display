@@ -86,6 +86,33 @@ repeated camera alerts. Test an S3 separately before applying the S3 profile to
 additional devices.
 
 
+## Clock face preview renders
+
+`tests/host-clock-preview.yaml` is a host-platform harness that renders any
+clock face through the real ESPHome display engine (a `snapshot` display plus
+the same gfonts and renderer code firmware uses) and writes a 240x240 BMP —
+no hardware and no SDL required. `tests/preview/<style>.yaml` selects one face
+per compile. These renders are the source of the committed
+`docs/media/clock-previews/` review images.
+
+Render one face (repeat per style; each fragment compiles a standalone host
+binary that draws a single frame, writes it, and exits):
+
+```sh
+docker run --rm -v "$PWD":/config -w /config ghcr.io/esphome/esphome:2026.9.1 \
+  compile tests/preview/weather_station.yaml
+tests/preview/.esphome/build/clock-preview-weather_station/\
+  .pioenvs/clock-preview-weather_station/program
+# writes tests/preview/.esphome/snapshots/clock-preview-weather_station/
+#   preview-weather_station.bmp
+```
+
+`scripts/check_project.py` fails if a supported clock style has no committed
+preview image, and expands every `tests/preview/*.yaml` fragment so harness
+substitution drift is caught offline. The images are documentation snapshots,
+not golden-image tests; regenerate them when a face changes. The harnesses are
+fragments and are intentionally excluded from the ESP32 compile matrix.
+
 ## ESP32-C6 profile
 
 CI validates and compiles both the base and camera-enabled ESP32-C6 synthetic
