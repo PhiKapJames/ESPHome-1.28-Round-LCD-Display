@@ -1,14 +1,14 @@
 # Release notes and current source state
 
-The current source version is **0.8.0**. The `esphome.project.version` value
+The current source version is **0.9.0**. The `esphome.project.version` value
 describes the source/firmware behavior; it does not by itself imply that a
 matching GitHub release tag exists. For the complete version-by-version history,
 see the [changelog](../CHANGELOG.md).
 
-## Current 0.8.0 architecture
+## Current 0.9.0 architecture
 
-- ESPHome **2026.9.1 or newer** is required. CI is pinned to
-  `ghcr.io/esphome/esphome:2026.9.1`.
+- ESPHome **2026.11.0 or newer** is required. CI is pinned to
+  `ghcr.io/esphome/esphome:2026.11.0`.
 - The project is reusable ESPHome YAML delivered through `packages:`; it is not
   an `external_components:` repository.
 - Private device YAML owns device identity, Home Assistant entity mappings,
@@ -50,6 +50,13 @@ see the [changelog](../CHANGELOG.md).
   and retains the last good image on refresh failure.
 - Camera token/origin validation, queue limits, cooldowns, download timeout, and
   heap/contiguous-memory guards remain in the shared camera engine.
+- Alerts intentionally keep the explicit two-image ping-pong
+  (`camera_snapshot` / `camera_snapshot_next`) instead of ESPHome 2026.11's
+  `double_buffer: true`. No public API can cancel an in-flight download while
+  keeping the displayed frame and leaving the image ready for the next request,
+  which the whole-download timeout needs, and releasing the only image would
+  discard the last good frame. ESPHome 2026.11 does decode JPEG as the response
+  arrives, so the download buffer now only has to hold JPEG headers.
 
 ## Hardware profiles
 

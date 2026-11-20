@@ -2,7 +2,7 @@
 esphome:
   name: ${device_name}
   friendly_name: ${friendly_name}
-  min_version: 2026.9.1
+  min_version: 2026.11.0
   # Public ESP-IDF heap-capability API used by camera RAM guards and diagnostics.
   includes:
   - <esp_heap_caps.h>
@@ -19,7 +19,7 @@ esphome:
         - script.execute: display_rotation
   project:
     name: phikapjames.round-minions
-    version: 0.8.0
+    version: 0.9.0
 
 logger:
   level: INFO
