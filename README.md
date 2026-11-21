@@ -5,7 +5,7 @@ Home Assistant. Keep shared display code here; keep actual device names,
 entity mappings, Home Assistant origins, Wi-Fi credentials, and API/OTA
 credentials in local ESPHome configuration files.
 
-**Version: 0.8.0 — a seven-face clock lineup with a live-weather modern_dashboard, a rebuilt weather_station, and a raised 2026.9.1 toolchain floor.** GitHub Actions validates and
+**Version: 0.9.0 — a seven-face clock lineup with a live-weather modern_dashboard, a rebuilt weather_station, and a raised 2026.11.0 toolchain floor.** GitHub Actions validates and
 compiles the synthetic ESPHome profile matrix for repository changes. Validate
 your private device configuration and test one physical device before broad
 rollout. See [validation](docs/VALIDATION.md).
@@ -74,11 +74,11 @@ practical hardware resources are the limit.
 
 ## Installation
 
-Requires **ESPHome 2026.9.1 or newer**. The CI image is pinned to
-`ghcr.io/esphome/esphome:2026.9.1`. ESPHome 2026.9.1 requires Python 3.12+
-when installed natively; using the official ESPHome container avoids depending
-on the host Python version. Newer ESPHome builders should be tested before
-updating all devices.
+Requires **ESPHome 2026.11.0 or newer**. The CI image is pinned to
+`ghcr.io/esphome/esphome:2026.11.0`. ESPHome 2026.11.0 requires Python 3.12 or
+newer, and below 3.16, when installed natively; using the official ESPHome
+container avoids depending on the host Python version. Newer ESPHome builders
+should be tested before updating all devices.
 
 For local validation/compile commands using the same pinned Docker image as CI,
 see [validation](docs/VALIDATION.md). Packages are downloaded by the builder at

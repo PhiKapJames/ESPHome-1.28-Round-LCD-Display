@@ -4,6 +4,32 @@
 
 - No unreleased changes.
 
+## 0.9.0 — 2026-11-20
+
+- Raised the minimum supported ESPHome version to **2026.11.0** and pinned CI
+  to `ghcr.io/esphome/esphome:2026.11.0`. This picks up JPEG decoding that runs
+  as the response arrives (the `online_image` download buffer now only has to
+  hold JPEG headers), the new `on_download_started` / `on_download_progress`
+  triggers, and the reworked RGB565 display blit path.
+- `Component::cancel_defer()` became protected in ESPHome 2026.11, so the two
+  call sites that cancelled the pending profiled display draw by name
+  (`suspend_display` and camera takeover) no longer compile. The deferred draw
+  now invalidates itself: it checks `display_profile_update_done` and returns
+  without repainting when display suspension or a camera alert has already
+  invalidated it. Behaviour is unchanged — the deferred work and the invalidating
+  code both run on the main loop, so they cannot interleave. This was caught only
+  by the CI compile legs; `esphome config` does not compile lambdas.
+- The camera engine deliberately keeps its explicit two-image ping-pong
+  (`camera_snapshot` / `camera_snapshot_next`). ESPHome 2026.11's
+  `double_buffer: true` was evaluated and not adopted: no public API can cancel
+  an in-flight download while keeping the displayed frame and leaving the image
+  ready for the next request, which the whole-download timeout requires. It
+  would also raise retained frame memory on the no-PSRAM C3/C6 boards. See
+  `docs/RELEASE_NOTES.md`.
+- No public configuration syntax changed. The `online_image` download buffer
+  stays at 4096 bytes and the camera heap/contiguous-memory guard thresholds are
+  unchanged, pending measurement on physical hardware.
+
 ## 0.8.0 — 2026-10-14
 
 - Clock face lineup is now seven faces: `original`, `classic_analog`,

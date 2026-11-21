@@ -11,7 +11,7 @@
 #
 # Each fragment selects one clock_face_style and compiles a standalone host
 # binary that renders one frame, writes it, and exits:
-#   docker run --rm -v "$PWD":/config -w /config ghcr.io/esphome/esphome:2026.9.1 \
+#   docker run --rm -v "$PWD":/config -w /config ghcr.io/esphome/esphome:2026.11.0 \
 #     compile tests/preview/original.yaml
 #   tests/preview/.esphome/build/clock-preview-<style>/
 #     .pioenvs/clock-preview-<style>/program
