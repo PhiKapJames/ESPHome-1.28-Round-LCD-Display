@@ -11,6 +11,14 @@
   as the response arrives (the `online_image` download buffer now only has to
   hold JPEG headers), the new `on_download_started` / `on_download_progress`
   triggers, and the reworked RGB565 display blit path.
+- `Component::cancel_defer()` became protected in ESPHome 2026.11, so the two
+  call sites that cancelled the pending profiled display draw by name
+  (`suspend_display` and camera takeover) no longer compile. The deferred draw
+  now invalidates itself: it checks `display_profile_update_done` and returns
+  without repainting when display suspension or a camera alert has already
+  invalidated it. Behaviour is unchanged — the deferred work and the invalidating
+  code both run on the main loop, so they cannot interleave. This was caught only
+  by the CI compile legs; `esphome config` does not compile lambdas.
 - The camera engine deliberately keeps its explicit two-image ping-pong
   (`camera_snapshot` / `camera_snapshot_next`). ESPHome 2026.11's
   `double_buffer: true` was evaluated and not adopted: no public API can cancel

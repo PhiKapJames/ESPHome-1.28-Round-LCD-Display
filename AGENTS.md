@@ -167,8 +167,11 @@ Do not convert reusable YAML into an external component simply because
   `round_minion.display`; the shared clock label is `clock`.
 - Do not reintroduce direct `component.update: main_display` calls into the
   normal rotation path. Camera-alert rendering has its own update path.
-- Display suspension and camera takeover must cancel a pending profiled normal
-  update before changing pages, preventing stale deferred draws.
+- Display suspension and camera takeover must invalidate a pending profiled
+  normal update before changing pages, preventing stale deferred draws.
+  `Component::cancel_defer()` became protected in ESPHome 2026.11, so the
+  deferred draw checks `display_profile_update_done` and skips itself instead of
+  being cancelled by name.
 
 ## Validation requirements
 
@@ -176,7 +179,9 @@ For meaningful changes:
 
 1. run `scripts/check_public.py` and `scripts/check_project.py`;
 2. validate the affected synthetic ESPHome configurations;
-3. compile representative hardware profiles when CI supports them;
+3. compile representative hardware profiles when CI supports them. `esphome
+   config` does not compile lambdas, so it cannot catch C++ API breakage such as
+   the ESPHome 2026.11 protected `cancel_defer()`; only a compile can;
 4. for public-repo changes, inspect the 14-profile GitHub Actions matrix and do
    not merge while any required config/compile job is failing;
 5. preserve the CI guard that rejects unresolved-substitution warnings;

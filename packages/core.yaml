@@ -141,7 +141,9 @@ script:
   - script.stop: display_rotation
   - script.stop: profiled_display_update
   - lambda: |-
-      id(main_display).cancel_defer("round_minion_profile_update");
+      // Invalidate any pending profiled draw. The deferred lambda checks this
+      // flag and skips the redraw, because Component::cancel_defer() became
+      // protected in ESPHome 2026.11 and cannot be called from a lambda.
       id(display_profile_update_done) = true;
 
       // Exit the active normal content page once so page-specific resources
@@ -223,6 +225,11 @@ script:
       id(display_profile_last_page) = page_name;
 
       id(main_display).defer("round_minion_profile_update", [page_name]() {
+        // Display suspended or a camera alert took over between scheduling and
+        // this running: skip the draw rather than repaint a stale page.
+        if (id(display_profile_update_done)) {
+          return;
+        }
         const uint32_t started_ms = millis();
         id(main_display).update();
         const uint32_t elapsed_ms = millis() - started_ms;

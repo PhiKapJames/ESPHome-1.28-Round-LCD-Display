@@ -623,6 +623,10 @@ def test_configs():
     assert 'restore_mode: ${backlight_restore_mode}' in core_text
     assert 'id: profiled_display_update' in core_text
     assert 'defer("round_minion_profile_update"' in core_text
+    # Component::cancel_defer() is protected since ESPHome 2026.11; pending work
+    # invalidates itself through the done flag instead of being cancelled.
+    assert '.cancel_defer(' not in core_text
+    assert 'if (id(display_profile_update_done)) {' in core_text
     assert '"round_minion.display"' in core_text
     assert 'render+flush=%u ms' in core_text
     assert '${display_profile_warn_ms}' in core_text
@@ -671,7 +675,7 @@ def test_configs():
 
     camera_alert_raw=(ROOT/'packages'/'camera-alerts.yaml').read_text(encoding='utf-8')
     assert 'script.stop: profiled_display_update' in camera_alert_raw
-    assert 'cancel_defer("round_minion_profile_update")' in camera_alert_raw
+    assert '.cancel_defer(' not in camera_alert_raw
     assert 'display_profile_update_done' in camera_alert_raw
     # Queued alerts re-read the originating source's enable switch when the
     # queued execution starts; enqueue-time bools would freeze the old state.
@@ -719,6 +723,10 @@ def test_configs():
     fragments = set()
     tests_dir = (ROOT/'tests').resolve()
     for fixture_path in (ROOT/'tests').rglob('*.yaml'):
+        # A local `esphome compile` writes build output under tests/.esphome/;
+        # it is not a fixture and its generated YAML is not ours to parse.
+        if '.esphome' in fixture_path.parts:
+            continue
         for include in load(fixture_path).get('packages', {}).values():
             if not (isinstance(include, Tagged) and include.tag == '!include'):
                 continue

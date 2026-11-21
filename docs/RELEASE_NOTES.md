@@ -40,7 +40,10 @@ see the [changelog](../CHANGELOG.md).
   full render+flush duration under `round_minion.display`; the default threshold
   is 50 ms. The physical update is deferred onto the MIPI display component so
   ESPHome's stock blocking warning is attributed to display work rather than
-  `display_rotation`.
+  `display_rotation`. Display suspension and camera takeover invalidate a pending
+  deferred draw by setting the profiling-done flag; the deferred work checks it
+  and skips the repaint. It is no longer cancelled by name because
+  `Component::cancel_defer()` became protected in ESPHome 2026.11.
 - Camera alerts are separate from normal rotation unless a
   `page-camera.yaml` instance is explicitly added. Each source has its own alphabetically grouped
   `Camera Alert · <source>` switch and manual snapshot button.
